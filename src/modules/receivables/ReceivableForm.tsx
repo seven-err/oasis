@@ -12,7 +12,7 @@ import { emptyFormValues, recordToFormValues } from "./utils";
 
 type Props = {
   mode: "create" | "edit";
-  record?: ReceivableRecord;
+  record?: Omit<ReceivableRecord, "collectionStatus">;
   onCancel: () => void;
   onSaved: (record: ReceivableRecord) => void;
 };

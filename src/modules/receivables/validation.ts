@@ -158,6 +158,10 @@ export function validateCollectionPayload(
     checkExists?: (checkId: number) => boolean;
   },
 ): ValidationResult {
+  if (options.receivable.collectionStatus === "Cancelled") {
+    return { ok: false, errors: { form: "Cannot record collections against a cancelled receivable." } };
+  }
+
   const errors: ValidationResult["errors"] = {};
 
   if (options.receivable.archivedAt) {
@@ -266,6 +270,7 @@ export function remainingBalanceFor(
   receivable: ReceivableRecord,
   collections: ReceivableCollection[],
 ): number {
+  if (receivable.collectionStatus === "Cancelled") return 0;
   return roundMoney(
     receivable.totalReceivableAmount -
       sumValidCollections(

@@ -1,4 +1,10 @@
-export type CollectionStatus = "Unpaid" | "Partial" | "Paid" | "Overdue";
+export type CollectionStatus =
+  | "Pending"
+  | "Unpaid"
+  | "Partial"
+  | "Paid"
+  | "Overdue"
+  | "Cancelled";
 
 export type PaymentMethod = "Cash" | "Check" | "Bank Transfer" | "E-Wallet";
 
@@ -118,6 +124,9 @@ export type ReceivableRecord = {
   description: string;
   referenceNumber: string;
   totalReceivableAmount: number;
+  /** Only explicit states are stored. Other statuses are derived from payments and due date. */
+  collectionStatus?: "Pending" | "Cancelled";
+  cancellationReason?: string;
   /** Expected / preferred method — optional; display may prefer latest collection */
   paymentMethod: PaymentMethod | null;
   collectionFollowUpDate: string | null;
@@ -131,7 +140,7 @@ export type ReceivableRecord = {
 };
 
 /** Receivable with derived financial fields for UI */
-export type ReceivableViewModel = ReceivableRecord & {
+export type ReceivableViewModel = Omit<ReceivableRecord, "collectionStatus"> & {
   amountPaid: number;
   remainingBalance: number;
   collectionStatus: CollectionStatus;

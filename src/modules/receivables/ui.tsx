@@ -165,6 +165,9 @@ export function FormTextarea({
 }
 
 export function StatusBadge({ value }: { value: string }) {
+  if (value === "Cancelled") {
+    return <span className="status bg-gray-200 text-gray-700">{value}</span>;
+  }
   const tone =
     value === "Paid"
       ? "status-good"

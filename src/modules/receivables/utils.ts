@@ -86,6 +86,13 @@ export function deriveCollectionStatus(
   return "Unpaid";
 }
 
+export function canCancelReceivable(record: ReceivableViewModel): boolean {
+  return (
+    !record.archivedAt &&
+    (record.collectionStatus === "Pending" || record.collectionStatus === "Unpaid")
+  );
+}
+
 export function deriveDaysOverdue(
   dueDate: string,
   remainingBalance: number,
@@ -116,13 +123,19 @@ export function toViewModel(
 ): ReceivableViewModel {
   const related = collections.filter((c) => c.receivableId === record.id);
   const amountPaid = roundMoney(sumValidCollections(related));
-  const remainingBalance = roundMoney(record.totalReceivableAmount - amountPaid);
-  const collectionStatus = deriveCollectionStatus(
+  const cancelled = record.collectionStatus === "Cancelled";
+  const remainingBalance = cancelled ? 0 : roundMoney(record.totalReceivableAmount - amountPaid);
+  const derivedStatus = deriveCollectionStatus(
     record.totalReceivableAmount,
     amountPaid,
     record.dueDate,
     asOf,
   );
+  const collectionStatus = cancelled
+    ? "Cancelled"
+    : derivedStatus === "Unpaid" && record.collectionStatus === "Pending"
+      ? "Pending"
+      : derivedStatus;
   const daysOverdue = deriveDaysOverdue(record.dueDate, remainingBalance, asOf);
   const latest = latestValidCollection(related);
   return {
@@ -171,7 +184,9 @@ export function emptyFormValues(
   };
 }
 
-export function recordToFormValues(record: ReceivableRecord): ReceivableFormValues {
+export function recordToFormValues(
+  record: Omit<ReceivableRecord, "collectionStatus">,
+): ReceivableFormValues {
   return {
     customerId: String(record.customerId),
     invoiceNumber: record.invoiceNumber,

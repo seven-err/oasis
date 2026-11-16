@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   ChevronDown,
   CircleDollarSign,
+  CircleX,
   Copy,
   Eye,
   FileText,
@@ -18,7 +19,7 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { SummaryStatCards } from "@/components/SummaryStatCards";
 import {
   COLLECTION_STATUSES,
@@ -26,6 +27,7 @@ import {
   PAGE_SIZE,
   PAYMENT_METHODS,
 } from "./constants";
+import { ReceivableCancellationDialog } from "./ReceivableCancellationDialog";
 import { receivableService } from "./store";
 import type {
   ReceivableFilters,
@@ -35,6 +37,7 @@ import type {
 } from "./types";
 import { EmptyState, PaginationBar, PanelTitle, StatusBadge } from "./ui";
 import {
+  canCancelReceivable,
   filterReceivables,
   formatDate,
   peso,
@@ -74,7 +77,9 @@ export function ReceivableRegister({
   const [showFilters, setShowFilters] = useState(false);
   const [sort, setSort] = useState<ReceivableSort>({ key: "dueDate", direction: "asc" });
   const [page, setPage] = useState(1);
-  const [menuId, setMenuId] = useState<number | null>(null);
+  const [menu, setMenu] = useState<{ id: number; trigger: HTMLButtonElement } | null>(null);
+  const menuRef = useRef<HTMLDialogElement>(null);
+  const [cancelling, setCancelling] = useState<ReceivableViewModel | null>(null);
 
   const summary = useMemo(() => summarizeReceivables(records), [records]);
 
@@ -86,6 +91,46 @@ export function ReceivableRegister({
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
   const pageRows = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const menuRow = pageRows.find((row) => row.id === menu?.id);
+  const menuRowId = menuRow?.id;
+
+  useLayoutEffect(() => {
+    const dialog = menuRef.current;
+    if (!menu || menuRowId === undefined || !dialog) return;
+
+    const root = document.documentElement;
+    const previousOverflow = root.style.overflow;
+    root.style.overflow = "hidden";
+
+    const positionMenu = () => {
+      const trigger = menu.trigger.getBoundingClientRect();
+      if (trigger.height === 0) {
+        setMenu(null);
+        return;
+      }
+
+      const gap = 8;
+      const spaceBelow = window.innerHeight - trigger.bottom - gap * 2;
+      const spaceAbove = trigger.top - gap * 2;
+      const openAbove = spaceAbove > spaceBelow && spaceBelow < dialog.scrollHeight;
+
+      dialog.style.right = `${Math.max(gap, root.clientWidth - trigger.right)}px`;
+      dialog.style.top = openAbove ? "auto" : `${trigger.bottom + gap}px`;
+      dialog.style.bottom = openAbove ? `${window.innerHeight - trigger.top + gap}px` : "auto";
+      dialog.style.maxHeight = `${Math.max(0, openAbove ? spaceAbove : spaceBelow)}px`;
+    };
+
+    menu.trigger.focus({ preventScroll: true });
+    positionMenu();
+    dialog.showModal();
+    positionMenu();
+    window.addEventListener("resize", positionMenu);
+    return () => {
+      window.removeEventListener("resize", positionMenu);
+      root.style.overflow = previousOverflow;
+      dialog.close();
+    };
+  }, [menu, menuRowId]);
 
   const setFilter = <K extends keyof ReceivableFilters>(key: K, value: ReceivableFilters[K]) => {
     setFilters((f) => ({ ...f, [key]: value }));
@@ -135,25 +180,61 @@ export function ReceivableRegister({
   };
 
   const canCollect = (row: ReceivableViewModel) =>
-    user.permissions.recordCollections && !row.archivedAt && row.remainingBalance > 0;
+    user.permissions.recordCollections &&
+    !row.archivedAt &&
+    row.collectionStatus !== "Cancelled" &&
+    row.remainingBalance > 0;
 
-  const actionMenu = (row: ReceivableViewModel) =>
-    menuId === row.id ? (
-      <div className="absolute right-0 top-9 z-20 w-56 border border-[#d0e3ef] bg-white p-1 shadow-xl">
+  const actionMenu = (row: ReceivableViewModel) => (
+    <dialog
+      ref={menuRef}
+      aria-label={`Actions for ${row.invoiceNumber}`}
+      className="fixed inset-auto m-0 w-56 max-w-[calc(100%-1rem)] overflow-y-auto overscroll-contain border border-[#d0e3ef] bg-white shadow-xl backdrop:bg-transparent backdrop:touch-none"
+      onCancel={(event) => {
+        event.preventDefault();
+        setMenu(null);
+      }}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) {
+          const bounds = event.currentTarget.getBoundingClientRect();
+          if (
+            event.clientX < bounds.left ||
+            event.clientX > bounds.right ||
+            event.clientY < bounds.top ||
+            event.clientY > bounds.bottom
+          ) {
+            setMenu(null);
+          }
+        }
+      }}
+    >
+      <div className="p-1">
+        {user.permissions.editReceivables && canCancelReceivable(row) && (
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-700 hover:bg-red-50"
+            onClick={() => {
+              setMenu(null);
+              setCancelling(row);
+            }}
+          >
+            <CircleX size={14} /> Cancel
+          </button>
+        )}
         <button
           className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
           onClick={() => {
-            setMenuId(null);
+            setMenu(null);
             onView(row.id);
           }}
         >
           <Eye size={14} /> View
         </button>
-        {user.permissions.editReceivables && !row.archivedAt && (
+        {user.permissions.editReceivables && !row.archivedAt && row.collectionStatus !== "Cancelled" && (
           <button
             className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
             onClick={() => {
-              setMenuId(null);
+              setMenu(null);
               onEdit(row.id);
             }}
           >
@@ -164,7 +245,7 @@ export function ReceivableRegister({
           <button
             className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
             onClick={() => {
-              setMenuId(null);
+              setMenu(null);
               onRecordCollection(row.id);
             }}
           >
@@ -174,7 +255,7 @@ export function ReceivableRegister({
         <button
           className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
           onClick={() => {
-            setMenuId(null);
+            setMenu(null);
             onRecordCollection(row.id);
           }}
         >
@@ -184,7 +265,7 @@ export function ReceivableRegister({
           <button
             className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
             onClick={() => {
-              setMenuId(null);
+              setMenu(null);
               onScheduleFollowUp(row.id);
             }}
           >
@@ -194,7 +275,7 @@ export function ReceivableRegister({
         <button
           className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
           onClick={() => {
-            setMenuId(null);
+            setMenu(null);
             onViewAttachments(row.id);
           }}
         >
@@ -203,7 +284,7 @@ export function ReceivableRegister({
         <button
           className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
           onClick={() => {
-            setMenuId(null);
+            setMenu(null);
             onView(row.id);
             window.setTimeout(() => window.print(), 100);
           }}
@@ -214,7 +295,7 @@ export function ReceivableRegister({
           <button
             className="flex w-full items-center gap-2 border-t border-[#e1eef6] px-3 py-2 text-xs text-red-700 hover:bg-red-50"
             onClick={() => {
-              setMenuId(null);
+              setMenu(null);
               archiveOrRestore(row);
             }}
           >
@@ -231,12 +312,28 @@ export function ReceivableRegister({
         )}
         <button
           className="flex w-full items-center gap-2 px-3 py-2 text-xs text-[#888] hover:bg-[#e7f3fb]"
-          onClick={() => setMenuId(null)}
+          onClick={() => setMenu(null)}
         >
           <X size={14} /> Close
         </button>
       </div>
-    ) : null;
+    </dialog>
+  );
+
+  const rowActions = (row: ReceivableViewModel) => (
+    <div className="relative flex shrink-0 items-center justify-end gap-1">
+      <button
+        type="button"
+        className="table-action"
+        aria-label={`Actions for ${row.invoiceNumber}`}
+        aria-expanded={menu?.id === row.id}
+        aria-haspopup="dialog"
+        onClick={(event) => setMenu({ id: row.id, trigger: event.currentTarget })}
+      >
+        <MoreHorizontal size={17} />
+      </button>
+    </div>
+  );
 
   return (
     <div className="w-full max-w-full space-y-5 overflow-x-hidden">
@@ -563,16 +660,7 @@ export function ReceivableRegister({
                         {row.clientId} · Due {formatDate(row.dueDate)}
                       </p>
                     </div>
-                    <div className="relative shrink-0">
-                      <button
-                        className="table-action"
-                        aria-label={`Actions for ${row.invoiceNumber}`}
-                        onClick={() => setMenuId(menuId === row.id ? null : row.id)}
-                      >
-                        <MoreHorizontal size={17} />
-                      </button>
-                      {actionMenu(row)}
-                    </div>
+                    {rowActions(row)}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge value={row.collectionStatus} />
@@ -647,18 +735,7 @@ export function ReceivableRegister({
                           "0"
                         )}
                       </td>
-                      <td>
-                        <div className="relative flex justify-end">
-                          <button
-                            className="table-action"
-                            aria-label={`Actions for ${row.invoiceNumber}`}
-                            onClick={() => setMenuId(menuId === row.id ? null : row.id)}
-                          >
-                            <MoreHorizontal size={17} />
-                          </button>
-                          {actionMenu(row)}
-                        </div>
-                      </td>
+                      <td>{rowActions(row)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -676,6 +753,21 @@ export function ReceivableRegister({
           onPageChange={setPage}
         />
       </section>
+      {menuRow && actionMenu(menuRow)}
+      {cancelling && (
+        <ReceivableCancellationDialog
+          record={cancelling}
+          onBack={() => setCancelling(null)}
+          onConfirm={(reason) => {
+            const result = receivableService.cancel(cancelling.id, reason);
+            if (!result.ok) return result.errors.form ?? "Unable to cancel the receivable.";
+
+            setCancelling(null);
+            onChanged();
+            notify(`Receivable ${cancelling.invoiceNumber} was cancelled.`);
+          }}
+        />
+      )}
     </div>
   );
 }
