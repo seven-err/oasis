@@ -1,0 +1,436 @@
+import { Download, FileText, Printer } from "lucide-react";
+import { useMemo, useState } from "react";
+import { payableService } from "./store";
+import type { PayablePayment, PayableReportKind, PayableViewModel } from "./types";
+import { PanelTitle, StatusBadge } from "./ui";
+import { downloadCsv, formatDate, peso } from "./utils";
+
+type Props = {
+  records: PayableViewModel[];
+  onBack: () => void;
+  notify: (message: string) => void;
+};
+
+const REPORTS: { kind: PayableReportKind; title: string; detail: string }[] = [
+  {
+    kind: "complete_register",
+    title: "Complete Payable Register",
+    detail: "Full authorized payable listing with derived balances",
+  },
+  {
+    kind: "unpaid",
+    title: "Unpaid Payables Report",
+    detail: "Approved obligations with no valid payments",
+  },
+  {
+    kind: "partial",
+    title: "Partially Paid Payables Report",
+    detail: "Approved obligations with partial payment progress",
+  },
+  {
+    kind: "paid",
+    title: "Paid Payables Report",
+    detail: "Approved obligations fully settled",
+  },
+  {
+    kind: "overdue",
+    title: "Overdue Payables Report",
+    detail: "Approved obligations past due with remaining balance",
+  },
+  {
+    kind: "pending_approval",
+    title: "Pending Approval Report",
+    detail: "Payables awaiting approve or reject decision",
+  },
+  {
+    kind: "rejected",
+    title: "Rejected Payables Report",
+    detail: "Rejected records retained for historical reference",
+  },
+  {
+    kind: "by_category",
+    title: "Payables by Category",
+    detail: "Grouped summary by category",
+  },
+  {
+    kind: "by_payee",
+    title: "Payables by Payee",
+    detail: "Grouped summary by supplier / payee",
+  },
+  {
+    kind: "payment_history",
+    title: "Payment History Report",
+    detail: "All payment transactions including reversals",
+  },
+  {
+    kind: "by_method",
+    title: "Payments by Method",
+    detail: "Valid payment totals grouped by method",
+  },
+  {
+    kind: "by_date_range",
+    title: "Payables by Date Range",
+    detail: "Filter by invoice date range before export",
+  },
+];
+
+function activeRecords(records: PayableViewModel[]) {
+  return records.filter((r) => !r.archivedAt);
+}
+
+function selectPayableRows(
+  kind: PayableReportKind,
+  records: PayableViewModel[],
+  dateFrom: string,
+  dateTo: string,
+): PayableViewModel[] {
+  const active = activeRecords(records);
+  const approved = active.filter((r) => r.approvalStatus === "Approved");
+
+  switch (kind) {
+    case "complete_register":
+      return active;
+    case "unpaid":
+      return approved.filter((r) => r.paymentStatus === "Unpaid");
+    case "partial":
+      return approved.filter((r) => r.paymentStatus === "Partial");
+    case "paid":
+      return approved.filter((r) => r.paymentStatus === "Paid");
+    case "overdue":
+      return approved.filter((r) => r.paymentStatus === "Overdue");
+    case "pending_approval":
+      return active.filter((r) => r.approvalStatus === "Pending");
+    case "rejected":
+      return active.filter((r) => r.approvalStatus === "Rejected");
+    case "by_date_range":
+      return active.filter((r) => {
+        if (dateFrom && r.invoiceDate < dateFrom) return false;
+        if (dateTo && r.invoiceDate > dateTo) return false;
+        return true;
+      });
+    case "by_category":
+    case "by_payee":
+      return approved;
+    default:
+      return active;
+  }
+}
+
+function payableExportRows(rows: PayableViewModel[]) {
+  return rows.map((r) => ({
+    Payee: r.payeeName,
+    InvoiceNumber: r.invoiceNumber,
+    Description: r.description,
+    Category: r.categoryName,
+    InvoiceDate: r.invoiceDate,
+    DueDate: r.dueDate,
+    TotalAmount: r.totalAmount.toFixed(2),
+    AmountPaid: r.amountPaid.toFixed(2),
+    RemainingBalance: r.remainingBalance.toFixed(2),
+    PaymentStatus: r.paymentStatus,
+    ApprovalStatus: r.approvalStatus,
+    PaymentMethod: r.displayPaymentMethod ?? "",
+    ReferenceNumber: r.displayReferenceNumber,
+  }));
+}
+
+function groupedExport(
+  rows: PayableViewModel[],
+  key: "categoryName" | "payeeName",
+  label: string,
+) {
+  const map = new Map<string, { count: number; total: number; paid: number; remaining: number }>();
+  for (const r of rows) {
+    const k = r[key];
+    const cur = map.get(k) ?? { count: 0, total: 0, paid: 0, remaining: 0 };
+    cur.count += 1;
+    cur.total += r.totalAmount;
+    cur.paid += r.amountPaid;
+    cur.remaining += r.remainingBalance;
+    map.set(k, cur);
+  }
+  return [...map.entries()].map(([name, stats]) => ({
+    [label]: name,
+    Payables: stats.count,
+    TotalAmount: stats.total.toFixed(2),
+    AmountPaid: stats.paid.toFixed(2),
+    RemainingBalance: stats.remaining.toFixed(2),
+  }));
+}
+
+function paymentExportRows(payments: PayablePayment[], records: PayableViewModel[]) {
+  const byId = new Map(records.map((r) => [r.id, r]));
+  return payments.map((p) => {
+    const payable = byId.get(p.payableId);
+    return {
+      PaymentId: p.id,
+      PayableInvoice: payable?.invoiceNumber ?? "",
+      Payee: payable?.payeeName ?? "",
+      PaymentDate: p.paymentDate,
+      AmountPaid: p.amountPaid.toFixed(2),
+      PaymentMethod: p.paymentMethod,
+      ReferenceNumber: p.referenceNumber,
+      CheckNumber: p.checkNumber ?? "",
+      RecordedBy: p.recordedByName,
+      IsReversal: p.isReversal ? "Yes" : "No",
+      Reversed: p.reversedAt ? "Yes" : "No",
+      Remarks: p.remarks ?? "",
+    };
+  });
+}
+
+function methodExportRows(payments: PayablePayment[]) {
+  const valid = payments.filter((p) => !p.isReversal && !p.reversedAt);
+  const map = new Map<string, { count: number; total: number }>();
+  for (const p of valid) {
+    const cur = map.get(p.paymentMethod) ?? { count: 0, total: 0 };
+    cur.count += 1;
+    cur.total += p.amountPaid;
+    map.set(p.paymentMethod, cur);
+  }
+  return [...map.entries()].map(([method, stats]) => ({
+    PaymentMethod: method,
+    Payments: stats.count,
+    TotalAmount: stats.total.toFixed(2),
+  }));
+}
+
+export function PayableReports({ records, onBack, notify }: Props) {
+  const user = payableService.getUser();
+  const allPayments = useMemo(() => payableService.allPayments(), [records]);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [active, setActive] = useState<PayableReportKind>("complete_register");
+
+  const previewPayables = useMemo(
+    () => selectPayableRows(active, records, dateFrom, dateTo),
+    [active, records, dateFrom, dateTo],
+  );
+
+  const reportCount = (kind: PayableReportKind) => {
+    if (kind === "payment_history") return allPayments.length;
+    if (kind === "by_method") {
+      return methodExportRows(allPayments).length;
+    }
+    if (kind === "by_category") {
+      return groupedExport(
+        selectPayableRows(kind, records, dateFrom, dateTo),
+        "categoryName",
+        "Category",
+      ).length;
+    }
+    if (kind === "by_payee") {
+      return groupedExport(
+        selectPayableRows(kind, records, dateFrom, dateTo),
+        "payeeName",
+        "Payee",
+      ).length;
+    }
+    return selectPayableRows(kind, records, dateFrom, dateTo).length;
+  };
+
+  const runExport = (kind: PayableReportKind) => {
+    if (!user.permissions.exportReports) {
+      notify("You are not authorized to export reports.");
+      return;
+    }
+
+    let exported: Record<string, string | number>[] = [];
+    if (kind === "payment_history") {
+      exported = paymentExportRows(allPayments, records);
+    } else if (kind === "by_method") {
+      exported = methodExportRows(allPayments);
+    } else if (kind === "by_category") {
+      exported = groupedExport(
+        selectPayableRows(kind, records, dateFrom, dateTo),
+        "categoryName",
+        "Category",
+      );
+    } else if (kind === "by_payee") {
+      exported = groupedExport(
+        selectPayableRows(kind, records, dateFrom, dateTo),
+        "payeeName",
+        "Payee",
+      );
+    } else {
+      exported = payableExportRows(selectPayableRows(kind, records, dateFrom, dateTo));
+    }
+
+    if (!exported.length) {
+      notify("No records match this report.");
+      return;
+    }
+    downloadCsv(`oasis-payable-${kind}.csv`, exported);
+    notify("Authorized export generated.");
+  };
+
+  return (
+    <div className="w-full max-w-full space-y-5 overflow-x-hidden">
+      <section className="panel overflow-hidden">
+        <PanelTitle
+          title="Payable reports"
+          subtitle="Filters, printing, and authorized exports"
+          action={
+            <button onClick={onBack} className="secondary-btn w-full sm:w-auto">
+              Back to register
+            </button>
+          }
+        />
+        <div className="grid gap-3 border-b border-[#d0e3ef] p-4 sm:grid-cols-2 md:grid-cols-3">
+          <label className="block">
+            <span className="field-label">Invoice date from</span>
+            <input
+              type="date"
+              className="input mt-2"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+            />
+          </label>
+          <label className="block">
+            <span className="field-label">Invoice date to</span>
+            <input
+              type="date"
+              className="input mt-2"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+            />
+          </label>
+          <div className="flex items-end">
+            <p className="text-[11px] text-[#888]">
+              Date range applies to the date-range report and can narrow related previews.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        {REPORTS.map((report) => {
+          const count = reportCount(report.kind);
+          return (
+            <section
+              key={report.kind}
+              className={`panel p-5 ${active === report.kind ? "ring-2 ring-[#1f6ea6]" : ""}`}
+            >
+              <button
+                type="button"
+                className="w-full text-left"
+                onClick={() => setActive(report.kind)}
+              >
+                <div className="flex items-start gap-3">
+                  <span className="grid size-10 place-items-center bg-[#e7f3fb] text-[#1f6ea6]">
+                    <FileText size={18} />
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-bold">{report.title}</h3>
+                    <p className="mt-1 text-[11px] leading-5 text-[#777]">{report.detail}</p>
+                  </div>
+                </div>
+              </button>
+              <div className="my-4 grid grid-cols-2 gap-3 border-y border-[#d7e8f3] py-3">
+                <div>
+                  <span className="field-label">Records</span>
+                  <strong className="mt-1 block text-lg">{count}</strong>
+                </div>
+                <div>
+                  <span className="field-label">Format</span>
+                  <strong className="mt-1 block text-xs">CSV / Print</strong>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  className="secondary-btn flex-1"
+                  onClick={() => {
+                    setActive(report.kind);
+                    window.print();
+                  }}
+                >
+                  <Printer size={14} /> Print
+                </button>
+                <button className="primary-btn flex-1" onClick={() => runExport(report.kind)}>
+                  <Download size={14} /> Export
+                </button>
+              </div>
+            </section>
+          );
+        })}
+      </div>
+
+      <section className="panel print:border-0">
+        <PanelTitle
+          title="Report preview"
+          subtitle={`${REPORTS.find((r) => r.kind === active)?.title ?? ""} · ${
+            active === "payment_history"
+              ? allPayments.length
+              : active === "by_method"
+                ? methodExportRows(allPayments).length
+                : previewPayables.length
+          } rows`}
+        />
+        <div className="w-full">
+          {active === "payment_history" ? (
+            <table className="w-full table-fixed">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Invoice</th>
+                  <th>Amount</th>
+                  <th>Method</th>
+                  <th className="hidden sm:table-cell">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {allPayments.slice(0, 25).map((p) => {
+                  const payable = records.find((r) => r.id === p.payableId);
+                  return (
+                    <tr key={p.id}>
+                      <td>{formatDate(p.paymentDate)}</td>
+                      <td className="overflow-hidden text-ellipsis">
+                        {payable?.invoiceNumber ?? "—"}
+                      </td>
+                      <td>{peso.format(p.amountPaid)}</td>
+                      <td>{p.paymentMethod}</td>
+                      <td className="hidden sm:table-cell">
+                        {p.isReversal ? "Reversal" : p.reversedAt ? "Reversed" : "Valid"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          ) : (
+            <table className="w-full table-fixed">
+              <thead>
+                <tr>
+                  <th>Invoice</th>
+                  <th>Payee</th>
+                  <th className="hidden sm:table-cell">Due</th>
+                  <th>Balance</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {previewPayables.slice(0, 25).map((r) => (
+                  <tr key={r.id}>
+                    <td className="overflow-hidden text-ellipsis font-semibold">
+                      {r.invoiceNumber}
+                    </td>
+                    <td className="overflow-hidden text-ellipsis">{r.payeeName}</td>
+                    <td className="hidden overflow-hidden text-ellipsis sm:table-cell">
+                      {formatDate(r.dueDate)}
+                    </td>
+                    <td className="overflow-hidden text-ellipsis">
+                      {peso.format(r.remainingBalance)}
+                    </td>
+                    <td className="overflow-hidden text-ellipsis">
+                      <StatusBadge value={r.paymentStatus} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
