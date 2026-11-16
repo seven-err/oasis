@@ -297,7 +297,7 @@ function App() {
               <span className="min-w-0">
                 <strong className="block truncate text-[13px] tracking-[.14em]">OASIS</strong>
                 <span className="block text-[10px] tracking-[.12em] text-[#5c7890]">
-                  OFFICE SYSTEM
+                  Diagnostic & Laboratory Center
                 </span>
               </span>
             )}
