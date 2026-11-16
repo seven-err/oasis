@@ -64,6 +64,60 @@ type Page =
   | "activity"
   | "profile";
 
+const employmentStatuses = [
+  "Cash Advances",
+  "Probationary",
+  "Resigned",
+  "Regular",
+  "Terminated",
+  "Contractual",
+] as const;
+const employeeRequirements = [
+  "SSS",
+  "PhilHealth",
+  "PAG-IBIG",
+  "TIN",
+  "Bank Details",
+  "Medical Cert",
+  "PSA",
+  "NBI",
+  "Barangay Clearance",
+];
+const laboratoryRequirements = ["X-RAY", "CBC", "Drug Test"];
+const employeeFieldGroups = [
+  {
+    title: "Personal information",
+    fields: [
+      { name: "dateOfBirth", label: "Date of Birth", type: "date" },
+      { name: "sex", label: "Sex", options: ["Female", "Male", "Prefer not to say"] },
+      { name: "contactNumber", label: "Contact Number", type: "tel" },
+      { name: "civilStatus", label: "Civil Status", options: ["Single", "Married", "Separated", "Divorced", "Widowed"] },
+      { name: "address", label: "Complete Address", type: "textarea" },
+    ],
+  },
+  {
+    title: "Government and bank details",
+    fields: [
+      { name: "sssNumber", label: "SSS Number" },
+      { name: "philHealthNumber", label: "PhilHealth Number" },
+      { name: "pagIbigNumber", label: "PAG-IBIG MID Number" },
+      { name: "tinNumber", label: "TIN Number" },
+      { name: "bankName", label: "Bank Name" },
+      { name: "bankAccountNumber", label: "Bank Account Number" },
+    ],
+  },
+  {
+    title: "Contract details",
+    fields: [
+      { name: "contractStart", label: "Start of Contract", type: "date" },
+      { name: "contractEnd", label: "End of Contract", type: "date" },
+      { name: "yearsOfService", label: "Years of Service", type: "number" },
+    ],
+  },
+] as const;
+type EmployeeField = (typeof employeeFieldGroups)[number]["fields"][number]["name"];
+type EmployeeView = { mode: "create" } | { mode: "details"; id: number };
+
 type Employee = {
   id: number;
   number: string;
@@ -74,7 +128,35 @@ type Employee = {
   dateHired: string;
   email: string;
   status: "Active" | "On Leave" | "Inactive";
-};
+  archived?: boolean;
+  employmentStatus?: (typeof employmentStatuses)[number];
+  requirements?: string[];
+  laboratoryRequirements?: string[];
+  requirementAttachments?: Partial<Record<string, File>>;
+  requirementStatus?: "Complete" | "Incomplete";
+} & Partial<Record<EmployeeField, string>>;
+
+function nextEmployeeNumber(employees: Employee[]): string {
+  const highest = employees.reduce(
+    (max, employee) => Math.max(max, Number(employee.number.replace(/^EMP-/, "")) || 0),
+    0,
+  );
+  return `EMP-${String(highest + 1).padStart(5, "0")}`;
+}
+
+function employeeDirectoryRows(employees: Employee[]) {
+  return employees.map((employee) => ({
+    "ID No.": employee.number,
+    "Full Name": employee.name,
+    Department: employee.department,
+    Position: employee.position,
+    "Date Hired": employee.dateHired,
+    "Email Address": employee.email,
+    "Employment Status": employee.employmentStatus ?? "",
+    "Directory Status": employee.status,
+    "Requirement Status": employee.requirementStatus ?? "Incomplete",
+  }));
+}
 
 const initialEmployees: Employee[] = [
   {
@@ -229,16 +311,13 @@ function App() {
   const [checkCreateSignal, setCheckCreateSignal] = useState(0);
   const [payableCreateSignal, setPayableCreateSignal] = useState(0);
   const [receivableCreateSignal, setReceivableCreateSignal] = useState(0);
-  const [modal, setModal] = useState<{
-    type: "add" | "view" | "transaction";
-    module: Page;
-    id?: number;
-  } | null>(null);
+  const [employeeView, setEmployeeView] = useState<EmployeeView | null>(null);
   const [toast, setToast] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
 
   const go = (next: Page) => {
     setPage(next);
+    if (next !== "employees") setEmployeeView(null);
     setSidebarOpen(false);
     setProfileOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -249,12 +328,18 @@ function App() {
     window.setTimeout(() => setToast(""), 2800);
   };
 
-  const archiveRecord = (module: Page, id: number) => {
+  const openEmployeeView = (view: EmployeeView | null) => {
+    setEmployeeView(view);
+    window.scrollTo({ top: 0 });
+  };
+
+  const archiveEmployee = (id: number) => {
     if (!window.confirm("Archive this record? Its history will remain available.")) return;
-    if (module === "employees")
-      setEmployees((list) => list.map((x) => (x.id === id ? { ...x, status: "Inactive" } : x)));
+    setEmployees((list) =>
+      list.map((x) => (x.id === id ? { ...x, status: "Inactive", archived: true } : x)),
+    );
     notify("Record archived successfully.");
-    setModal(null);
+    openEmployeeView(null);
   };
 
   const requestAdd = () => {
@@ -270,7 +355,7 @@ function App() {
       setReceivableCreateSignal((n) => n + 1);
       return;
     }
-    setModal({ type: "add", module: page });
+    if (page === "employees") openEmployeeView({ mode: "create" });
   };
 
   return (
@@ -453,13 +538,35 @@ function App() {
               onRecordsChange={setReceivables}
             />
           )}
-          {page === "employees" && (
-            <EmployeeRegister
-              data={employees}
-              onAdd={() => setModal({ type: "add", module: "employees" })}
-              onView={(id) => setModal({ type: "view", module: "employees", id })}
-            />
-          )}
+          {page === "employees" &&
+            (employeeView ? (
+              <EmployeeRecordPanel
+                view={employeeView}
+                employees={employees}
+                close={() => openEmployeeView(null)}
+                archive={archiveEmployee}
+                saveEmployee={(record) => {
+                  setEmployees((list) =>
+                    [
+                      ...list,
+                      {
+                        ...record,
+                        id: list.reduce((max, employee) => Math.max(max, employee.id), 0) + 1,
+                        number: nextEmployeeNumber(list),
+                      },
+                    ].sort((a, b) => a.name.localeCompare(b.name)),
+                  );
+                  notify("Employee record created.");
+                  openEmployeeView(null);
+                }}
+              />
+            ) : (
+              <EmployeeRegister
+                data={employees}
+                onAdd={() => openEmployeeView({ mode: "create" })}
+                onView={(id) => openEmployeeView({ mode: "details", id })}
+              />
+            ))}
           {page === "reports" && (
             <Reports
               checks={checks}
@@ -479,21 +586,6 @@ function App() {
         </footer>
       </div>
 
-      {modal && modal.module === "employees" && (
-        <RecordModal
-          modal={modal}
-          employees={employees}
-          close={() => setModal(null)}
-          archive={archiveRecord}
-          saveEmployee={(record: Omit<Employee, "id">) => {
-            setEmployees((x) =>
-              [...x, { ...record, id: Date.now() }].sort((a, b) => a.name.localeCompare(b.name)),
-            );
-            notify("Employee record created.");
-            setModal(null);
-          }}
-        />
-      )}
       {toast && (
         <div
           role="status"
@@ -861,7 +953,7 @@ function EmployeeRegister({
   const filtered = data.filter(
     (x) =>
       `${x.number} ${x.name} ${x.department}`.toLowerCase().includes(query.toLowerCase()) &&
-      (status === "All statuses" || x.status === status),
+      (status === "All statuses" || x.status === status || x.employmentStatus === status),
   );
   const active = data.filter((x) => x.status === "Active").length;
   const onLeave = data.filter((x) => x.status === "On Leave").length;
@@ -906,21 +998,22 @@ function EmployeeRegister({
         setQuery={setQuery}
         status={status}
         setStatus={setStatus}
-        statuses={["Active", "On Leave", "Inactive"]}
+        statuses={[...employmentStatuses, "Active", "On Leave", "Inactive"]}
         placeholder="Search employee no., name, or department…"
-        exportData={() => exportCsv("employee-alphalist.csv", filtered)}
+        exportData={() => exportCsv("employee-alphalist.csv", employeeDirectoryRows(filtered))}
       />
       {filtered.length ? (
         <div className="overflow-x-auto">
           <table>
             <thead>
               <tr>
-                <th>Employee</th>
-                <th>Employee no.</th>
+                <th>Full Name</th>
+                <th>ID No.</th>
                 <th>Department</th>
                 <th>Position</th>
                 <th>Date hired</th>
-                <th>Status</th>
+                <th>Employment Status</th>
+                <th>Requirement Status</th>
                 <th>
                   <span className="sr-only">Actions</span>
                 </th>
@@ -945,7 +1038,10 @@ function EmployeeRegister({
                   <td>{x.position}</td>
                   <td>{formatDate(x.dateHired)}</td>
                   <td>
-                    <Status value={x.status} />
+                    <Status value={x.archived ? "Archived" : x.employmentStatus ?? x.status} />
+                  </td>
+                  <td>
+                    <Status value={x.requirementStatus ?? "Incomplete"} />
                   </td>
                   <td>
                     <button onClick={() => onView(x.id)} className="table-action">
@@ -966,134 +1062,268 @@ function EmployeeRegister({
   );
 }
 
-function RecordModal({
-  modal,
+function EmployeeRecordPanel({
+  view,
   employees,
   close,
   archive,
   saveEmployee,
 }: {
-  modal: { type: "add" | "view" | "transaction"; module: Page; id?: number };
+  view: EmployeeView;
   employees: Employee[];
   close: () => void;
-  archive: (module: Page, id: number) => void;
-  saveEmployee: (record: Omit<Employee, "id">) => void;
+  archive: (id: number) => void;
+  saveEmployee: (record: Omit<Employee, "id" | "number">) => void;
 }) {
-  const record = employees.find((x) => x.id === modal.id);
-  const title = modal.type === "add" ? "Add employee" : "Employee details";
+  if (view.mode === "details") {
+    const record = employees.find((employee) => employee.id === view.id);
+    return record ? (
+      <section className="panel">
+        <PanelTitle
+          title={record.name}
+          subtitle={record.number}
+          action={<button type="button" onClick={close} className="secondary-btn">Back to register</button>}
+        />
+        <EmployeeDetails record={record} archive={() => archive(record.id)} close={close} />
+      </section>
+    ) : null;
+  }
+
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    const fullName = String(fd.get("party"));
-    const pieces = fullName.split(" ");
+    const text = (name: string) => String(fd.get(name) ?? "").trim();
+    const fullName = text("party");
+    const pieces = fullName.split(/\s+/);
+    const employmentStatus = employmentStatuses.find((status) => status === text("employmentStatus"));
+    if (!fullName || !employmentStatus) return;
+    const personalAndContractFields = Object.fromEntries(
+      employeeFieldGroups.flatMap(({ fields }) =>
+        fields.map(({ name }) => [name, text(name)]),
+      ),
+    );
+    const requirements = employeeRequirements.filter((item) => fd.getAll("requirements").includes(item));
+    const checkedLabRequirements = laboratoryRequirements.filter((item) =>
+      fd.getAll("laboratoryRequirements").includes(item),
+    );
+    const requirementAttachments: Partial<Record<string, File>> = {};
+    for (const item of [...requirements, ...checkedLabRequirements]) {
+      const file = fd.get(`attachment:${item}`);
+      if (file instanceof File && file.name) requirementAttachments[item] = file;
+    }
+
     saveEmployee({
-      number: String(fd.get("reference")),
+      ...personalAndContractFields,
       name: fullName,
       initials: pieces
         .map((x) => x[0])
         .slice(0, 2)
         .join("")
         .toUpperCase(),
-      department: String(fd.get("department")),
-      position: String(fd.get("position")),
-      dateHired: String(fd.get("date")),
-      email: String(fd.get("email")),
-      status: "Active",
+      department: text("department"),
+      position: text("position"),
+      dateHired: text("date"),
+      email: text("email"),
+      employmentStatus,
+      status: employmentStatus === "Resigned" || employmentStatus === "Terminated" ? "Inactive" : "Active",
+      requirements,
+      laboratoryRequirements: checkedLabRequirements,
+      requirementAttachments,
+      requirementStatus: text("requirementStatus") === "Complete" ? "Complete" : "Incomplete",
     });
   };
   return (
-    <div
-      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-5"
-      onMouseDown={(e) => e.target === e.currentTarget && close()}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        className="max-h-[95vh] w-full overflow-y-auto bg-white sm:max-w-xl"
-      >
-        <div className="sticky top-0 z-10 flex items-start justify-between border-b border-[#d0e3ef] bg-white px-6 py-5">
-          <div>
-            <p className="text-[9px] font-bold uppercase tracking-[.18em] text-[#1f6ea6]">
-              {pageMeta.employees.eyebrow}
-            </p>
-            <h2 className="mt-1 text-xl font-bold tracking-[-.025em]">{title}</h2>
-          </div>
-          <button onClick={close} className="table-action">
-            <X size={19} />
-          </button>
+    <section className="panel">
+      <PanelTitle title="Add employee" subtitle="Employee information and requirements" />
+      <form onSubmit={onSubmit} className="p-5 md:p-6">
+        <div className="space-y-6">
+          <fieldset className="grid gap-4 sm:grid-cols-2">
+            <legend className="mb-4 text-[10px] font-bold uppercase tracking-[.14em] text-[#1f6ea6]">Employee information</legend>
+            <label className="block">
+              <span className="field-label">ID No.</span>
+              <input readOnly value={nextEmployeeNumber(employees)} className="input mt-2 bg-gray-50" />
+            </label>
+            <FormField label="Full Name (Surname, First name)" name="party" required />
+            <FormField label="Email Address" name="email" type="email" required />
+            <FormField label="Date Hired" name="date" type="date" required />
+            <FormField label="Department" name="department" required />
+            <FormField label="Position" name="position" required />
+            <label className="block">
+              <span className="field-label">Employment Status <span className="text-red-700">*</span></span>
+              <select name="employmentStatus" required defaultValue="" className="input mt-2">
+                <option value="" disabled>Select employment status</option>
+                {employmentStatuses.map((status) => <option key={status}>{status}</option>)}
+              </select>
+            </label>
+          </fieldset>
+          {employeeFieldGroups.map(({ title, fields }) => (
+            <fieldset key={title} className="grid gap-4 sm:grid-cols-2">
+              <legend className="mb-4 text-[10px] font-bold uppercase tracking-[.14em] text-[#1f6ea6]">{title}</legend>
+              {fields.map((field) => {
+                const { name, label } = field;
+                if ("options" in field) {
+                  return (
+                    <label key={name} className="block">
+                      <span className="field-label">{label}</span>
+                      <select name={name} className="input mt-2">
+                        <option value="">Select {label.toLowerCase()}</option>
+                        {field.options.map((option) => <option key={option}>{option}</option>)}
+                      </select>
+                    </label>
+                  );
+                }
+                if ("type" in field && field.type === "textarea") {
+                  return (
+                    <label key={name} className="block sm:col-span-2">
+                      <span className="field-label">{label}</span>
+                      <textarea name={name} rows={3} className="input mt-2 h-auto py-2" />
+                    </label>
+                  );
+                }
+                return (
+                  <FormField
+                    key={name}
+                    label={label}
+                    name={name}
+                    type={"type" in field ? field.type : undefined}
+                    min={name === "yearsOfService" ? 0 : undefined}
+                  />
+                );
+              })}
+            </fieldset>
+          ))}
+          <EmployeeRequirementChecklist title="Requirements" name="requirements" items={employeeRequirements} />
+          <EmployeeRequirementChecklist title="Laboratory Requirements" name="laboratoryRequirements" items={laboratoryRequirements} />
+          <label className="block sm:max-w-[50%]">
+            <span className="field-label">Requirement Status</span>
+            <select name="requirementStatus" className="input mt-2" defaultValue="Incomplete">
+              <option>Incomplete</option>
+              <option>Complete</option>
+            </select>
+          </label>
         </div>
-        {modal.type === "view" && record ? (
-          <DetailView
-            module="employees"
-            record={record}
-            archive={() => archive("employees", modal.id!)}
-            close={close}
-          />
-        ) : (
-          <form onSubmit={onSubmit} className="p-6">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField label="Employee number" name="reference" required />
-              <div className="sm:col-span-2">
-                <FormField label="Full name (Surname, First name)" name="party" required />
-              </div>
-              <FormField label="Department" name="department" required />
-              <FormField label="Position" name="position" required />
-              <FormField label="Date hired" name="date" type="date" required />
-              <FormField label="Email address" name="email" type="email" required />
-            </div>
-            <div className="mt-7 flex justify-end gap-2 border-t border-[#e1eef6] pt-5">
-              <button type="button" onClick={close} className="secondary-btn">
-                Cancel
-              </button>
-              <button className="primary-btn">Save record</button>
-            </div>
-          </form>
-        )}
-      </div>
-    </div>
+        <div className="mt-7 flex justify-end gap-2 border-t border-[#e1eef6] pt-5">
+          <button type="button" onClick={close} className="secondary-btn">
+            Cancel
+          </button>
+          <button className="primary-btn">Save record</button>
+        </div>
+      </form>
+    </section>
   );
 }
 
-function DetailView({
+function EmployeeRequirementChecklist({ title, name, items }: { title: string; name: string; items: string[] }) {
+  const [checked, setChecked] = useState<string[]>([]);
+  return (
+    <fieldset className="grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <legend className="mb-4 text-[10px] font-bold uppercase tracking-[.14em] text-[#1f6ea6]">{title}</legend>
+      {items.map((item) => (
+        <div key={item} className="min-w-0 border border-[#d0e3ef] p-3">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              name={name}
+              value={item}
+              checked={checked.includes(item)}
+              onChange={(event) => {
+                const isChecked = event.currentTarget.checked;
+                setChecked((items) => isChecked ? [...items, item] : items.filter((entry) => entry !== item));
+              }}
+              className="size-4 accent-[#1f6ea6]"
+            />
+            {item}
+          </label>
+          {checked.includes(item) && (
+            <label className="mt-3 block">
+              <span className="field-label">{item} attachment</span>
+              <input
+                type="file"
+                name={`attachment:${item}`}
+                className="input mt-2 h-auto w-full py-2 text-xs file:mr-2 file:bg-[#e7f3fb] file:px-2 file:py-1 file:font-medium file:text-[#1f6ea6]"
+              />
+            </label>
+          )}
+        </div>
+      ))}
+    </fieldset>
+  );
+}
+
+function EmployeeDetails({
   record,
   archive,
   close,
 }: {
-  module: "employees";
   record: Employee;
   archive: () => void;
   close: () => void;
 }) {
   const fields = [
-    ["Employee number", record.number],
+    ["ID No.", record.number],
+    ["Full Name", record.name],
     ["Department", record.department],
     ["Position", record.position],
     ["Date hired", formatDate(record.dateHired)],
     ["Email address", record.email],
-    ["Status", record.status],
+    ["Employment Status", record.employmentStatus ?? record.status],
+    ...employeeFieldGroups.flatMap(({ fields }) =>
+      fields.map((field) => {
+        const value = record[field.name];
+        return [field.label, value && "type" in field && field.type === "date" ? formatDate(value) : value];
+      }),
+    ),
+    ["Requirement Status", record.requirementStatus ?? "Incomplete"],
+    ...(record.archived ? [["Directory Status", "Archived"]] : []),
   ];
   return (
-    <div className="p-6">
-      <div className="mb-6 flex items-center gap-4 bg-[#e7f3fb] p-5">
-        <span className="grid size-12 place-items-center bg-[#1f6ea6] text-white">
-          <UserRound size={21} />
-        </span>
-        <div>
-          <span className="text-[10px] uppercase tracking-[.12em] text-[#777]">
-            Official record
-          </span>
-          <h3 className="mt-1 font-bold">{record.name}</h3>
-        </div>
-      </div>
+    <div className="p-5 md:p-6">
       <dl className="grid gap-px bg-[#d0e3ef] sm:grid-cols-2">
         {fields.map(([label, value]) => (
           <div key={label} className="bg-white p-4">
             <dt className="field-label">{label}</dt>
-            <dd className="mt-1.5 text-sm font-medium">{value}</dd>
+            <dd className="mt-1.5 wrap-break-word whitespace-pre-wrap text-sm font-medium">{value || "—"}</dd>
           </div>
         ))}
       </dl>
+      {[
+        { title: "Requirements", items: record.requirements },
+        { title: "Laboratory Requirements", items: record.laboratoryRequirements },
+      ].map(({ title, items }) => (
+        <section key={title} className="mt-5 border border-[#d0e3ef]">
+          <h3 className="border-b border-[#d0e3ef] bg-[#e7f3fb] px-4 py-3 text-xs font-bold">{title}</h3>
+          {items?.length ? (
+            <ul className="divide-y divide-[#e1eef6]">
+              {items.map((item) => {
+                const file = record.requirementAttachments?.[item];
+                return (
+                  <li key={item} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
+                    <span>{item}</span>
+                    {file ? (
+                      <button
+                        type="button"
+                        className="secondary-btn max-w-full"
+                        title={file.name}
+                        onClick={() => {
+                          const url = URL.createObjectURL(file);
+                          const link = document.createElement("a");
+                          link.href = url;
+                          link.download = file.name;
+                          link.click();
+                          window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+                        }}
+                      >
+                        <Download size={15} className="shrink-0" />
+                        <span className="truncate">{file.name}</span>
+                      </button>
+                    ) : <span className="text-xs text-gray-600">No attachment</span>}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : <p className="px-4 py-3 text-xs text-gray-600">No requirements checked.</p>}
+        </section>
+      ))}
       <div className="mt-7 flex flex-wrap justify-between gap-2 border-t border-[#e1eef6] pt-5">
         <button onClick={archive} className="secondary-btn text-red-700">
           Archive record
@@ -1174,7 +1404,7 @@ function Reports({ checks, payables, receivables, employees, notify }: any) {
       detail: "Authorized employee directory by department",
       Icon: Users,
       data: employees,
-      exportRows: null,
+      exportRows: employeeDirectoryRows(employees),
     },
   ];
   return (
@@ -1414,6 +1644,7 @@ function FormField({
   required,
   value,
   onChange,
+  min,
   max,
   defaultValue,
 }: any) {
@@ -1429,6 +1660,7 @@ function FormField({
         required={required}
         value={value}
         onChange={onChange ? (e) => onChange(e.target.value) : undefined}
+        min={min}
         max={max}
         step={type === "number" ? "0.01" : undefined}
         defaultValue={defaultValue}
