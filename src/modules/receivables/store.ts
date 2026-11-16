@@ -33,7 +33,7 @@ import type {
   ReceivableViewModel,
   ValidationResult,
 } from "./types";
-import { enrichReceivables, nowIso, peso, toViewModel, uid } from "./utils";
+import { canCancelReceivable, enrichReceivables, nowIso, peso, toViewModel, uid } from "./utils";
 import {
   canReverseCollection,
   remainingBalanceFor,
@@ -143,6 +143,7 @@ function toRecord(
     description: values.description.trim(),
     referenceNumber: values.referenceNumber.trim(),
     totalReceivableAmount: Number(values.totalReceivableAmount),
+    collectionStatus: existing?.collectionStatus,
     paymentMethod: (values.paymentMethod || null) as PaymentMethod | null,
     collectionFollowUpDate: values.collectionFollowUpDate || null,
     remarks: values.remarks.trim() || null,
@@ -359,6 +360,9 @@ export const receivableService = {
     if (existing.archivedAt) {
       return { ok: false, errors: { form: "Archived receivables cannot be edited." } };
     }
+    if (existing.collectionStatus === "Cancelled") {
+      return { ok: false, errors: { form: "Cancelled receivables cannot be edited." } };
+    }
 
     const validation = validateReceivablePayload(values, {
       existing: snapshot.receivables,
@@ -391,6 +395,40 @@ export const receivableService = {
       metadata: { invoiceNumber: record.invoiceNumber },
     });
     persist(snapshot);
+    return { ok: true, data: record };
+  },
+
+  cancel(id: number, reason: string): ReceivableServiceResult<ReceivableRecord> {
+    const cancellationReason = reason.trim();
+    if (!cancellationReason) {
+      return { ok: false, errors: { form: "Enter a reason for cancellation." } };
+    }
+
+    const snapshot = load();
+    const existing = snapshot.receivables.find((record) => record.id === id);
+    if (!existing) return { ok: false, errors: { form: "Receivable record not found." } };
+    if (
+      !CURRENT_USER.permissions.editReceivables ||
+      !canCancelReceivable(toViewModel(existing, snapshot.collections))
+    ) {
+      return { ok: false, errors: { form: "This receivable cannot be cancelled." } };
+    }
+
+    const record: ReceivableRecord = {
+      ...existing,
+      collectionStatus: "Cancelled",
+      cancellationReason,
+      updatedAt: nowIso(),
+      updatedById: CURRENT_USER.id,
+    };
+    try {
+      writeJson(
+        RECEIVABLES_STORAGE_KEY,
+        snapshot.receivables.map((row) => (row.id === id ? record : row)),
+      );
+    } catch {
+      return { ok: false, errors: { form: "Unable to save the cancellation." } };
+    }
     return { ok: true, data: record };
   },
 
@@ -517,6 +555,12 @@ export const receivableService = {
       return {
         ok: false,
         errors: { form: "Cannot reverse collections on an archived receivable." },
+      };
+    }
+    if (receivable.collectionStatus === "Cancelled") {
+      return {
+        ok: false,
+        errors: { form: "Cannot reverse collections on a cancelled receivable." },
       };
     }
 

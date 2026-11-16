@@ -245,9 +245,11 @@ export function ReceivableDetails({
     onChanged();
   };
 
+  const isCancelled = record.collectionStatus === "Cancelled";
   const canRecordCollection =
     user.permissions.recordCollections &&
     !record.archivedAt &&
+    !isCancelled &&
     record.remainingBalance > 0;
 
   const canFollowUp = user.permissions.manageFollowUps && !record.archivedAt;
@@ -264,7 +266,7 @@ export function ReceivableDetails({
               <button onClick={onBack} className="secondary-btn">
                 Back to register
               </button>
-              {user.permissions.editReceivables && !record.archivedAt && (
+              {user.permissions.editReceivables && !record.archivedAt && !isCancelled && (
                 <button onClick={onEdit} className="primary-btn">
                   <Pencil size={15} /> Edit
                 </button>
@@ -790,6 +792,7 @@ export function ReceivableDetails({
                         {!c.isReversal &&
                           !c.reversedAt &&
                           user.permissions.reverseCollections &&
+                          !isCancelled &&
                           !record.archivedAt && (
                             <button
                               className="table-action text-red-700"
@@ -815,6 +818,9 @@ export function ReceivableDetails({
             { label: "Prepared by", value: record.preparedByName },
             { label: "Created", value: formatDateTime(record.createdAt) },
             { label: "Last updated", value: formatDateTime(record.updatedAt) },
+            ...(record.cancellationReason
+              ? [{ label: "Reason for Cancellation", value: record.cancellationReason }]
+              : []),
             {
               label: "Archive status",
               value: record.archivedAt

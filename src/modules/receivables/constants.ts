@@ -7,10 +7,12 @@ import type {
 } from "./types";
 
 export const COLLECTION_STATUSES: CollectionStatus[] = [
+  "Pending",
   "Unpaid",
   "Partial",
   "Paid",
   "Overdue",
+  "Cancelled",
 ];
 
 export const PAYMENT_METHODS: PaymentMethod[] = [

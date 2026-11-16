@@ -26,6 +26,7 @@ import {
   PAGE_SIZE,
   PAYMENT_METHODS,
 } from "./constants";
+import { ReceivableCancellationDialog } from "./ReceivableCancellationDialog";
 import { receivableService } from "./store";
 import type {
   ReceivableFilters,
@@ -35,6 +36,7 @@ import type {
 } from "./types";
 import { EmptyState, PaginationBar, PanelTitle, StatusBadge } from "./ui";
 import {
+  canCancelReceivable,
   filterReceivables,
   formatDate,
   peso,
@@ -75,6 +77,7 @@ export function ReceivableRegister({
   const [sort, setSort] = useState<ReceivableSort>({ key: "dueDate", direction: "asc" });
   const [page, setPage] = useState(1);
   const [menuId, setMenuId] = useState<number | null>(null);
+  const [cancelling, setCancelling] = useState<ReceivableViewModel | null>(null);
 
   const summary = useMemo(() => summarizeReceivables(records), [records]);
 
@@ -135,7 +138,10 @@ export function ReceivableRegister({
   };
 
   const canCollect = (row: ReceivableViewModel) =>
-    user.permissions.recordCollections && !row.archivedAt && row.remainingBalance > 0;
+    user.permissions.recordCollections &&
+    !row.archivedAt &&
+    row.collectionStatus !== "Cancelled" &&
+    row.remainingBalance > 0;
 
   const actionMenu = (row: ReceivableViewModel) =>
     menuId === row.id ? (
@@ -149,7 +155,7 @@ export function ReceivableRegister({
         >
           <Eye size={14} /> View
         </button>
-        {user.permissions.editReceivables && !row.archivedAt && (
+        {user.permissions.editReceivables && !row.archivedAt && row.collectionStatus !== "Cancelled" && (
           <button
             className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
             onClick={() => {
@@ -237,6 +243,33 @@ export function ReceivableRegister({
         </button>
       </div>
     ) : null;
+
+  const rowActions = (row: ReceivableViewModel) => (
+    <div className="relative flex shrink-0 items-center justify-end gap-1">
+      {user.permissions.editReceivables && canCancelReceivable(row) && (
+        <button
+          type="button"
+          className="px-1 py-2 text-xs font-semibold text-red-700 hover:underline"
+          aria-label={`Cancel receivable ${row.invoiceNumber}`}
+          onClick={() => {
+            setMenuId(null);
+            setCancelling(row);
+          }}
+        >
+          Cancel
+        </button>
+      )}
+      <button
+        type="button"
+        className="table-action"
+        aria-label={`Actions for ${row.invoiceNumber}`}
+        onClick={() => setMenuId(menuId === row.id ? null : row.id)}
+      >
+        <MoreHorizontal size={17} />
+      </button>
+      {actionMenu(row)}
+    </div>
+  );
 
   return (
     <div className="w-full max-w-full space-y-5 overflow-x-hidden">
@@ -563,16 +596,7 @@ export function ReceivableRegister({
                         {row.clientId} · Due {formatDate(row.dueDate)}
                       </p>
                     </div>
-                    <div className="relative shrink-0">
-                      <button
-                        className="table-action"
-                        aria-label={`Actions for ${row.invoiceNumber}`}
-                        onClick={() => setMenuId(menuId === row.id ? null : row.id)}
-                      >
-                        <MoreHorizontal size={17} />
-                      </button>
-                      {actionMenu(row)}
-                    </div>
+                    {rowActions(row)}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge value={row.collectionStatus} />
@@ -605,9 +629,7 @@ export function ReceivableRegister({
                     <SortHeader label="Balance" sortKey="remainingBalance" />
                     <SortHeader label="Status" sortKey="collectionStatus" />
                     <SortHeader label="Overdue" sortKey="daysOverdue" />
-                    <th className="w-12">
-                      <span className="sr-only">Actions</span>
-                    </th>
+                    <th className="w-24">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -647,18 +669,7 @@ export function ReceivableRegister({
                           "0"
                         )}
                       </td>
-                      <td>
-                        <div className="relative flex justify-end">
-                          <button
-                            className="table-action"
-                            aria-label={`Actions for ${row.invoiceNumber}`}
-                            onClick={() => setMenuId(menuId === row.id ? null : row.id)}
-                          >
-                            <MoreHorizontal size={17} />
-                          </button>
-                          {actionMenu(row)}
-                        </div>
-                      </td>
+                      <td>{rowActions(row)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -676,6 +687,20 @@ export function ReceivableRegister({
           onPageChange={setPage}
         />
       </section>
+      {cancelling && (
+        <ReceivableCancellationDialog
+          record={cancelling}
+          onBack={() => setCancelling(null)}
+          onConfirm={(reason) => {
+            const result = receivableService.cancel(cancelling.id, reason);
+            if (!result.ok) return result.errors.form ?? "Unable to cancel the receivable.";
+
+            setCancelling(null);
+            onChanged();
+            notify(`Receivable ${cancelling.invoiceNumber} was cancelled.`);
+          }}
+        />
+      )}
     </div>
   );
 }
