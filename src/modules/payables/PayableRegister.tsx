@@ -3,7 +3,6 @@ import {
   Archive,
   ArrowUpDown,
   CheckCircle2,
-  ChevronDown,
   Clock3,
   Copy,
   Eye,
@@ -102,10 +101,6 @@ export function PayableRegister({
     <th>
       <button onClick={() => toggleSort(sortKey)} className="inline-flex items-center gap-1">
         {label}
-        <ChevronDown
-          size={12}
-          className={sort.key === sortKey && sort.direction === "asc" ? "rotate-180" : ""}
-        />
       </button>
     </th>
   );
@@ -632,14 +627,6 @@ export function PayableRegister({
                         className="inline-flex items-center gap-1"
                       >
                         Category
-                        <ChevronDown
-                          size={12}
-                          className={
-                            sort.key === "categoryName" && sort.direction === "asc"
-                              ? "rotate-180"
-                              : ""
-                          }
-                        />
                       </button>
                     </th>
                     <SortHeader label="Due" sortKey="dueDate" />

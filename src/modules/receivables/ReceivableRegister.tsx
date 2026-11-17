@@ -4,7 +4,6 @@ import {
   ArrowUpDown,
   CalendarClock,
   CheckCircle2,
-  ChevronDown,
   CircleDollarSign,
   CircleX,
   Copy,
@@ -149,10 +148,6 @@ export function ReceivableRegister({
     <th>
       <button onClick={() => toggleSort(sortKey)} className="inline-flex items-center gap-1">
         {label}
-        <ChevronDown
-          size={12}
-          className={sort.key === sortKey && sort.direction === "asc" ? "rotate-180" : ""}
-        />
       </button>
     </th>
   );

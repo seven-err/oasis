@@ -3,7 +3,6 @@ import {
   Archive,
   ArrowUpDown,
   CheckCircle2,
-  ChevronDown,
   Clock3,
   Copy,
   Eye,
@@ -90,10 +89,6 @@ export function CheckRegister({
     <th>
       <button onClick={() => toggleSort(sortKey)} className="inline-flex items-center gap-1">
         {label}
-        <ChevronDown
-          size={12}
-          className={sort.key === sortKey && sort.direction === "asc" ? "rotate-180" : ""}
-        />
       </button>
     </th>
   );
@@ -420,12 +415,6 @@ export function CheckRegister({
                         className="inline-flex items-center gap-1"
                       >
                         Bank
-                        <ChevronDown
-                          size={12}
-                          className={
-                            sort.key === "bankName" && sort.direction === "asc" ? "rotate-180" : ""
-                          }
-                        />
                       </button>
                     </th>
                     <SortHeader label="Amount" sortKey="checkAmount" />
@@ -435,12 +424,6 @@ export function CheckRegister({
                         className="inline-flex items-center gap-1"
                       >
                         Due
-                        <ChevronDown
-                          size={12}
-                          className={
-                            sort.key === "dueDate" && sort.direction === "asc" ? "rotate-180" : ""
-                          }
-                        />
                       </button>
                     </th>
                     <SortHeader label="Status" sortKey="checkStatus" />
