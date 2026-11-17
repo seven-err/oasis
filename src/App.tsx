@@ -3,7 +3,6 @@ import {
   Activity,
   AlertCircle,
   ArrowUpDown,
-  Building2,
   CalendarDays,
   Check,
   CheckCircle2,
@@ -34,6 +33,7 @@ import {
   WalletCards,
   X,
 } from "lucide-react";
+import oasisLogo from "../Oasis-Logo.png";
 import {
   getOfficeNotifications,
   NotificationInbox,
@@ -428,9 +428,31 @@ function App() {
       >
         <div className="flex h-[76px] items-center border-b border-[#c5dced] px-5">
           <button
+            aria-label="OASIS dashboard"
             onClick={() => go("dashboard")}
-            className="flex min-w-0 items-center gap-3 text-left"
+            className="flex min-w-0 items-center"
           >
+            <img
+              src={oasisLogo}
+              alt=""
+              className={`size-14 shrink-0 object-contain ${sidebarCompact ? "lg:size-11" : ""}`}
+            />
+            {!sidebarCompact && (
+              <span className="grid min-w-0 grid-rows-[1fr_auto_1fr] self-stretch text-left">
+                <svg
+                  aria-hidden="true"
+                  className="row-start-2 h-[13px] w-auto justify-self-start text-[#ed0000]"
+                  viewBox="0 0 354 64"
+                >
+                  <g fill="none" stroke="currentColor" strokeWidth="12" strokeLinecap="round">
+                    <path d="M6 56 40 10 Q46 2 52 10 L86 56" />
+                    <path d="M201 10 H128 A12 12 0 0 0 128 34 H191 A11 11 0 0 1 191 56 H112" />
+                    <path d="M229 10 V56" />
+                    <path d="M344 10 H271 A12 12 0 0 0 271 34 H334 A11 11 0 0 1 334 56 H255" />
+                  </g>
+                  <circle cx="46" cy="48" r="8" fill="currentColor" />
+                </svg>
+                <span className="row-start-3 pt-1 text-[9px] leading-[11px] tracking-[.04em] text-[#5c7890]">
             <span className="grid size-9 shrink-0 place-items-center bg-[#1f6ea6] text-white">
               <Building2 size={19} strokeWidth={2} />
             </span>
@@ -442,7 +464,7 @@ function App() {
               </span>
           </button>
           <button
-            className="ml-auto text-[#5c7890] hover:text-[#16344d] lg:hidden"
+            className="ml-auto shrink-0 text-[#5c7890] hover:text-[#16344d] lg:hidden"
             onClick={() => setSidebarOpen(false)}
             aria-label="Close sidebar"
           >
