@@ -9,18 +9,22 @@ import type { ReceivableView, ReceivableViewModel } from "./types";
 type Props = {
   notify: (message: string) => void;
   createSignal?: number;
+  initialRecordId?: number;
   onRecordsChange?: (records: ReceivableViewModel[]) => void;
 };
 
 export function ReceivableMonitoring({
   notify,
   createSignal = 0,
+  initialRecordId,
   onRecordsChange,
 }: Props) {
   const [records, setRecords] = useState<ReceivableViewModel[]>(() =>
     receivableService.listViewModels(),
   );
-  const [view, setView] = useState<ReceivableView>({ mode: "register" });
+  const [view, setView] = useState<ReceivableView>(() =>
+    initialRecordId === undefined ? { mode: "register" } : { mode: "details", id: initialRecordId },
+  );
 
   const refresh = useCallback(() => {
     const next = receivableService.listViewModels();
