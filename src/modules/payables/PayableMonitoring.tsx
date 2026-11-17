@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useViewHistory } from "@/hooks/useViewHistory";
 import { PayableDetails } from "./PayableDetails";
 import { PayableForm } from "./PayableForm";
 import { PayableRegister } from "./PayableRegister";
@@ -22,8 +23,9 @@ export function PayableMonitoring({
   const [records, setRecords] = useState<PayableViewModel[]>(() =>
     payableService.listViewModels(),
   );
-  const [view, setView] = useState<PayableView>(() =>
+  const { view, open: setView, back, replace } = useViewHistory<PayableView>(() =>
     initialRecordId === undefined ? { mode: "register" } : { mode: "details", id: initialRecordId },
+    { mode: "register" },
   );
 
   const refresh = useCallback(() => {
@@ -34,48 +36,67 @@ export function PayableMonitoring({
 
   useEffect(() => {
     if (createSignal > 0) setView({ mode: "create" });
-  }, [createSignal]);
+  }, [createSignal, setView]);
 
   const selected =
     view.mode === "details" || view.mode === "edit"
       ? records.find((r) => r.id === view.id)
       : undefined;
 
+  const renderView = (content?: ReactNode) => (
+    <div className="w-full max-w-full overflow-x-hidden">
+      <div hidden={view.mode !== "register"}>
+        <PayableRegister
+          records={records}
+          onAdd={() => setView({ mode: "create" })}
+          onView={(id) => setView({ mode: "details", id })}
+          onEdit={(id) => setView({ mode: "edit", id })}
+          onRecordPayment={(id) => setView({ mode: "details", id, focus: "payments" })}
+          onApprove={(id) => setView({ mode: "details", id, focus: "approve" })}
+          onOpenReports={() => setView({ mode: "reports" })}
+          onChanged={refresh}
+          notify={notify}
+        />
+      </div>
+      {content}
+    </div>
+  );
+
   if (view.mode === "create") {
-    return (
+    return renderView(
       <PayableForm
         mode="create"
-        onCancel={() => setView({ mode: "register" })}
+        onCancel={back}
         onSaved={(record) => {
           refresh();
           notify("Payable record created.");
-          setView({ mode: "details", id: record.id });
+          replace({ mode: "details", id: record.id });
         }}
       />
     );
   }
 
   if (view.mode === "edit" && selected) {
-    return (
+    return renderView(
       <PayableForm
         mode="edit"
         record={selected}
-        onCancel={() => setView({ mode: "details", id: selected.id })}
+        onCancel={back}
         onSaved={(record) => {
           refresh();
           notify("Payable record updated.");
-          setView({ mode: "details", id: record.id });
+          replace({ mode: "details", id: record.id });
         }}
       />
     );
   }
 
   if (view.mode === "details" && selected) {
-    return (
+    return renderView(
       <PayableDetails
         record={selected}
         focus={view.focus}
-        onBack={() => setView({ mode: "register" })}
+        onBack={back}
         onEdit={() => setView({ mode: "edit", id: selected.id })}
         onChanged={refresh}
         notify={notify}
@@ -84,30 +105,16 @@ export function PayableMonitoring({
   }
 
   if (view.mode === "reports") {
-    return (
+    return renderView(
       <PayableReports
         records={records}
-        onBack={() => setView({ mode: "register" })}
+        onBack={back}
         notify={notify}
       />
     );
   }
 
-  return (
-    <div className="w-full max-w-full overflow-x-hidden">
-      <PayableRegister
-        records={records}
-        onAdd={() => setView({ mode: "create" })}
-        onView={(id) => setView({ mode: "details", id })}
-        onEdit={(id) => setView({ mode: "edit", id })}
-        onRecordPayment={(id) => setView({ mode: "details", id, focus: "payments" })}
-        onApprove={(id) => setView({ mode: "details", id, focus: "approve" })}
-        onOpenReports={() => setView({ mode: "reports" })}
-        onChanged={refresh}
-        notify={notify}
-      />
-    </div>
-  );
+  return renderView();
 }
 
 export function getPayableRecords(): PayableViewModel[] {

@@ -106,6 +106,8 @@ export function ReceivableForm({ mode, record, onCancel, onSaved }: Props) {
   return (
     <section className="panel">
       <PanelTitle
+        onBack={onCancel}
+        backDisabled={saving}
         title={mode === "create" ? "Add receivable" : "Edit receivable"}
         subtitle="Select an existing customer to populate contact details. Amount paid, remaining balance, days overdue, and collection status are calculated from collection history."
       />
@@ -384,9 +386,6 @@ export function ReceivableForm({ mode, record, onCancel, onSaved }: Props) {
         </div>
 
         <div className="mt-7 flex justify-end gap-2 border-t border-[#e1eef6] pt-5">
-          <button type="button" onClick={onCancel} className="secondary-btn">
-            Cancel
-          </button>
           <button className="primary-btn" disabled={saving}>
             {saving ? "Saving…" : "Save receivable"}
           </button>

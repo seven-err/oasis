@@ -191,13 +191,9 @@ export function CheckReports({ records, onBack, notify }: Props) {
     <div className="w-full max-w-full space-y-5 overflow-x-hidden">
       <section className="panel overflow-hidden">
         <PanelTitle
+          onBack={onBack}
           title="Check reports"
           subtitle="Filters, printing, and authorized exports · attachments excluded from CSV"
-          action={
-            <button onClick={onBack} className="secondary-btn w-full sm:w-auto">
-              Back to register
-            </button>
-          }
         />
         <div className="grid gap-3 border-b border-[#d0e3ef] p-4 sm:grid-cols-2 md:grid-cols-3">
           <label className="block">

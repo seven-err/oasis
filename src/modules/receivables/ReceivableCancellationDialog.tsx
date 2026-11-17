@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 import type { FormEvent } from "react";
 import type { ReceivableViewModel } from "./types";
 import { peso } from "./utils";
@@ -94,7 +95,7 @@ export function ReceivableCancellationDialog({ record, onBack, onConfirm }: Prop
         )}
         <div className="mt-5 flex flex-wrap justify-end gap-2">
           <button type="button" className="secondary-btn" onClick={onBack}>
-            Back
+            <ArrowLeft size={15} aria-hidden="true" /> Back
           </button>
           <button type="submit" className="primary-btn bg-red-700 hover:bg-red-800">
             Confirm Cancellation

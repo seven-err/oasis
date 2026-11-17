@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useViewHistory } from "@/hooks/useViewHistory";
 import { CheckDetails } from "./CheckDetails";
 import { CheckForm } from "./CheckForm";
 import { CheckRegister } from "./CheckRegister";
@@ -17,8 +18,9 @@ type Props = {
 
 export function CheckMonitoring({ notify, createSignal = 0, initialRecordId, onRecordsChange }: Props) {
   const [records, setRecords] = useState<CheckRecord[]>(() => checkService.list());
-  const [view, setView] = useState<CheckView>(() =>
+  const { view, open: setView, back, replace } = useViewHistory<CheckView>(() =>
     initialRecordId === undefined ? { mode: "register" } : { mode: "details", id: initialRecordId },
+    { mode: "register" },
   );
 
   const refresh = useCallback(() => {
@@ -29,47 +31,64 @@ export function CheckMonitoring({ notify, createSignal = 0, initialRecordId, onR
 
   useEffect(() => {
     if (createSignal > 0) setView({ mode: "create" });
-  }, [createSignal]);
+  }, [createSignal, setView]);
 
   const selected =
     view.mode === "details" || view.mode === "edit"
       ? records.find((r) => r.id === view.id)
       : undefined;
 
+  const renderView = (content?: ReactNode) => (
+    <div className="w-full max-w-full overflow-x-hidden">
+      <div hidden={view.mode !== "register"}>
+        <CheckRegister
+          records={records}
+          onAdd={() => setView({ mode: "create" })}
+          onView={(id) => setView({ mode: "details", id })}
+          onEdit={(id) => setView({ mode: "edit", id })}
+          onOpenReports={() => setView({ mode: "reports" })}
+          onChanged={refresh}
+          notify={notify}
+        />
+      </div>
+      {content}
+    </div>
+  );
+
   if (view.mode === "create") {
-    return (
+    return renderView(
       <CheckForm
         mode="create"
-        onCancel={() => setView({ mode: "register" })}
+        onCancel={back}
         onSaved={(record) => {
           refresh();
           notify("Check record created.");
-          setView({ mode: "details", id: record.id });
+          replace({ mode: "details", id: record.id });
         }}
       />
     );
   }
 
   if (view.mode === "edit" && selected) {
-    return (
+    return renderView(
       <CheckForm
         mode="edit"
         record={selected}
-        onCancel={() => setView({ mode: "details", id: selected.id })}
+        onCancel={back}
         onSaved={(record) => {
           refresh();
           notify("Check record updated.");
-          setView({ mode: "details", id: record.id });
+          replace({ mode: "details", id: record.id });
         }}
       />
     );
   }
 
   if (view.mode === "details" && selected) {
-    return (
+    return renderView(
       <CheckDetails
         record={selected}
-        onBack={() => setView({ mode: "register" })}
+        onBack={back}
         onEdit={() => setView({ mode: "edit", id: selected.id })}
         onChanged={refresh}
         notify={notify}
@@ -78,28 +97,16 @@ export function CheckMonitoring({ notify, createSignal = 0, initialRecordId, onR
   }
 
   if (view.mode === "reports") {
-    return (
+    return renderView(
       <CheckReports
         records={records}
-        onBack={() => setView({ mode: "register" })}
+        onBack={back}
         notify={notify}
       />
     );
   }
 
-  return (
-    <div className="w-full max-w-full overflow-x-hidden">
-      <CheckRegister
-        records={records}
-        onAdd={() => setView({ mode: "create" })}
-        onView={(id) => setView({ mode: "details", id })}
-        onEdit={(id) => setView({ mode: "edit", id })}
-        onOpenReports={() => setView({ mode: "reports" })}
-        onChanged={refresh}
-        notify={notify}
-      />
-    </div>
-  );
+  return renderView();
 }
 
 /** Imperative helpers for parent shell integration */
