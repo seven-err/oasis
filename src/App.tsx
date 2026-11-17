@@ -435,9 +435,9 @@ function App() {
             <img
               src={oasisLogo}
               alt=""
-              className={`size-14 shrink-0 object-contain ${sidebarCompact ? "lg:size-11" : ""}`}
+              className={`size-14 shrink-0 object-contain ${compactMenu ? "lg:size-11" : ""}`}
             />
-            {!sidebarCompact && (
+            {!compactMenu && (
               <span className="grid min-w-0 grid-rows-[1fr_auto_1fr] self-stretch text-left">
                 <svg
                   aria-hidden="true"
@@ -453,15 +453,10 @@ function App() {
                   <circle cx="46" cy="48" r="8" fill="currentColor" />
                 </svg>
                 <span className="row-start-3 pt-1 text-[9px] leading-[11px] tracking-[.04em] text-[#5c7890]">
-            <span className="grid size-9 shrink-0 place-items-center bg-[#1f6ea6] text-white">
-              <Building2 size={19} strokeWidth={2} />
-            </span>
-              <span aria-hidden={compactMenu} className="sidebar-copy min-w-0 shrink-0 whitespace-nowrap">
-                <strong className="block truncate text-[13px] tracking-[.14em]">OASIS</strong>
-                <span className="block text-[10px] tracking-[.12em] text-[#5c7890]">
                   Diagnostic & Laboratory Center
                 </span>
               </span>
+            )}
           </button>
           <button
             className="ml-auto shrink-0 text-[#5c7890] hover:text-[#16344d] lg:hidden"
