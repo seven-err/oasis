@@ -7,7 +7,6 @@ import {
   CircleDollarSign,
   CircleX,
   Copy,
-  Eye,
   FileText,
   History,
   MoreHorizontal,
@@ -21,6 +20,7 @@ import {
 } from "lucide-react";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { SummaryStatCards } from "@/components/SummaryStatCards";
+import { recordRowClick } from "@/components/recordRowClick";
 import {
   COLLECTION_STATUSES,
   EMPTY_FILTERS,
@@ -217,15 +217,6 @@ export function ReceivableRegister({
             <CircleX size={14} /> Cancel
           </button>
         )}
-        <button
-          className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
-          onClick={() => {
-            setMenu(null);
-            onView(row.id);
-          }}
-        >
-          <Eye size={14} /> View
-        </button>
         {user.permissions.editReceivables && !row.archivedAt && row.collectionStatus !== "Cancelled" && (
           <button
             className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
@@ -655,7 +646,11 @@ export function ReceivableRegister({
               {pageRows.map((row) => (
                 <div
                   key={row.id}
-                  className={`relative space-y-3 p-4 ${row.archivedAt ? "opacity-60" : ""}`}
+                  className={`relative cursor-pointer space-y-3 p-4 transition-colors hover:bg-[#eef6fb] ${row.archivedAt ? "opacity-60" : ""}`}
+                  onClick={recordRowClick(() => {
+                    setMenu(null);
+                    onView(row.id);
+                  })}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -711,9 +706,18 @@ export function ReceivableRegister({
                 </thead>
                 <tbody key={`${sort.key}-${sort.direction}`} className="sorted-records">
                   {pageRows.map((row) => (
-                    <tr key={row.id} className={row.archivedAt ? "opacity-60" : ""}>
+                    <tr
+                      key={row.id}
+                      className={`cursor-pointer ${row.archivedAt ? "opacity-60" : ""}`}
+                      onClick={recordRowClick(() => {
+                        setMenu(null);
+                        onView(row.id);
+                      })}
+                    >
                       <td className="overflow-hidden text-ellipsis font-semibold text-[#1f6ea6]">
-                        {row.invoiceNumber}
+                        <button type="button" className="block max-w-full truncate text-left hover:underline" onClick={() => { setMenu(null); onView(row.id); }} aria-label={`Open receivable ${row.invoiceNumber}`}>
+                          {row.invoiceNumber}
+                        </button>
                         <span className="mt-1 block truncate text-[10px] text-[#888]">
                           {row.referenceNumber}
                         </span>

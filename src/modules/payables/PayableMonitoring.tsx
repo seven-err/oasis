@@ -45,7 +45,7 @@ export function PayableMonitoring({
 
   const renderView = (content?: ReactNode) => (
     <div className="w-full max-w-full overflow-x-hidden">
-      <div hidden={view.mode !== "register"}>
+      <div hidden={view.mode !== "register"} className="record-view-enter">
         <PayableRegister
           records={records}
           onAdd={() => setView({ mode: "create" })}
@@ -58,7 +58,11 @@ export function PayableMonitoring({
           notify={notify}
         />
       </div>
-      {content}
+      {content && (
+        <div key={`${view.mode}-${"id" in view ? view.id : ""}`} className="record-view-enter">
+          {content}
+        </div>
+      )}
     </div>
   );
 

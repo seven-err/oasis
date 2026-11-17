@@ -669,6 +669,7 @@ function App() {
                 data={employees}
                 onAdd={() => openEmployeeView({ mode: "create" })}
                 onView={(id) => openEmployeeView({ mode: "details", id })}
+                onEdit={(id) => openEmployeeView({ mode: "edit", id })}
               />
             </div>
             {employeeView && (
@@ -709,14 +710,9 @@ function App() {
                   openEmployeeView(null);
                 }}
               />
-            ) : (
-              <EmployeeRegister
-                data={employees}
-                onAdd={() => openEmployeeView({ mode: "create" })}
-                onView={(id) => openEmployeeView({ mode: "details", id })}
-                onEdit={(id) => openEmployeeView({ mode: "edit", id })}
-              />
-            ))}
+            )}
+            </>
+          )}
           {page === "reports" && (
             <Reports
               checks={checks}
