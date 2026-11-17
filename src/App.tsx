@@ -268,7 +268,7 @@ const formatDate = (value: string) =>
 const pageMeta: Record<Page, { eyebrow: string; title: string; description: string }> = {
   dashboard: {
     eyebrow: "Overview",
-    title: "Dashboard",
+    title: "Home",
     description: "Here is what needs your attention today.",
   },
   checks: {
@@ -320,7 +320,7 @@ const nav = [
   {
     section: "Workspace",
     items: [
-      { page: "dashboard" as Page, label: "Dashboard", icon: LayoutDashboard },
+      { page: "dashboard" as Page, label: "Home", icon: LayoutDashboard },
       { page: "employees" as Page, label: "Employee Alphalist", icon: Users },
       { page: "checks" as Page, label: "Check Monitoring", icon: FileCheck2 },
       { page: "payables" as Page, label: "Payable Monitoring", icon: WalletCards },
@@ -445,7 +445,7 @@ function App() {
       >
         <div className="flex h-[76px] items-center border-b border-[#c5dced] px-5 lg:pl-3.5 lg:pr-3">
           <button
-            aria-label="OASIS dashboard"
+            aria-label="OASIS home"
             onClick={() => go("dashboard")}
             className="flex min-w-0 items-center overflow-hidden"
           >
@@ -537,8 +537,7 @@ function App() {
             <Menu size={22} />
           </button>
           <div className="hidden items-center gap-2 text-xs text-[#808080] sm:flex">
-            <span>Office Management</span>
-            <ChevronRight size={13} />
+            <ChevronRight aria-hidden="true" size={13} />
             <span className="font-medium text-black">{pageMeta[page].title}</span>
           </div>
           <div className="ml-auto flex items-center gap-1">
