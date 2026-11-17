@@ -2,7 +2,6 @@ import { useState } from "react";
 import {
   Activity,
   AlertCircle,
-  Bell,
   Building2,
   CalendarDays,
   Check,
@@ -34,6 +33,12 @@ import {
   WalletCards,
   X,
 } from "lucide-react";
+import {
+  getOfficeNotifications,
+  NotificationInbox,
+  type OfficeNotification,
+} from "@/components/NotificationInbox";
+import { CURRENT_USER } from "@/modules/checks/constants";
 import { SummaryStatCards } from "@/components/SummaryStatCards";
 import {
   CheckMonitoring,
@@ -315,8 +320,23 @@ function App() {
   const [toast, setToast] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
 
-  const go = (next: Page) => {
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notificationTarget, setNotificationTarget] = useState<{
+    item: OfficeNotification;
+    visit: number;
+  } | null>(null);
+
+  const go = (next: Page, notification?: OfficeNotification) => {
     setPage(next);
+    setNotificationTarget((previous) =>
+      notification ? { item: notification, visit: (previous?.visit ?? 0) + 1 } : null,
+    );
+    if (next !== page || notification) {
+      setCheckCreateSignal(0);
+      setPayableCreateSignal(0);
+      setReceivableCreateSignal(0);
+    }
+    setNotificationsOpen(false);
     if (next !== "employees") setEmployeeView(null);
     setSidebarOpen(false);
     setProfileOpen(false);
@@ -451,7 +471,10 @@ function App() {
         <header className="sticky top-0 z-20 flex h-[76px] items-center border-b border-[#d0e3ef] bg-white/95 px-5 backdrop-blur md:px-8">
           <button
             className="mr-4 lg:hidden"
-            onClick={() => setSidebarOpen(true)}
+            onClick={() => {
+              setNotificationsOpen(false);
+              setSidebarOpen(true);
+            }}
             aria-label="Open navigation"
           >
             <Menu size={22} />
@@ -462,18 +485,24 @@ function App() {
             <span className="font-medium text-black">{pageMeta[page].title}</span>
           </div>
           <div className="ml-auto flex items-center gap-1">
-            <button
-              className="relative grid size-10 place-items-center hover:bg-[#e7f3fb]"
-              aria-label="Notifications"
-              onClick={() => notify("You have 3 items requiring attention.")}
-            >
-              <Bell size={18} />
-              <span className="absolute right-2.5 top-2.5 size-1.5 rounded-full bg-[#1f6ea6]" />
-            </button>
+            <NotificationInbox
+              key={CURRENT_USER.id}
+              userId={CURRENT_USER.id}
+              items={getOfficeNotifications(checks, payables, receivables)}
+              open={notificationsOpen && !profileOpen}
+              onOpenChange={(open) => {
+                if (open) setProfileOpen(false);
+                setNotificationsOpen(open);
+              }}
+              onSelect={(item) => go(item.page, item)}
+            />
             <div className="relative">
               <button
                 className="flex h-10 items-center gap-2 px-2 hover:bg-[#e7f3fb]"
-                onClick={() => setProfileOpen((x) => !x)}
+                onClick={() => {
+                  setNotificationsOpen(false);
+                  setProfileOpen((x) => !x);
+                }}
               >
                 <span className="grid size-7 place-items-center rounded-full bg-[#1f6ea6] text-[10px] font-bold text-white">
                   MA
@@ -519,6 +548,8 @@ function App() {
           )}
           {page === "checks" && (
             <CheckMonitoring
+              key={notificationTarget?.visit ?? 0}
+              initialRecordId={notificationTarget?.item.recordId}
               notify={notify}
               createSignal={checkCreateSignal}
               onRecordsChange={setChecks}
@@ -526,6 +557,8 @@ function App() {
           )}
           {page === "payables" && (
             <PayableMonitoring
+              key={notificationTarget?.visit ?? 0}
+              initialRecordId={notificationTarget?.item.recordId}
               notify={notify}
               createSignal={payableCreateSignal}
               onRecordsChange={setPayables}
@@ -533,6 +566,8 @@ function App() {
           )}
           {page === "receivables" && (
             <ReceivableMonitoring
+              key={notificationTarget?.visit ?? 0}
+              initialRecordId={notificationTarget?.item.recordId}
               notify={notify}
               createSignal={receivableCreateSignal}
               onRecordsChange={setReceivables}

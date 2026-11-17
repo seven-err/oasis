@@ -9,18 +9,22 @@ import type { PayableView, PayableViewModel } from "./types";
 type Props = {
   notify: (message: string) => void;
   createSignal?: number;
+  initialRecordId?: number;
   onRecordsChange?: (records: PayableViewModel[]) => void;
 };
 
 export function PayableMonitoring({
   notify,
   createSignal = 0,
+  initialRecordId,
   onRecordsChange,
 }: Props) {
   const [records, setRecords] = useState<PayableViewModel[]>(() =>
     payableService.listViewModels(),
   );
-  const [view, setView] = useState<PayableView>({ mode: "register" });
+  const [view, setView] = useState<PayableView>(() =>
+    initialRecordId === undefined ? { mode: "register" } : { mode: "details", id: initialRecordId },
+  );
 
   const refresh = useCallback(() => {
     const next = payableService.listViewModels();

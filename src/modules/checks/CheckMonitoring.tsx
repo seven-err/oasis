@@ -10,13 +10,16 @@ type Props = {
   notify: (message: string) => void;
   /** Increment to open the create form from the shell header */
   createSignal?: number;
+  initialRecordId?: number;
   /** Optional: expose records to parent dashboard */
   onRecordsChange?: (records: CheckRecord[]) => void;
 };
 
-export function CheckMonitoring({ notify, createSignal = 0, onRecordsChange }: Props) {
+export function CheckMonitoring({ notify, createSignal = 0, initialRecordId, onRecordsChange }: Props) {
   const [records, setRecords] = useState<CheckRecord[]>(() => checkService.list());
-  const [view, setView] = useState<CheckView>({ mode: "register" });
+  const [view, setView] = useState<CheckView>(() =>
+    initialRecordId === undefined ? { mode: "register" } : { mode: "details", id: initialRecordId },
+  );
 
   const refresh = useCallback(() => {
     const next = checkService.list();
