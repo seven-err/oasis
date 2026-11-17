@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useViewHistory } from "@/hooks/useViewHistory";
 import { ReceivableDetails } from "./ReceivableDetails";
 import { ReceivableForm } from "./ReceivableForm";
 import { ReceivableRegister } from "./ReceivableRegister";
@@ -22,8 +23,9 @@ export function ReceivableMonitoring({
   const [records, setRecords] = useState<ReceivableViewModel[]>(() =>
     receivableService.listViewModels(),
   );
-  const [view, setView] = useState<ReceivableView>(() =>
+  const { view, open: setView, back, replace } = useViewHistory<ReceivableView>(() =>
     initialRecordId === undefined ? { mode: "register" } : { mode: "details", id: initialRecordId },
+    { mode: "register" },
   );
 
   const refresh = useCallback(() => {
@@ -34,48 +36,68 @@ export function ReceivableMonitoring({
 
   useEffect(() => {
     if (createSignal > 0) setView({ mode: "create" });
-  }, [createSignal]);
+  }, [createSignal, setView]);
 
   const selected =
     view.mode === "details" || view.mode === "edit"
       ? records.find((r) => r.id === view.id)
       : undefined;
 
+  const renderView = (content?: ReactNode) => (
+    <div className="w-full max-w-full overflow-x-hidden">
+      <div hidden={view.mode !== "register"}>
+        <ReceivableRegister
+          records={records}
+          onAdd={() => setView({ mode: "create" })}
+          onView={(id) => setView({ mode: "details", id })}
+          onEdit={(id) => setView({ mode: "edit", id })}
+          onRecordCollection={(id) => setView({ mode: "details", id, focus: "collections" })}
+          onScheduleFollowUp={(id) => setView({ mode: "details", id, focus: "followups" })}
+          onViewAttachments={(id) => setView({ mode: "details", id, focus: "attachments" })}
+          onOpenReports={() => setView({ mode: "reports" })}
+          onChanged={refresh}
+          notify={notify}
+        />
+      </div>
+      {content}
+    </div>
+  );
+
   if (view.mode === "create") {
-    return (
+    return renderView(
       <ReceivableForm
         mode="create"
-        onCancel={() => setView({ mode: "register" })}
+        onCancel={back}
         onSaved={(record) => {
           refresh();
           notify("Receivable record created.");
-          setView({ mode: "details", id: record.id });
+          replace({ mode: "details", id: record.id });
         }}
       />
     );
   }
 
   if (view.mode === "edit" && selected) {
-    return (
+    return renderView(
       <ReceivableForm
         mode="edit"
         record={selected}
-        onCancel={() => setView({ mode: "details", id: selected.id })}
+        onCancel={back}
         onSaved={(record) => {
           refresh();
           notify("Receivable record updated.");
-          setView({ mode: "details", id: record.id });
+          replace({ mode: "details", id: record.id });
         }}
       />
     );
   }
 
   if (view.mode === "details" && selected) {
-    return (
+    return renderView(
       <ReceivableDetails
         record={selected}
         focus={view.focus}
-        onBack={() => setView({ mode: "register" })}
+        onBack={back}
         onEdit={() => setView({ mode: "edit", id: selected.id })}
         onChanged={refresh}
         notify={notify}
@@ -84,37 +106,16 @@ export function ReceivableMonitoring({
   }
 
   if (view.mode === "reports") {
-    return (
+    return renderView(
       <ReceivableReports
         records={records}
-        onBack={() => setView({ mode: "register" })}
+        onBack={back}
         notify={notify}
       />
     );
   }
 
-  return (
-    <div className="w-full max-w-full overflow-x-hidden">
-      <ReceivableRegister
-        records={records}
-        onAdd={() => setView({ mode: "create" })}
-        onView={(id) => setView({ mode: "details", id })}
-        onEdit={(id) => setView({ mode: "edit", id })}
-        onRecordCollection={(id) =>
-          setView({ mode: "details", id, focus: "collections" })
-        }
-        onScheduleFollowUp={(id) =>
-          setView({ mode: "details", id, focus: "followups" })
-        }
-        onViewAttachments={(id) =>
-          setView({ mode: "details", id, focus: "attachments" })
-        }
-        onOpenReports={() => setView({ mode: "reports" })}
-        onChanged={refresh}
-        notify={notify}
-      />
-    </div>
-  );
+  return renderView();
 }
 
 export function getReceivableRecords(): ReceivableViewModel[] {

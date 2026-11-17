@@ -13,6 +13,7 @@ import {
   MoreHorizontal,
   Paperclip,
   Pencil,
+  RotateCcw,
   Plus,
   Search,
   SlidersHorizontal,
@@ -708,7 +709,7 @@ export function ReceivableRegister({
                     </th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody key={`${sort.key}-${sort.direction}`} className="sorted-records">
                   {pageRows.map((row) => (
                     <tr key={row.id} className={row.archivedAt ? "opacity-60" : ""}>
                       <td className="overflow-hidden text-ellipsis font-semibold text-[#1f6ea6]">
