@@ -287,10 +287,10 @@ const nav = [
     section: "Workspace",
     items: [
       { page: "dashboard" as Page, label: "Dashboard", icon: LayoutDashboard },
+      { page: "employees" as Page, label: "Employee Alphalist", icon: Users },
       { page: "checks" as Page, label: "Check Monitoring", icon: FileCheck2 },
       { page: "payables" as Page, label: "Payable Monitoring", icon: WalletCards },
       { page: "receivables" as Page, label: "Receivable Monitoring", icon: CircleDollarSign },
-      { page: "employees" as Page, label: "HR · Alpha List", icon: Users },
     ],
   },
   {
@@ -1610,7 +1610,7 @@ function ActivityLogs() {
     ],
     [
       "Employee profile updated",
-      "HR · Alpha List",
+      "Alpha List",
       "EMP-00167",
       "Angela Cruz",
       "Mar 20, 2025 · 4:12 PM",
