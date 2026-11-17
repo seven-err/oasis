@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Activity,
   AlertCircle,
+  ArrowLeft,
   ArrowUpDown,
   CalendarDays,
   Check,
@@ -42,6 +43,7 @@ import {
 import { todayIsoDate } from "@/modules/payables/utils";
 import { CURRENT_USER } from "@/modules/checks/constants";
 import { SummaryStatCards } from "@/components/SummaryStatCards";
+import { useViewHistory } from "@/hooks/useViewHistory";
 import {
   CheckMonitoring,
   getCheckRecords,
@@ -268,7 +270,7 @@ const formatDate = (value: string) =>
 const pageMeta: Record<Page, { eyebrow: string; title: string; description: string }> = {
   dashboard: {
     eyebrow: "Overview",
-    title: "Dashboard",
+    title: "Home",
     description: "Here is what needs your attention today.",
   },
   checks: {
@@ -320,7 +322,7 @@ const nav = [
   {
     section: "Workspace",
     items: [
-      { page: "dashboard" as Page, label: "Dashboard", icon: LayoutDashboard },
+      { page: "dashboard" as Page, label: "Home", icon: LayoutDashboard },
       { page: "employees" as Page, label: "Employee Alphalist", icon: Users },
       { page: "checks" as Page, label: "Check Monitoring", icon: FileCheck2 },
       { page: "payables" as Page, label: "Payable Monitoring", icon: WalletCards },
@@ -342,6 +344,21 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarHovered, setSidebarHovered] = useState(false);
   const compactMenu = !sidebarHovered && !sidebarOpen;
+  const sidebarNavRef = useRef<HTMLElement>(null);
+  const [selectionTop, setSelectionTop] = useState<number | null>(null);
+
+  useLayoutEffect(() => {
+    const navigation = sidebarNavRef.current;
+    if (!navigation) return;
+    const updateSelection = () => {
+      const selected = navigation.querySelector<HTMLButtonElement>('[aria-current="page"]');
+      setSelectionTop(selected ? selected.offsetTop : null);
+    };
+    updateSelection();
+    const observer = new ResizeObserver(updateSelection);
+    observer.observe(navigation);
+    return () => observer.disconnect();
+  }, [page]);
   const [checks, setChecks] = useState<CheckRecord[]>(() => getCheckRecords());
   const [payables, setPayables] = useState<PayableViewModel[]>(() => getPayableRecords());
   const [receivables, setReceivables] = useState<ReceivableViewModel[]>(() =>
@@ -351,7 +368,12 @@ function App() {
   const [checkCreateSignal, setCheckCreateSignal] = useState(0);
   const [payableCreateSignal, setPayableCreateSignal] = useState(0);
   const [receivableCreateSignal, setReceivableCreateSignal] = useState(0);
-  const [employeeView, setEmployeeView] = useState<EmployeeView | null>(null);
+  const {
+    view: employeeView,
+    open: setEmployeeView,
+    back: backEmployeeView,
+    reset: resetEmployeeView,
+  } = useViewHistory<EmployeeView | null>(() => null, null);
   const [toast, setToast] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
 
@@ -399,8 +421,8 @@ function App() {
   };
 
   const openEmployeeView = (view: EmployeeView | null) => {
-    setEmployeeView(view);
-    window.scrollTo({ top: 0 });
+    if (view === null) resetEmployeeView(null);
+    else setEmployeeView(view);
   };
 
   const deleteEmployee = (id: number) => {
@@ -445,7 +467,7 @@ function App() {
       >
         <div className="flex h-[76px] items-center border-b border-[#c5dced] px-5 lg:pl-3.5 lg:pr-3">
           <button
-            aria-label="OASIS dashboard"
+            aria-label="OASIS home"
             onClick={() => go("dashboard")}
             className="flex min-w-0 items-center overflow-hidden"
           >
@@ -481,7 +503,14 @@ function App() {
             <X size={20} />
           </button>
         </div>
-        <nav className="flex-1 overflow-x-hidden overflow-y-auto px-3 py-7">
+        <nav ref={sidebarNavRef} className="relative isolate flex-1 overflow-x-hidden overflow-y-auto px-3 py-7">
+          {selectionTop !== null && (
+            <div
+              aria-hidden="true"
+              className="sidebar-selection pointer-events-none absolute inset-x-3 top-0 h-11 border-l-2 border-[#1f6ea6] bg-[#4da3d9]"
+              style={{ transform: `translateY(${selectionTop}px)` }}
+            />
+          )}
           {nav.map((group) => (
             <div key={group.section} className="mb-8">
                 <p aria-hidden={compactMenu} className="sidebar-copy mb-2 whitespace-nowrap px-3 text-[10px] font-semibold uppercase tracking-[.18em] text-[#6a8aa0]">
@@ -494,7 +523,8 @@ function App() {
                     onClick={() => go(itemPage)}
                     title={compactMenu ? label : undefined}
                     aria-label={label}
-                    className={`group flex h-11 w-full items-center gap-3 border-l-2 px-3 text-left text-[13px] font-medium transition ${page === itemPage ? "border-[#1f6ea6] bg-[#4da3d9] text-white" : "border-transparent text-[#3d5e78] hover:bg-white/70 hover:text-[#16344d]"}`}
+                    aria-current={page === itemPage ? "page" : undefined}
+                    className={`sidebar-nav-item relative group flex h-11 w-full items-center gap-3 border-l-2 border-transparent px-3 text-left text-[13px] font-medium ${page === itemPage ? "text-white" : "text-[#3d5e78] hover:bg-white/70 hover:text-[#16344d]"}`}
                   >
                     <Icon className="shrink-0" size={18} strokeWidth={1.8} />
                     <span aria-hidden={compactMenu} className="sidebar-copy shrink-0 whitespace-nowrap">{label}</span>
@@ -537,8 +567,7 @@ function App() {
             <Menu size={22} />
           </button>
           <div className="hidden items-center gap-2 text-xs text-[#808080] sm:flex">
-            <span>Office Management</span>
-            <ChevronRight size={13} />
+            <ChevronRight aria-hidden="true" size={13} />
             <span className="font-medium text-black">{pageMeta[page].title}</span>
           </div>
           <div className="ml-auto flex items-center gap-1">
@@ -633,8 +662,16 @@ function App() {
               onRecordsChange={setReceivables}
             />
           )}
-          {page === "employees" &&
-            (employeeView ? (
+          {page === "employees" && (
+            <>
+            <div hidden={employeeView !== null}>
+              <EmployeeRegister
+                data={employees}
+                onAdd={() => openEmployeeView({ mode: "create" })}
+                onView={(id) => openEmployeeView({ mode: "details", id })}
+              />
+            </div>
+            {employeeView && (
               <EmployeeRecordPanel
                 key={employeeView.mode === "create" ? "create" : `${employeeView.mode}:${employeeView.id}`}
                 view={employeeView}
@@ -1284,7 +1321,7 @@ function EmployeeRecordPanel({
         <PanelTitle
           title={record.name}
           subtitle={record.number}
-          action={<button type="button" onClick={close} className="secondary-btn">Back to register</button>}
+          onBack={close}
         />
         <EmployeeDetails record={record} onDelete={() => onDelete(record.id)} close={close} />
       </section>
@@ -1613,9 +1650,6 @@ function EmployeeDetails({
           <button onClick={() => window.print()} className="secondary-btn">
             <Printer size={15} /> Print
           </button>
-          <button onClick={close} className="primary-btn">
-            Done
-          </button>
         </div>
       </div>
     </div>
@@ -1902,18 +1936,25 @@ function PanelTitle({
   title,
   subtitle,
   action,
+  onBack,
 }: {
   title: string;
   subtitle: string;
   action?: React.ReactNode;
+  onBack?: () => void;
 }) {
   return (
-    <div className="flex min-h-[76px] flex-col gap-3 border-b border-[#d0e3ef] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-      <div>
+    <div className={`min-h-[76px] gap-3 border-b border-[#d0e3ef] px-5 py-4 ${onBack ? "grid grid-cols-[minmax(0,1fr)_auto] items-start" : "flex flex-col sm:flex-row sm:items-center sm:justify-between"}`}>
+      <div className="min-w-0">
         <h2 className="text-sm font-bold tracking-[-.01em]">{title}</h2>
         <p className="mt-1 text-[11px] text-[#888]">{subtitle}</p>
       </div>
-      {action}
+      {(action || onBack) && (
+        <div className="flex items-start justify-end gap-2">
+          {action}
+          {onBack && <button type="button" onClick={onBack} className="secondary-btn shrink-0"><ArrowLeft size={15} aria-hidden="true" /> Back</button>}
+        </div>
+      )}
     </div>
   );
 }

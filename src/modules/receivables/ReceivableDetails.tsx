@@ -259,13 +259,11 @@ export function ReceivableDetails({
     <div className="space-y-5">
       <section className="panel">
         <PanelTitle
+          onBack={onBack}
           title={record.invoiceNumber}
           subtitle={`${record.customerName} · ${record.clientId}`}
           action={
             <div className="flex flex-wrap gap-2">
-              <button onClick={onBack} className="secondary-btn">
-                Back to register
-              </button>
               {user.permissions.editReceivables && !record.archivedAt && !isCancelled && (
                 <button onClick={onEdit} className="primary-btn">
                   <Pencil size={15} /> Edit

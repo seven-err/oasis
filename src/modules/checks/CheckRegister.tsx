@@ -8,6 +8,7 @@ import {
   FileCheck2,
   MoreHorizontal,
   Pencil,
+  RotateCcw,
   Printer,
   RotateCcw,
   Search,
@@ -423,7 +424,7 @@ export function CheckRegister({
                     </th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody key={`${sort.key}-${sort.direction}`} className="sorted-records">
                   {pageRows.map((row) => (
                     <tr
                       key={row.id}

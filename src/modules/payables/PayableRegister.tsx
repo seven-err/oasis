@@ -9,6 +9,7 @@ import {
   History,
   MoreHorizontal,
   Pencil,
+  RotateCcw,
   Plus,
   RotateCcw,
   Search,
@@ -631,7 +632,7 @@ export function PayableRegister({
                     </th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody key={`${sort.key}-${sort.direction}`} className="sorted-records">
                   {pageRows.map((row) => (
                     <tr
                       key={row.id}

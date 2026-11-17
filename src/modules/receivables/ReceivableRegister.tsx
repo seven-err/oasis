@@ -12,6 +12,7 @@ import {
   MoreHorizontal,
   Paperclip,
   Pencil,
+  RotateCcw,
   Plus,
   RotateCcw,
   Search,
@@ -699,7 +700,7 @@ export function ReceivableRegister({
                     </th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody key={`${sort.key}-${sort.direction}`} className="sorted-records">
                   {pageRows.map((row) => (
                     <tr
                       key={row.id}

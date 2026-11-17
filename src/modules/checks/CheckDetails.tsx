@@ -111,13 +111,11 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
     <div className="space-y-5">
       <section className="panel">
         <PanelTitle
+          onBack={onBack}
           title={record.checkNumber}
           subtitle={`${record.checkType} · ${record.payeeName}`}
           action={
             <div className="flex flex-wrap gap-2">
-              <button onClick={onBack} className="secondary-btn">
-                Back to register
-              </button>
               {user.permissions.editChecks && !record.archivedAt && (
                 <button onClick={onEdit} className="primary-btn">
                   <Pencil size={15} /> Edit
