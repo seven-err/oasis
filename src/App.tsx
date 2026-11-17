@@ -426,37 +426,35 @@ function App() {
         onPointerLeave={() => setSidebarHovered(false)}
         className={`oasis-sidebar fixed inset-y-0 left-0 z-40 flex flex-col overflow-hidden border-r border-[#c5dced] bg-[#d7eef9] text-[#16344d] ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} ${compactMenu ? "lg:w-[84px]" : "lg:w-[264px]"} w-[276px] lg:translate-x-0`}
       >
-        <div className="flex h-[76px] items-center border-b border-[#c5dced] px-5">
+        <div className="flex h-[76px] items-center border-b border-[#c5dced] px-5 lg:pl-3.5 lg:pr-3">
           <button
             aria-label="OASIS dashboard"
             onClick={() => go("dashboard")}
-            className="flex min-w-0 items-center"
+            className="flex min-w-0 items-center overflow-hidden"
           >
             <img
               src={oasisLogo}
               alt=""
-              className={`size-14 shrink-0 object-contain ${compactMenu ? "lg:size-11" : ""}`}
+              className="size-14 shrink-0 object-contain"
             />
-            {!compactMenu && (
-              <span className="grid min-w-0 grid-rows-[1fr_auto_1fr] self-stretch text-left">
-                <svg
-                  aria-hidden="true"
-                  className="row-start-2 h-[13px] w-auto justify-self-start text-[#ed0000]"
-                  viewBox="0 0 354 64"
-                >
-                  <g fill="none" stroke="currentColor" strokeWidth="12" strokeLinecap="round">
-                    <path d="M6 56 40 10 Q46 2 52 10 L86 56" />
-                    <path d="M201 10 H128 A12 12 0 0 0 128 34 H191 A11 11 0 0 1 191 56 H112" />
-                    <path d="M229 10 V56" />
-                    <path d="M344 10 H271 A12 12 0 0 0 271 34 H334 A11 11 0 0 1 334 56 H255" />
-                  </g>
-                  <circle cx="46" cy="48" r="8" fill="currentColor" />
-                </svg>
-                <span className="row-start-3 pt-1 text-[9px] leading-[11px] tracking-[.04em] text-[#5c7890]">
-                  Diagnostic & Laboratory Center
-                </span>
+            <span aria-hidden="true" className="sidebar-brand grid shrink-0 grid-rows-[1fr_auto_1fr] self-stretch whitespace-nowrap text-left">
+              <svg
+                aria-hidden="true"
+                className="row-start-2 h-[13px] w-auto justify-self-start text-[#ed0000]"
+                viewBox="0 0 354 64"
+              >
+                <g fill="none" stroke="currentColor" strokeWidth="12" strokeLinecap="round">
+                  <path d="M6 56 40 10 Q46 2 52 10 L86 56" />
+                  <path d="M201 10 H128 A12 12 0 0 0 128 34 H191 A11 11 0 0 1 191 56 H112" />
+                  <path d="M229 10 V56" />
+                  <path d="M344 10 H271 A12 12 0 0 0 271 34 H334 A11 11 0 0 1 334 56 H255" />
+                </g>
+                <circle cx="46" cy="48" r="8" fill="currentColor" />
+              </svg>
+              <span className="row-start-3 pt-1 text-[9px] leading-[11px] tracking-[.04em] text-[#5c7890]">
+                Diagnostic & Laboratory Center
               </span>
-            )}
+            </span>
           </button>
           <button
             className="ml-auto shrink-0 text-[#5c7890] hover:text-[#16344d] lg:hidden"
