@@ -45,7 +45,7 @@ export function ReceivableMonitoring({
 
   const renderView = (content?: ReactNode) => (
     <div className="w-full max-w-full overflow-x-hidden">
-      <div hidden={view.mode !== "register"}>
+      <div hidden={view.mode !== "register"} className="record-view-enter">
         <ReceivableRegister
           records={records}
           onAdd={() => setView({ mode: "create" })}
@@ -59,7 +59,11 @@ export function ReceivableMonitoring({
           notify={notify}
         />
       </div>
-      {content}
+      {content && (
+        <div key={`${view.mode}-${"id" in view ? view.id : ""}`} className="record-view-enter">
+          {content}
+        </div>
+      )}
     </div>
   );
 

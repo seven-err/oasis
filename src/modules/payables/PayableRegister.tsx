@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { SummaryStatCards } from "@/components/SummaryStatCards";
+import { recordRowClick } from "@/components/recordRowClick";
 import {
   APPROVAL_STATUSES,
   EMPTY_FILTERS,
@@ -565,14 +566,22 @@ export function PayableRegister({
               {pageRows.map((row) => (
                 <div
                   key={row.id}
-                  className={`relative cursor-pointer space-y-3 p-4 hover:bg-[#eef6fb] ${row.archivedAt ? "opacity-60" : ""}`}
-                  onClick={() => onView(row.id)}
+                  className={`relative cursor-pointer space-y-3 p-4 transition-colors hover:bg-[#eef6fb] ${row.archivedAt ? "opacity-60" : ""}`}
+                  onClick={recordRowClick(() => {
+                    setMenuId(null);
+                    onView(row.id);
+                  })}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <button
                         type="button"
                         className="truncate text-left text-sm font-semibold text-[#1f6ea6]"
+                        onClick={() => {
+                          setMenuId(null);
+                          onView(row.id);
+                        }}
+                        aria-label={`Open payable ${row.invoiceNumber}`}
                       >
                         {row.invoiceNumber}
                       </button>
@@ -636,7 +645,10 @@ export function PayableRegister({
                     <tr
                       key={row.id}
                       className={`cursor-pointer ${row.archivedAt ? "opacity-60" : ""}`}
-                      onClick={() => onView(row.id)}
+                      onClick={recordRowClick(() => {
+                        setMenuId(null);
+                        onView(row.id);
+                      })}
                     >
                       <td className="overflow-hidden text-ellipsis">
                         <strong className="block truncate text-xs">{row.payeeName}</strong>
@@ -645,7 +657,7 @@ export function PayableRegister({
                         </span>
                       </td>
                       <td className="overflow-hidden text-ellipsis font-semibold text-[#1f6ea6]">
-                        <button type="button" className="block max-w-full truncate text-left hover:underline">
+                        <button type="button" className="block max-w-full truncate text-left hover:underline" onClick={() => { setMenuId(null); onView(row.id); }} aria-label={`Open payable ${row.invoiceNumber}`}>
                           {row.invoiceNumber}
                         </button>
                       </td>

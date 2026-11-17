@@ -40,7 +40,7 @@ export function CheckMonitoring({ notify, createSignal = 0, initialRecordId, onR
 
   const renderView = (content?: ReactNode) => (
     <div className="w-full max-w-full overflow-x-hidden">
-      <div hidden={view.mode !== "register"}>
+      <div hidden={view.mode !== "register"} className="record-view-enter">
         <CheckRegister
           records={records}
           onAdd={() => setView({ mode: "create" })}
@@ -51,7 +51,11 @@ export function CheckMonitoring({ notify, createSignal = 0, initialRecordId, onR
           notify={notify}
         />
       </div>
-      {content}
+      {content && (
+        <div key={`${view.mode}-${"id" in view ? view.id : ""}`} className="record-view-enter">
+          {content}
+        </div>
+      )}
     </div>
   );
 

@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { SummaryStatCards } from "@/components/SummaryStatCards";
+import { recordRowClick } from "@/components/recordRowClick";
 import {
   COLLECTION_STATUSES,
   EMPTY_FILTERS,
@@ -645,14 +646,22 @@ export function ReceivableRegister({
               {pageRows.map((row) => (
                 <div
                   key={row.id}
-                  className={`relative cursor-pointer space-y-3 p-4 hover:bg-[#eef6fb] ${row.archivedAt ? "opacity-60" : ""}`}
-                  onClick={() => onView(row.id)}
+                  className={`relative cursor-pointer space-y-3 p-4 transition-colors hover:bg-[#eef6fb] ${row.archivedAt ? "opacity-60" : ""}`}
+                  onClick={recordRowClick(() => {
+                    setMenu(null);
+                    onView(row.id);
+                  })}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <button
                         type="button"
                         className="truncate text-left text-sm font-semibold text-[#1f6ea6]"
+                        onClick={() => {
+                          setMenu(null);
+                          onView(row.id);
+                        }}
+                        aria-label={`Open receivable ${row.invoiceNumber}`}
                       >
                         {row.invoiceNumber}
                       </button>
@@ -704,10 +713,13 @@ export function ReceivableRegister({
                     <tr
                       key={row.id}
                       className={`cursor-pointer ${row.archivedAt ? "opacity-60" : ""}`}
-                      onClick={() => onView(row.id)}
+                      onClick={recordRowClick(() => {
+                        setMenu(null);
+                        onView(row.id);
+                      })}
                     >
                       <td className="overflow-hidden text-ellipsis font-semibold text-[#1f6ea6]">
-                        <button type="button" className="block max-w-full truncate text-left hover:underline">
+                        <button type="button" className="block max-w-full truncate text-left hover:underline" onClick={() => { setMenu(null); onView(row.id); }} aria-label={`Open receivable ${row.invoiceNumber}`}>
                           {row.invoiceNumber}
                         </button>
                         <span className="mt-1 block truncate text-[10px] text-[#888]">
