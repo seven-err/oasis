@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   Clock3,
   Copy,
-  Eye,
   FileText,
   History,
   MoreHorizontal,
@@ -18,6 +17,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { SummaryStatCards } from "@/components/SummaryStatCards";
+import { recordRowClick } from "@/components/recordRowClick";
 import {
   APPROVAL_STATUSES,
   EMPTY_FILTERS,
@@ -136,15 +136,6 @@ export function PayableRegister({
   const actionMenu = (row: PayableViewModel) =>
     menuId === row.id ? (
       <div className="absolute right-0 top-9 z-20 w-52 border border-[#d0e3ef] bg-white p-1 shadow-xl">
-        <button
-          className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
-          onClick={() => {
-            setMenuId(null);
-            onView(row.id);
-          }}
-        >
-          <Eye size={14} /> View
-        </button>
         {user.permissions.editPayables && !row.archivedAt && (
           <button
             className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
@@ -575,7 +566,11 @@ export function PayableRegister({
               {pageRows.map((row) => (
                 <div
                   key={row.id}
-                  className={`relative space-y-3 p-4 ${row.archivedAt ? "opacity-60" : ""}`}
+                  className={`relative cursor-pointer space-y-3 p-4 transition-colors hover:bg-[#eef6fb] ${row.archivedAt ? "opacity-60" : ""}`}
+                  onClick={recordRowClick(() => {
+                    setMenuId(null);
+                    onView(row.id);
+                  })}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -643,7 +638,14 @@ export function PayableRegister({
                 </thead>
                 <tbody key={`${sort.key}-${sort.direction}`} className="sorted-records">
                   {pageRows.map((row) => (
-                    <tr key={row.id} className={row.archivedAt ? "opacity-60" : ""}>
+                    <tr
+                      key={row.id}
+                      className={`cursor-pointer ${row.archivedAt ? "opacity-60" : ""}`}
+                      onClick={recordRowClick(() => {
+                        setMenuId(null);
+                        onView(row.id);
+                      })}
+                    >
                       <td className="overflow-hidden text-ellipsis">
                         <strong className="block truncate text-xs">{row.payeeName}</strong>
                         <span className="mt-1 block truncate text-[10px] text-[#888]">
@@ -651,7 +653,9 @@ export function PayableRegister({
                         </span>
                       </td>
                       <td className="overflow-hidden text-ellipsis font-semibold text-[#1f6ea6]">
-                        {row.invoiceNumber}
+                        <button type="button" className="block max-w-full truncate text-left hover:underline" onClick={() => { setMenuId(null); onView(row.id); }} aria-label={`Open payable ${row.invoiceNumber}`}>
+                          {row.invoiceNumber}
+                        </button>
                       </td>
                       <td className="hidden overflow-hidden text-ellipsis 2xl:table-cell">
                         {row.categoryName}

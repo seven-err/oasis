@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   Clock3,
   Copy,
-  Eye,
   FileCheck2,
   MoreHorizontal,
   Pencil,
@@ -17,6 +16,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { SummaryStatCards } from "@/components/SummaryStatCards";
+import { recordRowClick } from "@/components/recordRowClick";
 import { CHECK_STATUSES, CHECK_TYPES, EMPTY_FILTERS, PAGE_SIZE } from "./constants";
 import { checkService } from "./store";
 import type { CheckFilters, CheckRecord, CheckSort, CheckSortKey } from "./types";
@@ -118,15 +118,6 @@ export function CheckRegister({
   const actionMenu = (row: CheckRecord) =>
     menuId === row.id ? (
       <div className="absolute right-0 top-9 z-20 w-44 border border-[#d0e3ef] bg-white p-1 shadow-xl">
-        <button
-          className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
-          onClick={() => {
-            setMenuId(null);
-            onView(row.id);
-          }}
-        >
-          <Eye size={14} /> View
-        </button>
         {user.permissions.editChecks && !row.archivedAt && (
           <button
             className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
@@ -363,7 +354,11 @@ export function CheckRegister({
               {pageRows.map((row) => (
                 <div
                   key={row.id}
-                  className={`relative space-y-3 p-4 ${row.archivedAt ? "opacity-60" : ""}`}
+                  className={`relative cursor-pointer space-y-3 p-4 transition-colors hover:bg-[#eef6fb] ${row.archivedAt ? "opacity-60" : ""}`}
+                  onClick={recordRowClick(() => {
+                    setMenuId(null);
+                    onView(row.id);
+                  })}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -435,9 +430,18 @@ export function CheckRegister({
                 </thead>
                 <tbody key={`${sort.key}-${sort.direction}`} className="sorted-records">
                   {pageRows.map((row) => (
-                    <tr key={row.id} className={row.archivedAt ? "opacity-60" : ""}>
+                    <tr
+                      key={row.id}
+                      className={`cursor-pointer ${row.archivedAt ? "opacity-60" : ""}`}
+                      onClick={recordRowClick(() => {
+                        setMenuId(null);
+                        onView(row.id);
+                      })}
+                    >
                       <td className="overflow-hidden text-ellipsis font-semibold text-[#1f6ea6]">
-                        {row.checkNumber}
+                        <button type="button" className="block max-w-full truncate text-left hover:underline" onClick={() => { setMenuId(null); onView(row.id); }} aria-label={`Open check ${row.checkNumber}`}>
+                          {row.checkNumber}
+                        </button>
                       </td>
                       <td className="overflow-hidden text-ellipsis">
                         {row.checkType.replace(" Check", "")}
