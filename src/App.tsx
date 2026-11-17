@@ -20,7 +20,6 @@ import {
   LogOut,
   Menu,
   MoreHorizontal,
-  PanelLeftClose,
   Plus,
   Printer,
   Search,
@@ -307,7 +306,8 @@ const nav = [
 function App() {
   const [page, setPage] = useState<Page>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCompact, setSidebarCompact] = useState(false);
+  const [sidebarHovered, setSidebarHovered] = useState(false);
+  const compactMenu = !sidebarHovered && !sidebarOpen;
   const [checks, setChecks] = useState<CheckRecord[]>(() => getCheckRecords());
   const [payables, setPayables] = useState<PayableViewModel[]>(() => getPayableRecords());
   const [receivables, setReceivables] = useState<ReceivableViewModel[]>(() =>
@@ -389,7 +389,12 @@ function App() {
         />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex flex-col border-r border-[#c5dced] bg-[#d7eef9] text-[#16344d] transition-all duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} ${sidebarCompact ? "lg:w-[84px]" : "lg:w-[264px]"} w-[276px] lg:translate-x-0`}
+        data-compact={compactMenu}
+        onPointerEnter={(event) => {
+          if (event.pointerType === "mouse") setSidebarHovered(true);
+        }}
+        onPointerLeave={() => setSidebarHovered(false)}
+        className={`oasis-sidebar fixed inset-y-0 left-0 z-40 flex flex-col overflow-hidden border-r border-[#c5dced] bg-[#d7eef9] text-[#16344d] ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} ${compactMenu ? "lg:w-[84px]" : "lg:w-[264px]"} w-[276px] lg:translate-x-0`}
       >
         <div className="flex h-[76px] items-center border-b border-[#c5dced] px-5">
           <button
@@ -399,14 +404,12 @@ function App() {
             <span className="grid size-9 shrink-0 place-items-center bg-[#1f6ea6] text-white">
               <Building2 size={19} strokeWidth={2} />
             </span>
-            {!sidebarCompact && (
-              <span className="min-w-0">
+              <span aria-hidden={compactMenu} className="sidebar-copy min-w-0 shrink-0 whitespace-nowrap">
                 <strong className="block truncate text-[13px] tracking-[.14em]">OASIS</strong>
                 <span className="block text-[10px] tracking-[.12em] text-[#5c7890]">
                   Diagnostic & Laboratory Center
                 </span>
               </span>
-            )}
           </button>
           <button
             className="ml-auto text-[#5c7890] hover:text-[#16344d] lg:hidden"
@@ -416,24 +419,23 @@ function App() {
             <X size={20} />
           </button>
         </div>
-        <nav className="flex-1 overflow-y-auto px-3 py-7">
+        <nav className="flex-1 overflow-x-hidden overflow-y-auto px-3 py-7">
           {nav.map((group) => (
             <div key={group.section} className="mb-8">
-              {!sidebarCompact && (
-                <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[.18em] text-[#6a8aa0]">
+                <p aria-hidden={compactMenu} className="sidebar-copy mb-2 whitespace-nowrap px-3 text-[10px] font-semibold uppercase tracking-[.18em] text-[#6a8aa0]">
                   {group.section}
                 </p>
-              )}
               <div className="space-y-1">
                 {group.items.map(({ page: itemPage, label, icon: Icon }) => (
                   <button
                     key={itemPage}
                     onClick={() => go(itemPage)}
-                    title={sidebarCompact ? label : undefined}
+                    title={compactMenu ? label : undefined}
+                    aria-label={label}
                     className={`group flex h-11 w-full items-center gap-3 border-l-2 px-3 text-left text-[13px] font-medium transition ${page === itemPage ? "border-[#1f6ea6] bg-[#4da3d9] text-white" : "border-transparent text-[#3d5e78] hover:bg-white/70 hover:text-[#16344d]"}`}
                   >
                     <Icon className="shrink-0" size={18} strokeWidth={1.8} />
-                    {!sidebarCompact && <span>{label}</span>}
+                    <span aria-hidden={compactMenu} className="sidebar-copy shrink-0 whitespace-nowrap">{label}</span>
                   </button>
                 ))}
               </div>
@@ -442,32 +444,24 @@ function App() {
         </nav>
         <div className="border-t border-[#c5dced] p-3">
           <button
-            onClick={() => setSidebarCompact((x) => !x)}
-            className="mb-2 hidden h-10 w-full items-center gap-3 px-3 text-[12px] text-[#5c7890] hover:text-[#16344d] lg:flex"
-          >
-            <PanelLeftClose size={17} className={sidebarCompact ? "rotate-180" : ""} />{" "}
-            {!sidebarCompact && "Collapse menu"}
-          </button>
-          <button
             onClick={() => go("profile")}
+            aria-label="Open profile"
             className="flex w-full items-center gap-3 p-2 text-left hover:bg-white/70"
           >
             <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#1f6ea6] text-xs font-bold text-white">
               MA
             </span>
-            {!sidebarCompact && (
-              <span className="min-w-0 flex-1">
+              <span aria-hidden={compactMenu} className="sidebar-copy min-w-0 flex-1 whitespace-nowrap">
                 <strong className="block truncate text-xs">Miguel Alvarina</strong>
                 <span className="text-[10px] text-[#5c7890]">Administrator</span>
               </span>
-            )}
-            {!sidebarCompact && <MoreHorizontal size={16} className="text-[#5c7890]" />}
+            <MoreHorizontal size={16} className="sidebar-copy shrink-0 text-[#5c7890]" />
           </button>
         </div>
       </aside>
 
       <div
-        className={`min-h-screen transition-all duration-300 ${sidebarCompact ? "lg:pl-[84px]" : "lg:pl-[264px]"}`}
+        className={`oasis-content min-h-screen min-w-0 ${compactMenu ? "lg:pl-[84px]" : "lg:pl-[264px]"}`}
       >
         <header className="sticky top-0 z-20 flex h-[76px] items-center border-b border-[#d0e3ef]/80 bg-white/70 px-5 shadow-sm backdrop-blur-lg backdrop-saturate-150 md:px-8">
           <button
