@@ -1,6 +1,7 @@
 import {
   AlertCircle,
   Archive,
+  ArrowUpDown,
   CheckCircle2,
   ChevronDown,
   Clock3,
@@ -10,7 +11,6 @@ import {
   MoreHorizontal,
   Pencil,
   Printer,
-  RotateCcw,
   Search,
   SlidersHorizontal,
   X,
@@ -229,11 +229,24 @@ export function CheckRegister({
             <label className="relative min-w-0 w-full flex-1">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#888]" />
               <input
-                className="input pl-10"
+                className="input pl-10 pr-10"
                 placeholder="Search checks…"
                 value={filters.search}
                 onChange={(e) => setFilter("search", e.target.value)}
               />
+              {filters.search.length > 0 && (
+                <button
+                  type="button"
+                  aria-label="Clear search"
+                  className="absolute right-2 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded text-[#777] hover:bg-[#e7f3fb] hover:text-[#222] focus-visible:outline-2 focus-visible:outline-[#1f6ea6]"
+                  onClick={(e) => {
+                    setFilter("search", "");
+                    e.currentTarget.parentElement?.querySelector("input")?.focus();
+                  }}
+                >
+                  <X size={16} />
+                </button>
+              )}
             </label>
             <div className="flex flex-col gap-2 sm:flex-row">
               <button
@@ -248,11 +261,13 @@ export function CheckRegister({
                 className="secondary-btn w-full sm:w-auto"
                 type="button"
                 onClick={() => {
-                  setFilters(EMPTY_FILTERS);
+                  toggleSort("payeeName");
                   setPage(1);
                 }}
+                aria-label="Sort checks by payee alphabetically"
               >
-                <RotateCcw size={15} /> Reset filters
+                <ArrowUpDown size={15} />
+                {sort.key === "payeeName" && sort.direction === "desc" ? "Z-A" : "A-Z"}
               </button>
             </div>
           </div>
