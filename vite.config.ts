@@ -5,6 +5,8 @@ import path from "node:path";
 
 // Vite config — https://vitejs.dev/config/
 export default defineConfig({
+  // https://seven-err.github.io/oasis/
+  base: process.env.GITHUB_PAGES === "true" ? "/oasis/" : "/",
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
