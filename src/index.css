@@ -1,6 +1,35 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
+.oasis-sidebar {
+  transition: width 560ms cubic-bezier(0.4, 0, 0.2, 1), translate 300ms ease;
+}
+
+.oasis-content {
+  transition: padding-left 560ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-copy {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 260ms ease 160ms, transform 400ms cubic-bezier(0.4, 0, 0.2, 1) 100ms;
+}
+
+.oasis-sidebar[data-compact="true"] .sidebar-copy {
+  opacity: 0;
+  transform: translateX(-6px);
+  pointer-events: none;
+  transition-delay: 0ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .oasis-sidebar,
+  .oasis-content,
+  .sidebar-copy {
+    transition: none;
+  }
+}
+
 @layer base {
   :root {
     font-family: "Inter", Arial, sans-serif;

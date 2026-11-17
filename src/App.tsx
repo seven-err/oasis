@@ -27,7 +27,6 @@ import {
   Settings,
   ShieldCheck,
   SlidersHorizontal,
-  UserMinus,
   Users,
   UserRound,
   UserCheck,
@@ -72,7 +71,6 @@ type Page =
   | "profile";
 
 const employmentStatuses = [
-  "Cash Advances",
   "Probationary",
   "Resigned",
   "Regular",
@@ -136,7 +134,9 @@ type Employee = {
   email: string;
   status: "Active" | "On Leave" | "Inactive";
   archived?: boolean;
-  employmentStatus?: (typeof employmentStatuses)[number];
+  employmentStatus?: (typeof employmentStatuses)[number] | "Cash Advances";
+  hasCashAdvances?: boolean;
+  cashAdvanceAmount?: number;
   requirements?: string[];
   laboratoryRequirements?: string[];
   requirementAttachments?: Partial<Record<string, File>>;
@@ -151,6 +151,35 @@ function nextEmployeeNumber(employees: Employee[]): string {
   return `EMP-${String(highest + 1).padStart(5, "0")}`;
 }
 
+function getEmploymentStatus(employee?: Employee) {
+  const status = employee?.employmentStatus;
+  return status === "Cash Advances" ? undefined : status;
+}
+
+function hasEmployeeCashAdvances(employee?: Employee) {
+  return employee?.hasCashAdvances ?? (employee?.employmentStatus === "Cash Advances");
+}
+
+function displayEmployeeCashAdvances(employee: Employee) {
+  if (!hasEmployeeCashAdvances(employee)) return "No";
+  return employee.cashAdvanceAmount === undefined
+    ? "Amount not recorded"
+    : peso.format(employee.cashAdvanceAmount);
+}
+
+const contactCountryCode = "+63";
+const contactSubscriberLength = 10;
+const contactSubscriberPattern = `9[0-9]{${contactSubscriberLength - 1}}`;
+const contactSubscriberRegex = new RegExp(`^${contactSubscriberPattern}$`);
+
+function getContactDigits(value: string) {
+  const trimmed = value.trim();
+  if (trimmed.startsWith(contactCountryCode)) {
+    return trimmed.slice(contactCountryCode.length).replace(/\D/g, "");
+  }
+  return trimmed.replace(/\D/g, "").replace(/^0/, "");
+}
+
 function employeeDirectoryRows(employees: Employee[]) {
   return employees.map((employee) => ({
     "ID No.": employee.number,
@@ -159,8 +188,9 @@ function employeeDirectoryRows(employees: Employee[]) {
     Position: employee.position,
     "Date Hired": employee.dateHired,
     "Email Address": employee.email,
-    "Employment Status": employee.employmentStatus ?? "",
-    "Directory Status": employee.status,
+    "Employment Status": getEmploymentStatus(employee) ?? "",
+    "Cash Advances": hasEmployeeCashAdvances(employee) ? "Yes" : "No",
+    "Cash Advance Amount (PHP)": employee.cashAdvanceAmount ?? "",
     "Requirement Status": employee.requirementStatus ?? "Incomplete",
   }));
 }
@@ -289,10 +319,10 @@ const nav = [
     section: "Workspace",
     items: [
       { page: "dashboard" as Page, label: "Dashboard", icon: LayoutDashboard },
+      { page: "employees" as Page, label: "Employee Alphalist", icon: Users },
       { page: "checks" as Page, label: "Check Monitoring", icon: FileCheck2 },
       { page: "payables" as Page, label: "Payable Monitoring", icon: WalletCards },
       { page: "receivables" as Page, label: "Receivable Monitoring", icon: CircleDollarSign },
-      { page: "employees" as Page, label: "HR · Alpha List", icon: Users },
     ],
   },
   {
@@ -308,7 +338,8 @@ const nav = [
 function App() {
   const [page, setPage] = useState<Page>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCompact, setSidebarCompact] = useState(false);
+  const [sidebarHovered, setSidebarHovered] = useState(false);
+  const compactMenu = !sidebarHovered && !sidebarOpen;
   const [checks, setChecks] = useState<CheckRecord[]>(() => getCheckRecords());
   const [payables, setPayables] = useState<PayableViewModel[]>(() => getPayableRecords());
   const [receivables, setReceivables] = useState<ReceivableViewModel[]>(() =>
@@ -388,7 +419,12 @@ function App() {
         />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex flex-col border-r border-[#c5dced] bg-[#d7eef9] text-[#16344d] transition-all duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} ${sidebarCompact ? "lg:w-[84px]" : "lg:w-[264px]"} w-[276px] lg:translate-x-0`}
+        data-compact={compactMenu}
+        onPointerEnter={(event) => {
+          if (event.pointerType === "mouse") setSidebarHovered(true);
+        }}
+        onPointerLeave={() => setSidebarHovered(false)}
+        className={`oasis-sidebar fixed inset-y-0 left-0 z-40 flex flex-col overflow-hidden border-r border-[#c5dced] bg-[#d7eef9] text-[#16344d] ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} ${compactMenu ? "lg:w-[84px]" : "lg:w-[264px]"} w-[276px] lg:translate-x-0`}
       >
         <div className="flex h-[76px] items-center border-b border-[#c5dced] px-5">
           <button
@@ -417,10 +453,15 @@ function App() {
                   <circle cx="46" cy="48" r="8" fill="currentColor" />
                 </svg>
                 <span className="row-start-3 pt-1 text-[9px] leading-[11px] tracking-[.04em] text-[#5c7890]">
+            <span className="grid size-9 shrink-0 place-items-center bg-[#1f6ea6] text-white">
+              <Building2 size={19} strokeWidth={2} />
+            </span>
+              <span aria-hidden={compactMenu} className="sidebar-copy min-w-0 shrink-0 whitespace-nowrap">
+                <strong className="block truncate text-[13px] tracking-[.14em]">OASIS</strong>
+                <span className="block text-[10px] tracking-[.12em] text-[#5c7890]">
                   Diagnostic & Laboratory Center
                 </span>
               </span>
-            )}
           </button>
           <button
             className="ml-auto shrink-0 text-[#5c7890] hover:text-[#16344d] lg:hidden"
@@ -430,24 +471,23 @@ function App() {
             <X size={20} />
           </button>
         </div>
-        <nav className="flex-1 overflow-y-auto px-3 py-7">
+        <nav className="flex-1 overflow-x-hidden overflow-y-auto px-3 py-7">
           {nav.map((group) => (
             <div key={group.section} className="mb-8">
-              {!sidebarCompact && (
-                <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[.18em] text-[#6a8aa0]">
+                <p aria-hidden={compactMenu} className="sidebar-copy mb-2 whitespace-nowrap px-3 text-[10px] font-semibold uppercase tracking-[.18em] text-[#6a8aa0]">
                   {group.section}
                 </p>
-              )}
               <div className="space-y-1">
                 {group.items.map(({ page: itemPage, label, icon: Icon }) => (
                   <button
                     key={itemPage}
                     onClick={() => go(itemPage)}
-                    title={sidebarCompact ? label : undefined}
+                    title={compactMenu ? label : undefined}
+                    aria-label={label}
                     className={`group flex h-11 w-full items-center gap-3 border-l-2 px-3 text-left text-[13px] font-medium transition ${page === itemPage ? "border-[#1f6ea6] bg-[#4da3d9] text-white" : "border-transparent text-[#3d5e78] hover:bg-white/70 hover:text-[#16344d]"}`}
                   >
                     <Icon className="shrink-0" size={18} strokeWidth={1.8} />
-                    {!sidebarCompact && <span>{label}</span>}
+                    <span aria-hidden={compactMenu} className="sidebar-copy shrink-0 whitespace-nowrap">{label}</span>
                   </button>
                 ))}
               </div>
@@ -456,32 +496,24 @@ function App() {
         </nav>
         <div className="border-t border-[#c5dced] p-3">
           <button
-            onClick={() => setSidebarCompact((x) => !x)}
-            className="mb-2 hidden h-10 w-full items-center gap-3 px-3 text-[12px] text-[#5c7890] hover:text-[#16344d] lg:flex"
-          >
-            <PanelLeftClose size={17} className={sidebarCompact ? "rotate-180" : ""} />{" "}
-            {!sidebarCompact && "Collapse menu"}
-          </button>
-          <button
             onClick={() => go("profile")}
+            aria-label="Open profile"
             className="flex w-full items-center gap-3 p-2 text-left hover:bg-white/70"
           >
             <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#1f6ea6] text-xs font-bold text-white">
               MA
             </span>
-            {!sidebarCompact && (
-              <span className="min-w-0 flex-1">
+              <span aria-hidden={compactMenu} className="sidebar-copy min-w-0 flex-1 whitespace-nowrap">
                 <strong className="block truncate text-xs">Miguel Alvarina</strong>
                 <span className="text-[10px] text-[#5c7890]">Administrator</span>
               </span>
-            )}
-            {!sidebarCompact && <MoreHorizontal size={16} className="text-[#5c7890]" />}
+            <MoreHorizontal size={16} className="sidebar-copy shrink-0 text-[#5c7890]" />
           </button>
         </div>
       </aside>
 
       <div
-        className={`min-h-screen transition-all duration-300 ${sidebarCompact ? "lg:pl-[84px]" : "lg:pl-[264px]"}`}
+        className={`oasis-content min-h-screen min-w-0 ${compactMenu ? "lg:pl-[84px]" : "lg:pl-[264px]"}`}
       >
         <header className="sticky top-0 z-20 flex h-[76px] items-center border-b border-[#d0e3ef]/80 bg-white/70 px-5 shadow-sm backdrop-blur-lg backdrop-saturate-150 md:px-8">
           <button
@@ -1077,13 +1109,15 @@ function EmployeeRegister({
   const filtered = data.filter(
     (x) =>
       `${x.number} ${x.name} ${x.department}`.toLowerCase().includes(query.toLowerCase()) &&
-      (status === "All statuses" || x.status === status || x.employmentStatus === status),
+      (status === "All statuses" || getEmploymentStatus(x) === status),
   ).sort((a, b) =>
     sortDirection === "asc" ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name),
   );
-  const active = data.filter((x) => x.status === "Active").length;
-  const onLeave = data.filter((x) => x.status === "On Leave").length;
-  const inactive = data.filter((x) => x.status === "Inactive").length;
+  const summaryStatuses = [
+    { label: "Regular", icon: UserCheck },
+    { label: "Probationary", icon: Clock3 },
+    { label: "Contractual", icon: Users },
+  ] as const;
   return (
     <div className="w-full max-w-full space-y-5 overflow-x-hidden">
       <SummaryStatCards
@@ -1094,24 +1128,12 @@ function EmployeeRegister({
             icon: Copy,
             onClick: () => setStatus("All statuses"),
           },
-          {
-            label: "Active",
-            value: active,
-            icon: UserCheck,
-            onClick: () => setStatus("Active"),
-          },
-          {
-            label: "On Leave",
-            value: onLeave,
-            icon: Clock3,
-            onClick: () => setStatus("On Leave"),
-          },
-          {
-            label: "Inactive",
-            value: inactive,
-            icon: UserMinus,
-            onClick: () => setStatus("Inactive"),
-          },
+          ...summaryStatuses.map(({ label, icon }) => ({
+            label,
+            value: data.filter((employee) => getEmploymentStatus(employee) === label).length,
+            icon,
+            onClick: () => setStatus(label),
+          })),
         ]}
       />
       <section className="panel max-w-full overflow-hidden">
@@ -1124,7 +1146,7 @@ function EmployeeRegister({
         setQuery={setQuery}
         status={status}
         setStatus={setStatus}
-        statuses={[...employmentStatuses, "Active", "On Leave", "Inactive"]}
+        statuses={[...employmentStatuses]}
         placeholder="Search employee no., name, or department…"
         exportData={() => exportCsv("employee-alphalist.csv", employeeDirectoryRows(filtered))}
         sortDirection={sortDirection}
@@ -1141,6 +1163,7 @@ function EmployeeRegister({
                 <th>Position</th>
                 <th>Date hired</th>
                 <th>Employment Status</th>
+                <th>Cash Advances</th>
                 <th>Requirement Status</th>
                 <th>
                   <span className="sr-only">Actions</span>
@@ -1148,36 +1171,40 @@ function EmployeeRegister({
               </tr>
             </thead>
             <tbody>
-              {filtered.map((x) => (
-                <tr key={x.id} className="cursor-pointer" onClick={() => onView(x.id)}>
-                  <td>
-                    <div className="flex items-center gap-3">
-                      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#e7f3fb] text-[10px] font-bold">
-                        {x.initials}
-                      </span>
-                      <span>
-                        <button type="button" className="block text-left text-xs font-bold hover:underline">
-                          {x.name}
-                        </button>
-                        <span className="mt-1 block text-[10px] text-[#888]">{x.email}</span>
-                      </span>
-                    </div>
-                  </td>
-                  <td className="font-medium text-[#1f6ea6]">{x.number}</td>
-                  <td>{x.department}</td>
-                  <td>{x.position}</td>
-                  <td>{formatDate(x.dateHired)}</td>
-                  <td>
-                    <Status value={x.archived ? "Archived" : x.employmentStatus ?? x.status} />
-                  </td>
-                  <td>
-                    <Status value={x.requirementStatus ?? "Incomplete"} />
-                  </td>
-                  <td onClick={(event) => event.stopPropagation()}>
-                    <EmployeeActions employee={x} onEdit={() => onEdit(x.id)} />
-                  </td>
-                </tr>
-              ))}
+              {filtered.map((x) => {
+                const employmentStatus = getEmploymentStatus(x);
+                return (
+                  <tr key={x.id} className="cursor-pointer" onClick={() => onView(x.id)}>
+                    <td>
+                      <div className="flex items-center gap-3">
+                        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#e7f3fb] text-[10px] font-bold">
+                          {x.initials}
+                        </span>
+                        <span>
+                          <button type="button" className="block text-left text-xs font-bold hover:underline">
+                            {x.name}
+                          </button>
+                          <span className="mt-1 block text-[10px] text-[#888]">{x.email}</span>
+                        </span>
+                      </div>
+                    </td>
+                    <td className="font-medium text-[#1f6ea6]">{x.number}</td>
+                    <td>{x.department}</td>
+                    <td>{x.position}</td>
+                    <td>{formatDate(x.dateHired)}</td>
+                    <td>
+                      {employmentStatus ? <Status value={employmentStatus} /> : "—"}
+                    </td>
+                    <td>{displayEmployeeCashAdvances(x)}</td>
+                    <td>
+                      <Status value={x.requirementStatus ?? "Incomplete"} />
+                    </td>
+                    <td onClick={(event) => event.stopPropagation()}>
+                      <EmployeeActions employee={x} onEdit={() => onEdit(x.id)} />
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -1235,6 +1262,7 @@ function EmployeeRecordPanel({
   saveEmployee: (record: Omit<Employee, "id" | "number">) => void;
 }) {
   const record = view.mode === "create" ? undefined : employees.find((employee) => employee.id === view.id);
+  const [contactDigits, setContactDigits] = useState(() => getContactDigits(record?.contactNumber ?? ""));
   if (view.mode !== "create" && !record) return null;
 
   if (view.mode === "details") {
@@ -1250,6 +1278,9 @@ function EmployeeRecordPanel({
     ) : null;
   }
 
+  const currentEmploymentStatus = getEmploymentStatus(record);
+  const requiresEmploymentStatus = !record || Boolean(currentEmploymentStatus);
+
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
@@ -1257,9 +1288,13 @@ function EmployeeRecordPanel({
     const fullName = text("party");
     const pieces = fullName.split(/\s+/);
     const employmentStatus = employmentStatuses.find((status) => status === text("employmentStatus"));
-    if (!fullName || (!record && !employmentStatus)) return;
+    if (!fullName || (requiresEmploymentStatus && !employmentStatus)) return;
+    const enteredAmount = text("cashAdvanceAmount");
+    const cashAdvanceAmount = enteredAmount ? Number(enteredAmount) : undefined;
+    if (cashAdvanceAmount !== undefined && (!Number.isFinite(cashAdvanceAmount) || cashAdvanceAmount <= 0)) return;
+    if (contactDigits && !contactSubscriberRegex.test(contactDigits)) return;
     const status =
-      record && record.employmentStatus === employmentStatus
+      record && currentEmploymentStatus === employmentStatus
         ? record.status
         : employmentStatus === "Resigned" || employmentStatus === "Terminated"
           ? "Inactive"
@@ -1282,6 +1317,9 @@ function EmployeeRecordPanel({
 
     saveEmployee({
       ...personalAndContractFields,
+      contactNumber: contactDigits ? contactCountryCode + contactDigits : "",
+      hasCashAdvances: cashAdvanceAmount !== undefined,
+      cashAdvanceAmount,
       name: fullName,
       initials: record?.name === fullName ? record.initials : pieces
         .map((x) => x[0])
@@ -1317,18 +1355,58 @@ function EmployeeRecordPanel({
             <FormField label="Department" name="department" defaultValue={record?.department} required />
             <FormField label="Position" name="position" defaultValue={record?.position} required />
             <label className="block">
-              <span className="field-label">Employment Status <span className="text-red-700">*</span></span>
-              <select name="employmentStatus" required={!record || !!record.employmentStatus} defaultValue={record?.employmentStatus ?? ""} className="input mt-2">
-                <option value="" disabled={!record || !!record.employmentStatus}>{record && !record.employmentStatus ? record.status : "Select employment status"}</option>
+              <span className="field-label">
+                Employment Status {requiresEmploymentStatus && <span className="text-red-700">*</span>}
+              </span>
+              <select
+                name="employmentStatus"
+                required={requiresEmploymentStatus}
+                defaultValue={currentEmploymentStatus ?? ""}
+                className="input mt-2"
+              >
+                <option value="" disabled={requiresEmploymentStatus}>Select employment status</option>
                 {employmentStatuses.map((status) => <option key={status}>{status}</option>)}
               </select>
             </label>
+            <FormField
+              label="Cash Advance Amount (PHP)"
+              name="cashAdvanceAmount"
+              type="number"
+              min={0.01}
+              defaultValue={record?.cashAdvanceAmount}
+            />
           </fieldset>
           {employeeFieldGroups.map(({ title, fields }) => (
             <fieldset key={title} className="grid gap-4 sm:grid-cols-2">
               <legend className="mb-4 text-[10px] font-bold uppercase tracking-[.14em] text-[#1f6ea6]">{title}</legend>
               {fields.map((field) => {
                 const { name, label } = field;
+                if (name === "contactNumber") {
+                  return (
+                    <label key={name} className="block">
+                      <span className="field-label">{label}</span>
+                      <div className="relative mt-2">
+                        <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-xs text-[#526a7c]">{contactCountryCode}</span>
+                        <input
+                          type="tel"
+                          name={name}
+                          inputMode="numeric"
+                          autoComplete="tel-national"
+                          pattern={contactSubscriberPattern}
+                          title="Enter 10 digits starting with 9."
+                          value={contactDigits}
+                          onChange={(event) => {
+                            const digits = getContactDigits(event.currentTarget.value);
+                            if (digits === "" || digits.startsWith("9")) {
+                              setContactDigits(digits.slice(0, contactSubscriberLength));
+                            }
+                          }}
+                          className="input pl-11"
+                        />
+                      </div>
+                    </label>
+                  );
+                }
                 if ("options" in field) {
                   return (
                     <label key={name} className="block">
@@ -1445,7 +1523,8 @@ function EmployeeDetails({
     ["Position", record.position],
     ["Date hired", formatDate(record.dateHired)],
     ["Email address", record.email],
-    ["Employment Status", record.employmentStatus ?? record.status],
+    ["Employment Status", getEmploymentStatus(record)],
+    ["Cash Advances", displayEmployeeCashAdvances(record)],
     ...employeeFieldGroups.flatMap(({ fields }) =>
       fields.map((field) => {
         const value = record[field.name];
@@ -1701,7 +1780,7 @@ function ActivityLogs() {
     ],
     [
       "Employee profile updated",
-      "HR · Alpha List",
+      "Alpha List",
       "EMP-00167",
       "Angela Cruz",
       "Mar 20, 2025 · 4:12 PM",
