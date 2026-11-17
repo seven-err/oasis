@@ -4,7 +4,7 @@ import {
   ArrowUpDown,
   CheckCircle2,
   Clock3,
-  Copy,
+  Wallet,
   FileText,
   History,
   MoreHorizontal,
@@ -215,7 +215,7 @@ export function PayableRegister({
           {
             label: "Total Payables",
             value: summary.totalPayables,
-            icon: Copy,
+            icon: Wallet,
             onClick: () => {
               setFilters({
                 ...EMPTY_FILTERS,

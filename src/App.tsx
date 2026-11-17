@@ -12,7 +12,7 @@ import {
   ChevronRight,
   CircleDollarSign,
   Clock3,
-  Copy,
+  Wallet,
   Download,
   FileCheck2,
   FileText,
@@ -825,7 +825,7 @@ function Dashboard({
           {
             label: "Total Checks",
             value: checks.filter((x) => !x.archivedAt).length,
-            icon: Copy,
+            icon: Wallet,
             onClick: () => go("checks"),
           },
           {
@@ -1171,7 +1171,7 @@ function EmployeeRegister({
           {
             label: "Total Employees",
             value: data.length,
-            icon: Copy,
+            icon: Wallet,
             onClick: () => setStatus("All statuses"),
           },
           ...summaryStatuses.map(({ label, icon }) => ({
