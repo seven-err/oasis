@@ -9,7 +9,6 @@ import {
   History,
   MoreHorizontal,
   Pencil,
-  RotateCcw,
   Plus,
   RotateCcw,
   Search,

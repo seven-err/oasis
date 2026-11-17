@@ -12,7 +12,6 @@ import {
   MoreHorizontal,
   Paperclip,
   Pencil,
-  RotateCcw,
   Plus,
   RotateCcw,
   Search,

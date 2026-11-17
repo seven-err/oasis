@@ -8,7 +8,6 @@ import {
   FileCheck2,
   MoreHorizontal,
   Pencil,
-  RotateCcw,
   Printer,
   RotateCcw,
   Search,
