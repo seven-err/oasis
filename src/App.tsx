@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   Activity,
   AlertCircle,
+  ArrowUpDown,
   Building2,
   CalendarDays,
   Check,
@@ -952,6 +953,8 @@ function RegisterTools({
   statuses,
   placeholder,
   exportData,
+  sortDirection,
+  onToggleSort,
 }: {
   query: string;
   setQuery: (x: string) => void;
@@ -960,6 +963,8 @@ function RegisterTools({
   statuses: string[];
   placeholder: string;
   exportData: () => void;
+  sortDirection: "asc" | "desc";
+  onToggleSort: () => void;
 }) {
   return (
     <div className="flex flex-col gap-3 border-b border-[#d0e3ef] p-4 md:flex-row md:items-center">
@@ -968,9 +973,22 @@ function RegisterTools({
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="input pl-10"
+          className="input pl-10 pr-10"
           placeholder={placeholder}
         />
+        {query.length > 0 && (
+          <button
+            type="button"
+            aria-label="Clear search"
+            className="absolute right-2 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded text-[#777] hover:bg-[#e7f3fb] hover:text-[#222] focus-visible:outline-2 focus-visible:outline-[#1f6ea6]"
+            onClick={(e) => {
+              setQuery("");
+              e.currentTarget.parentElement?.querySelector("input")?.focus();
+            }}
+          >
+            <X size={16} />
+          </button>
+        )}
       </label>
       <label className="relative">
         <SlidersHorizontal
@@ -998,6 +1016,14 @@ function RegisterTools({
       <button onClick={exportData} className="secondary-btn">
         <Download size={15} /> Export
       </button>
+      <button
+        type="button"
+        onClick={onToggleSort}
+        className="secondary-btn"
+        aria-label="Sort employees by surname alphabetically"
+      >
+        <ArrowUpDown size={15} /> {sortDirection === "asc" ? "A-Z" : "Z-A"}
+      </button>
     </div>
   );
 }
@@ -1013,10 +1039,13 @@ function EmployeeRegister({
 }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("All statuses");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const filtered = data.filter(
     (x) =>
       `${x.number} ${x.name} ${x.department}`.toLowerCase().includes(query.toLowerCase()) &&
       (status === "All statuses" || x.status === status || x.employmentStatus === status),
+  ).sort((a, b) =>
+    sortDirection === "asc" ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name),
   );
   const active = data.filter((x) => x.status === "Active").length;
   const onLeave = data.filter((x) => x.status === "On Leave").length;
@@ -1054,7 +1083,7 @@ function EmployeeRegister({
       <section className="panel max-w-full overflow-hidden">
       <PanelTitle
         title="Employee directory"
-        subtitle={`${filtered.length} of ${data.length} employees · A–Z by surname`}
+        subtitle={`${filtered.length} of ${data.length} employees · ${sortDirection === "asc" ? "A–Z" : "Z–A"} by surname`}
       />
       <RegisterTools
         query={query}
@@ -1064,6 +1093,8 @@ function EmployeeRegister({
         statuses={[...employmentStatuses, "Active", "On Leave", "Inactive"]}
         placeholder="Search employee no., name, or department…"
         exportData={() => exportCsv("employee-alphalist.csv", employeeDirectoryRows(filtered))}
+        sortDirection={sortDirection}
+        onToggleSort={() => setSortDirection((direction) => direction === "asc" ? "desc" : "asc")}
       />
       {filtered.length ? (
         <div className="overflow-x-auto">
