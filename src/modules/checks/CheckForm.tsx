@@ -94,6 +94,8 @@ export function CheckForm({ mode, record, onCancel, onSaved }: Props) {
   return (
     <section className="panel">
       <PanelTitle
+        onBack={onCancel}
+        backDisabled={saving}
         title={mode === "create" ? "Add check" : "Edit check"}
         subtitle="All required fields must be completed. Prepared By is set to the authenticated user."
       />
@@ -360,9 +362,6 @@ export function CheckForm({ mode, record, onCancel, onSaved }: Props) {
         </div>
 
         <div className="mt-8 flex flex-wrap justify-end gap-2 border-t border-[#e1eef6] pt-5">
-          <button type="button" onClick={onCancel} className="secondary-btn">
-            Cancel
-          </button>
           <button type="submit" className="primary-btn" disabled={saving}>
             {saving ? "Saving…" : "Save check"}
           </button>

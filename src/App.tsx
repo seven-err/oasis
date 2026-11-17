@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Activity,
   AlertCircle,
+  ArrowLeft,
   ArrowUpDown,
   Building2,
   CalendarDays,
@@ -40,6 +41,7 @@ import {
 } from "@/components/NotificationInbox";
 import { CURRENT_USER } from "@/modules/checks/constants";
 import { SummaryStatCards } from "@/components/SummaryStatCards";
+import { useViewHistory } from "@/hooks/useViewHistory";
 import {
   CheckMonitoring,
   getCheckRecords,
@@ -308,6 +310,21 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarHovered, setSidebarHovered] = useState(false);
   const compactMenu = !sidebarHovered && !sidebarOpen;
+  const sidebarNavRef = useRef<HTMLElement>(null);
+  const [selectionTop, setSelectionTop] = useState<number | null>(null);
+
+  useLayoutEffect(() => {
+    const navigation = sidebarNavRef.current;
+    if (!navigation) return;
+    const updateSelection = () => {
+      const selected = navigation.querySelector<HTMLButtonElement>('[aria-current="page"]');
+      setSelectionTop(selected ? selected.offsetTop : null);
+    };
+    updateSelection();
+    const observer = new ResizeObserver(updateSelection);
+    observer.observe(navigation);
+    return () => observer.disconnect();
+  }, [page]);
   const [checks, setChecks] = useState<CheckRecord[]>(() => getCheckRecords());
   const [payables, setPayables] = useState<PayableViewModel[]>(() => getPayableRecords());
   const [receivables, setReceivables] = useState<ReceivableViewModel[]>(() =>
@@ -317,7 +334,12 @@ function App() {
   const [checkCreateSignal, setCheckCreateSignal] = useState(0);
   const [payableCreateSignal, setPayableCreateSignal] = useState(0);
   const [receivableCreateSignal, setReceivableCreateSignal] = useState(0);
-  const [employeeView, setEmployeeView] = useState<EmployeeView | null>(null);
+  const {
+    view: employeeView,
+    open: setEmployeeView,
+    back: backEmployeeView,
+    reset: resetEmployeeView,
+  } = useViewHistory<EmployeeView | null>(() => null, null);
   const [toast, setToast] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
 
@@ -338,7 +360,7 @@ function App() {
       setReceivableCreateSignal(0);
     }
     setNotificationsOpen(false);
-    if (next !== "employees") setEmployeeView(null);
+    if (next !== "employees") resetEmployeeView(null);
     setSidebarOpen(false);
     setProfileOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -350,8 +372,8 @@ function App() {
   };
 
   const openEmployeeView = (view: EmployeeView | null) => {
-    setEmployeeView(view);
-    window.scrollTo({ top: 0 });
+    if (view === null) resetEmployeeView(null);
+    else setEmployeeView(view);
   };
 
   const archiveEmployee = (id: number) => {
@@ -419,7 +441,14 @@ function App() {
             <X size={20} />
           </button>
         </div>
-        <nav className="flex-1 overflow-x-hidden overflow-y-auto px-3 py-7">
+        <nav ref={sidebarNavRef} className="relative isolate flex-1 overflow-x-hidden overflow-y-auto px-3 py-7">
+          {selectionTop !== null && (
+            <div
+              aria-hidden="true"
+              className="sidebar-selection pointer-events-none absolute inset-x-3 top-0 h-11 border-l-2 border-[#1f6ea6] bg-[#4da3d9]"
+              style={{ transform: `translateY(${selectionTop}px)` }}
+            />
+          )}
           {nav.map((group) => (
             <div key={group.section} className="mb-8">
                 <p aria-hidden={compactMenu} className="sidebar-copy mb-2 whitespace-nowrap px-3 text-[10px] font-semibold uppercase tracking-[.18em] text-[#6a8aa0]">
@@ -432,7 +461,8 @@ function App() {
                     onClick={() => go(itemPage)}
                     title={compactMenu ? label : undefined}
                     aria-label={label}
-                    className={`group flex h-11 w-full items-center gap-3 border-l-2 px-3 text-left text-[13px] font-medium transition ${page === itemPage ? "border-[#1f6ea6] bg-[#4da3d9] text-white" : "border-transparent text-[#3d5e78] hover:bg-white/70 hover:text-[#16344d]"}`}
+                    aria-current={page === itemPage ? "page" : undefined}
+                    className={`sidebar-nav-item relative group flex h-11 w-full items-center gap-3 border-l-2 border-transparent px-3 text-left text-[13px] font-medium ${page === itemPage ? "text-white" : "text-[#3d5e78] hover:bg-white/70 hover:text-[#16344d]"}`}
                   >
                     <Icon className="shrink-0" size={18} strokeWidth={1.8} />
                     <span aria-hidden={compactMenu} className="sidebar-copy shrink-0 whitespace-nowrap">{label}</span>
@@ -568,12 +598,20 @@ function App() {
               onRecordsChange={setReceivables}
             />
           )}
-          {page === "employees" &&
-            (employeeView ? (
+          {page === "employees" && (
+            <>
+            <div hidden={employeeView !== null}>
+              <EmployeeRegister
+                data={employees}
+                onAdd={() => openEmployeeView({ mode: "create" })}
+                onView={(id) => openEmployeeView({ mode: "details", id })}
+              />
+            </div>
+            {employeeView && (
               <EmployeeRecordPanel
                 view={employeeView}
                 employees={employees}
-                close={() => openEmployeeView(null)}
+                close={backEmployeeView}
                 archive={archiveEmployee}
                 saveEmployee={(record) => {
                   setEmployees((list) =>
@@ -590,13 +628,9 @@ function App() {
                   openEmployeeView(null);
                 }}
               />
-            ) : (
-              <EmployeeRegister
-                data={employees}
-                onAdd={() => openEmployeeView({ mode: "create" })}
-                onView={(id) => openEmployeeView({ mode: "details", id })}
-              />
-            ))}
+            )}
+            </>
+          )}
           {page === "reports" && (
             <Reports
               checks={checks}
@@ -1107,7 +1141,7 @@ function EmployeeRegister({
                 </th>
               </tr>
             </thead>
-            <tbody>
+            <tbody key={sortDirection} className="sorted-records">
               {filtered.map((x) => (
                 <tr key={x.id}>
                   <td>
@@ -1170,9 +1204,9 @@ function EmployeeRecordPanel({
         <PanelTitle
           title={record.name}
           subtitle={record.number}
-          action={<button type="button" onClick={close} className="secondary-btn">Back to register</button>}
+          onBack={close}
         />
-        <EmployeeDetails record={record} archive={() => archive(record.id)} close={close} />
+        <EmployeeDetails record={record} archive={() => archive(record.id)} />
       </section>
     ) : null;
   }
@@ -1222,7 +1256,11 @@ function EmployeeRecordPanel({
   };
   return (
     <section className="panel">
-      <PanelTitle title="Add employee" subtitle="Employee information and requirements" />
+      <PanelTitle
+        title="Add employee"
+        subtitle="Employee information and requirements"
+        onBack={close}
+      />
       <form onSubmit={onSubmit} className="p-5 md:p-6">
         <div className="space-y-6">
           <fieldset className="grid gap-4 sm:grid-cols-2">
@@ -1291,9 +1329,6 @@ function EmployeeRecordPanel({
           </label>
         </div>
         <div className="mt-7 flex justify-end gap-2 border-t border-[#e1eef6] pt-5">
-          <button type="button" onClick={close} className="secondary-btn">
-            Cancel
-          </button>
           <button className="primary-btn">Save record</button>
         </div>
       </form>
@@ -1341,11 +1376,9 @@ function EmployeeRequirementChecklist({ title, name, items }: { title: string; n
 function EmployeeDetails({
   record,
   archive,
-  close,
 }: {
   record: Employee;
   archive: () => void;
-  close: () => void;
 }) {
   const fields = [
     ["ID No.", record.number],
@@ -1419,9 +1452,6 @@ function EmployeeDetails({
         <div className="flex gap-2">
           <button onClick={() => window.print()} className="secondary-btn">
             <Printer size={15} /> Print
-          </button>
-          <button onClick={close} className="primary-btn">
-            Done
           </button>
         </div>
       </div>
@@ -1709,18 +1739,25 @@ function PanelTitle({
   title,
   subtitle,
   action,
+  onBack,
 }: {
   title: string;
   subtitle: string;
   action?: React.ReactNode;
+  onBack?: () => void;
 }) {
   return (
-    <div className="flex min-h-[76px] flex-col gap-3 border-b border-[#d0e3ef] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-      <div>
+    <div className={`min-h-[76px] gap-3 border-b border-[#d0e3ef] px-5 py-4 ${onBack ? "grid grid-cols-[minmax(0,1fr)_auto] items-start" : "flex flex-col sm:flex-row sm:items-center sm:justify-between"}`}>
+      <div className="min-w-0">
         <h2 className="text-sm font-bold tracking-[-.01em]">{title}</h2>
         <p className="mt-1 text-[11px] text-[#888]">{subtitle}</p>
       </div>
-      {action}
+      {(action || onBack) && (
+        <div className="flex items-start justify-end gap-2">
+          {action}
+          {onBack && <button type="button" onClick={onBack} className="secondary-btn shrink-0"><ArrowLeft size={15} aria-hidden="true" /> Back</button>}
+        </div>
+      )}
     </div>
   );
 }
