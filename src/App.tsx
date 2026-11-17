@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Activity,
   AlertCircle,
@@ -234,7 +234,7 @@ const formatDate = (value: string) =>
 const pageMeta: Record<Page, { eyebrow: string; title: string; description: string }> = {
   dashboard: {
     eyebrow: "Overview",
-    title: "Good morning, Miguel",
+    title: "Dashboard",
     description: "Here is what needs your attention today.",
   },
   checks: {
@@ -468,7 +468,7 @@ function App() {
       <div
         className={`min-h-screen transition-all duration-300 ${sidebarCompact ? "lg:pl-[84px]" : "lg:pl-[264px]"}`}
       >
-        <header className="sticky top-0 z-20 flex h-[76px] items-center border-b border-[#d0e3ef] bg-white/95 px-5 backdrop-blur md:px-8">
+        <header className="sticky top-0 z-20 flex h-[76px] items-center border-b border-[#d0e3ef]/80 bg-white/70 px-5 shadow-sm backdrop-blur-lg backdrop-saturate-150 md:px-8">
           <button
             className="mr-4 lg:hidden"
             onClick={() => {
@@ -636,6 +636,34 @@ function App() {
   );
 }
 
+const officeHour = new Intl.DateTimeFormat("en-PH", {
+  timeZone: "Asia/Manila",
+  hour: "numeric",
+  hourCycle: "h23",
+});
+
+function getDashboardGreeting() {
+  const hour = Number(officeHour.format(new Date()));
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+function DashboardGreeting() {
+  const [greeting, setGreeting] = useState(getDashboardGreeting);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setGreeting(getDashboardGreeting()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  return (
+    <>
+      {greeting}, {CURRENT_USER.name.split(" ")[0]}
+    </>
+  );
+}
+
 function PageHeading({ page, onAdd }: { page: Page; onAdd: () => void }) {
   const meta = pageMeta[page];
   const addLabels: Partial<Record<Page, string>> = {
@@ -651,7 +679,7 @@ function PageHeading({ page, onAdd }: { page: Page; onAdd: () => void }) {
           {meta.eyebrow}
         </p>
         <h1 className="text-3xl font-bold tracking-[-.035em] text-black md:text-[38px]">
-          {meta.title}
+          {page === "dashboard" ? <DashboardGreeting /> : meta.title}
         </h1>
         <p className="mt-2 text-sm text-[#737373]">{meta.description}</p>
       </div>
