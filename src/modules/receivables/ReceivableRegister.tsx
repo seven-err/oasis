@@ -7,13 +7,13 @@ import {
   CircleDollarSign,
   CircleX,
   Copy,
-  Eye,
   FileText,
   History,
   MoreHorizontal,
   Paperclip,
   Pencil,
   Plus,
+  RotateCcw,
   Search,
   SlidersHorizontal,
   X,
@@ -216,15 +216,6 @@ export function ReceivableRegister({
             <CircleX size={14} /> Cancel
           </button>
         )}
-        <button
-          className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
-          onClick={() => {
-            setMenu(null);
-            onView(row.id);
-          }}
-        >
-          <Eye size={14} /> View
-        </button>
         {user.permissions.editReceivables && !row.archivedAt && row.collectionStatus !== "Cancelled" && (
           <button
             className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
@@ -316,7 +307,7 @@ export function ReceivableRegister({
   );
 
   const rowActions = (row: ReceivableViewModel) => (
-    <div className="relative flex shrink-0 items-center justify-end gap-1">
+    <div className="relative flex shrink-0 items-center justify-end gap-1" onClick={(event) => event.stopPropagation()}>
       <button
         type="button"
         className="table-action"
@@ -654,14 +645,14 @@ export function ReceivableRegister({
               {pageRows.map((row) => (
                 <div
                   key={row.id}
-                  className={`relative space-y-3 p-4 ${row.archivedAt ? "opacity-60" : ""}`}
+                  className={`relative cursor-pointer space-y-3 p-4 hover:bg-[#eef6fb] ${row.archivedAt ? "opacity-60" : ""}`}
+                  onClick={() => onView(row.id)}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <button
                         type="button"
                         className="truncate text-left text-sm font-semibold text-[#1f6ea6]"
-                        onClick={() => onView(row.id)}
                       >
                         {row.invoiceNumber}
                       </button>
@@ -710,9 +701,15 @@ export function ReceivableRegister({
                 </thead>
                 <tbody>
                   {pageRows.map((row) => (
-                    <tr key={row.id} className={row.archivedAt ? "opacity-60" : ""}>
+                    <tr
+                      key={row.id}
+                      className={`cursor-pointer ${row.archivedAt ? "opacity-60" : ""}`}
+                      onClick={() => onView(row.id)}
+                    >
                       <td className="overflow-hidden text-ellipsis font-semibold text-[#1f6ea6]">
-                        {row.invoiceNumber}
+                        <button type="button" className="block max-w-full truncate text-left hover:underline">
+                          {row.invoiceNumber}
+                        </button>
                         <span className="mt-1 block truncate text-[10px] text-[#888]">
                           {row.referenceNumber}
                         </span>
@@ -745,7 +742,7 @@ export function ReceivableRegister({
                           "0"
                         )}
                       </td>
-                      <td>{rowActions(row)}</td>
+                      <td onClick={(event) => event.stopPropagation()}>{rowActions(row)}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -5,11 +5,11 @@ import {
   CheckCircle2,
   Clock3,
   Copy,
-  Eye,
   FileCheck2,
   MoreHorizontal,
   Pencil,
   Printer,
+  RotateCcw,
   Search,
   SlidersHorizontal,
   X,
@@ -117,15 +117,6 @@ export function CheckRegister({
   const actionMenu = (row: CheckRecord) =>
     menuId === row.id ? (
       <div className="absolute right-0 top-9 z-20 w-44 border border-[#d0e3ef] bg-white p-1 shadow-xl">
-        <button
-          className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
-          onClick={() => {
-            setMenuId(null);
-            onView(row.id);
-          }}
-        >
-          <Eye size={14} /> View
-        </button>
         {user.permissions.editChecks && !row.archivedAt && (
           <button
             className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
@@ -362,14 +353,14 @@ export function CheckRegister({
               {pageRows.map((row) => (
                 <div
                   key={row.id}
-                  className={`relative space-y-3 p-4 ${row.archivedAt ? "opacity-60" : ""}`}
+                  className={`relative cursor-pointer space-y-3 p-4 hover:bg-[#eef6fb] ${row.archivedAt ? "opacity-60" : ""}`}
+                  onClick={() => onView(row.id)}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <button
                         type="button"
                         className="truncate text-left text-sm font-semibold text-[#1f6ea6]"
-                        onClick={() => onView(row.id)}
                       >
                         {row.checkNumber}
                       </button>
@@ -378,7 +369,7 @@ export function CheckRegister({
                         {row.checkType} · {row.bankName}
                       </p>
                     </div>
-                    <div className="relative shrink-0">
+                    <div className="relative shrink-0" onClick={(event) => event.stopPropagation()}>
                       <button
                         className="table-action"
                         aria-label={`Actions for ${row.checkNumber}`}
@@ -434,9 +425,15 @@ export function CheckRegister({
                 </thead>
                 <tbody>
                   {pageRows.map((row) => (
-                    <tr key={row.id} className={row.archivedAt ? "opacity-60" : ""}>
+                    <tr
+                      key={row.id}
+                      className={`cursor-pointer ${row.archivedAt ? "opacity-60" : ""}`}
+                      onClick={() => onView(row.id)}
+                    >
                       <td className="overflow-hidden text-ellipsis font-semibold text-[#1f6ea6]">
-                        {row.checkNumber}
+                        <button type="button" className="block max-w-full truncate text-left hover:underline">
+                          {row.checkNumber}
+                        </button>
                       </td>
                       <td className="overflow-hidden text-ellipsis">
                         {row.checkType.replace(" Check", "")}
@@ -459,7 +456,7 @@ export function CheckRegister({
                       <td>
                         <StatusBadge value={row.checkStatus} />
                       </td>
-                      <td>
+                      <td onClick={(event) => event.stopPropagation()}>
                         <div className="relative flex justify-end">
                           <button
                             className="table-action"

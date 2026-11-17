@@ -5,12 +5,12 @@ import {
   CheckCircle2,
   Clock3,
   Copy,
-  Eye,
   FileText,
   History,
   MoreHorizontal,
   Pencil,
   Plus,
+  RotateCcw,
   Search,
   SlidersHorizontal,
   X,
@@ -135,15 +135,6 @@ export function PayableRegister({
   const actionMenu = (row: PayableViewModel) =>
     menuId === row.id ? (
       <div className="absolute right-0 top-9 z-20 w-52 border border-[#d0e3ef] bg-white p-1 shadow-xl">
-        <button
-          className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
-          onClick={() => {
-            setMenuId(null);
-            onView(row.id);
-          }}
-        >
-          <Eye size={14} /> View
-        </button>
         {user.permissions.editPayables && !row.archivedAt && (
           <button
             className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
@@ -574,14 +565,14 @@ export function PayableRegister({
               {pageRows.map((row) => (
                 <div
                   key={row.id}
-                  className={`relative space-y-3 p-4 ${row.archivedAt ? "opacity-60" : ""}`}
+                  className={`relative cursor-pointer space-y-3 p-4 hover:bg-[#eef6fb] ${row.archivedAt ? "opacity-60" : ""}`}
+                  onClick={() => onView(row.id)}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <button
                         type="button"
                         className="truncate text-left text-sm font-semibold text-[#1f6ea6]"
-                        onClick={() => onView(row.id)}
                       >
                         {row.invoiceNumber}
                       </button>
@@ -590,7 +581,7 @@ export function PayableRegister({
                         {row.categoryName} · Due {formatDate(row.dueDate)}
                       </p>
                     </div>
-                    <div className="relative shrink-0">
+                    <div className="relative shrink-0" onClick={(event) => event.stopPropagation()}>
                       <button
                         className="table-action"
                         aria-label={`Actions for ${row.invoiceNumber}`}
@@ -642,7 +633,11 @@ export function PayableRegister({
                 </thead>
                 <tbody>
                   {pageRows.map((row) => (
-                    <tr key={row.id} className={row.archivedAt ? "opacity-60" : ""}>
+                    <tr
+                      key={row.id}
+                      className={`cursor-pointer ${row.archivedAt ? "opacity-60" : ""}`}
+                      onClick={() => onView(row.id)}
+                    >
                       <td className="overflow-hidden text-ellipsis">
                         <strong className="block truncate text-xs">{row.payeeName}</strong>
                         <span className="mt-1 block truncate text-[10px] text-[#888]">
@@ -650,7 +645,9 @@ export function PayableRegister({
                         </span>
                       </td>
                       <td className="overflow-hidden text-ellipsis font-semibold text-[#1f6ea6]">
-                        {row.invoiceNumber}
+                        <button type="button" className="block max-w-full truncate text-left hover:underline">
+                          {row.invoiceNumber}
+                        </button>
                       </td>
                       <td className="hidden overflow-hidden text-ellipsis 2xl:table-cell">
                         {row.categoryName}
@@ -673,7 +670,7 @@ export function PayableRegister({
                       <td>
                         <StatusBadge value={row.approvalStatus} />
                       </td>
-                      <td>
+                      <td onClick={(event) => event.stopPropagation()}>
                         <div className="relative flex justify-end">
                           <button
                             className="table-action"
