@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "format": "oxfmt"
+    "format": "oxfmt",
+    "deploy:pages": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/deploy-pages.ps1"
   },
   "dependencies": {
     "lucide-react": "^1.73.0",
