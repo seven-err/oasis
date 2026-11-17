@@ -6,7 +6,7 @@ import {
   CheckCircle2,
   CircleDollarSign,
   CircleX,
-  Copy,
+  Wallet,
   FileText,
   History,
   MoreHorizontal,
@@ -329,7 +329,7 @@ export function ReceivableRegister({
           {
             label: "Total Receivables",
             value: summary.totalReceivables,
-            icon: Copy,
+            icon: Wallet,
             onClick: () => {
               setFilters(EMPTY_FILTERS);
               setPage(1);

@@ -4,7 +4,7 @@ import {
   ArrowUpDown,
   CheckCircle2,
   Clock3,
-  Copy,
+  Wallet,
   FileCheck2,
   MoreHorizontal,
   Pencil,
@@ -173,7 +173,7 @@ export function CheckRegister({
           {
             label: "Total Checks",
             value: summary.total,
-            icon: Copy,
+            icon: Wallet,
             onClick: () => {
               setFilter("checkStatus", "All");
               setShowFilters(false);
