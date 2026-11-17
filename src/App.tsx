@@ -39,6 +39,7 @@ import {
   NotificationInbox,
   type OfficeNotification,
 } from "@/components/NotificationInbox";
+import { todayIsoDate } from "@/modules/payables/utils";
 import { CURRENT_USER } from "@/modules/checks/constants";
 import { SummaryStatCards } from "@/components/SummaryStatCards";
 import {
@@ -141,6 +142,7 @@ type Employee = {
   laboratoryRequirements?: string[];
   requirementAttachments?: Partial<Record<string, File>>;
   requirementStatus?: "Complete" | "Incomplete";
+  requirementFollowUpDate?: string;
 } & Partial<Record<EmployeeField, string>>;
 
 function nextEmployeeNumber(employees: Employee[]): string {
@@ -354,10 +356,21 @@ function App() {
   const [profileOpen, setProfileOpen] = useState(false);
 
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notificationDate, setNotificationDate] = useState(() => todayIsoDate());
   const [notificationTarget, setNotificationTarget] = useState<{
     item: OfficeNotification;
     visit: number;
   } | null>(null);
+
+  useEffect(() => {
+    const refreshDate = () => setNotificationDate(todayIsoDate());
+    const timer = window.setInterval(refreshDate, 60_000);
+    window.addEventListener("focus", refreshDate);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refreshDate);
+    };
+  }, []);
 
   const go = (next: Page, notification?: OfficeNotification) => {
     setPage(next);
@@ -370,7 +383,11 @@ function App() {
       setReceivableCreateSignal(0);
     }
     setNotificationsOpen(false);
-    if (next !== "employees") setEmployeeView(null);
+    if (notification?.page === "employees") {
+      setEmployeeView({ mode: "details", id: notification.recordId });
+    } else if (next !== "employees") {
+      setEmployeeView(null);
+    }
     setSidebarOpen(false);
     setProfileOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -528,10 +545,13 @@ function App() {
             <NotificationInbox
               key={CURRENT_USER.id}
               userId={CURRENT_USER.id}
-              items={getOfficeNotifications(checks, payables, receivables)}
+              items={getOfficeNotifications(checks, payables, receivables, employees, notificationDate)}
               open={notificationsOpen && !profileOpen}
               onOpenChange={(open) => {
-                if (open) setProfileOpen(false);
+                if (open) {
+                  setNotificationDate(todayIsoDate());
+                  setProfileOpen(false);
+                }
                 setNotificationsOpen(open);
               }}
               onSelect={(item) => go(item.page, item)}
@@ -1329,6 +1349,7 @@ function EmployeeRecordPanel({
       laboratoryRequirements: checkedLabRequirements,
       requirementAttachments,
       requirementStatus: text("requirementStatus") === "Complete" ? "Complete" : "Incomplete",
+      requirementFollowUpDate: text("requirementFollowUpDate") || undefined,
     });
   };
   return (
@@ -1434,13 +1455,21 @@ function EmployeeRecordPanel({
           ))}
           <EmployeeRequirementChecklist title="Requirements" name="requirements" items={employeeRequirements} initialChecked={record?.requirements} />
           <EmployeeRequirementChecklist title="Laboratory Requirements" name="laboratoryRequirements" items={laboratoryRequirements} initialChecked={record?.laboratoryRequirements} />
-          <label className="block sm:max-w-[50%]">
-            <span className="field-label">Requirement Status</span>
-            <select name="requirementStatus" className="input select-input mt-2" defaultValue={record?.requirementStatus ?? "Incomplete"}>
-              <option>Incomplete</option>
-              <option>Complete</option>
-            </select>
-          </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="field-label">Requirement Status</span>
+              <select name="requirementStatus" className="input select-input mt-2" defaultValue={record?.requirementStatus ?? "Incomplete"}>
+                <option>Incomplete</option>
+                <option>Complete</option>
+              </select>
+            </label>
+            <FormField
+              label="Requirements follow-up date"
+              name="requirementFollowUpDate"
+              type="date"
+              defaultValue={record?.requirementFollowUpDate}
+            />
+          </div>
         </div>
         <div className="mt-7 flex justify-end gap-2 border-t border-[#e1eef6] pt-5">
           <button type="button" onClick={close} className="secondary-btn">
@@ -1525,6 +1554,7 @@ function EmployeeDetails({
       }),
     ),
     ["Requirement Status", record.requirementStatus ?? "Incomplete"],
+    ["Requirements follow-up date", record.requirementFollowUpDate && formatDate(record.requirementFollowUpDate)],
     ...(record.archived ? [["Directory Status", "Archived"]] : []),
   ];
   return (

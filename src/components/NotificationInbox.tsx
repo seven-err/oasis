@@ -2,22 +2,52 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Bell, ChevronRight } from "lucide-react";
 import type { CheckRecord } from "@/modules/checks";
 import type { PayableViewModel } from "@/modules/payables";
+import { todayIsoDate } from "@/modules/payables/utils";
 import type { ReceivableViewModel } from "@/modules/receivables";
 
 const initialNotificationCount = 5;
 
 export type OfficeNotification = {
   id: string;
-  page: "checks" | "payables" | "receivables";
+  page: "checks" | "payables" | "receivables" | "employees";
   recordId: number;
   title: string;
   detail: string;
+  urgency?: "overdue" | "today";
+};
+
+type EmployeeFollowUp = {
+  id: number;
+  name: string;
+  number: string;
+  archived?: boolean;
+  requirementStatus?: "Complete" | "Incomplete";
+  requirementFollowUpDate?: string;
+};
+
+function getDeadline(
+  label: "Payable" | "Receivable",
+  dueDate: string,
+  today: string,
+): Pick<OfficeNotification, "title" | "urgency"> | undefined {
+  const days = (Date.parse(dueDate) - Date.parse(today)) / 86_400_000;
+  if (days < 0) return { title: `Overdue ${label.toLowerCase()}`, urgency: "overdue" };
+  if (days === 0) return { title: `${label} due today`, urgency: "today" };
+  if (days <= 7) return { title: `${label} due in ${days} ${days === 1 ? "day" : "days"}` };
+}
+
+const urgencyRank = { overdue: 0, today: 1, other: 2 };
+const urgencyStyles = {
+  overdue: { row: "bg-red-50 hover:bg-red-100", badge: "bg-red-100 text-red-800", label: "Overdue" },
+  today: { row: "bg-amber-50 hover:bg-amber-100", badge: "bg-amber-100 text-amber-900", label: "Due today" },
 };
 
 export function getOfficeNotifications(
   checks: CheckRecord[],
   payables: PayableViewModel[],
   receivables: ReceivableViewModel[],
+  employees: EmployeeFollowUp[],
+  today = todayIsoDate(),
 ): OfficeNotification[] {
   const alerts: (OfficeNotification & { updatedAt: string })[] = [];
   for (const check of checks) {
@@ -34,31 +64,55 @@ export function getOfficeNotifications(
   for (const payable of payables) {
     if (payable.archivedAt) continue;
     const pending = payable.approvalStatus === "Pending";
-    if (!pending && !(payable.approvalStatus === "Approved" && payable.paymentStatus === "Overdue"))
-      continue;
+    const notification = pending
+      ? { title: "Payable awaiting approval" }
+      : payable.approvalStatus === "Approved" && payable.remainingBalance > 0
+        ? getDeadline("Payable", payable.dueDate, today)
+        : undefined;
+    if (!notification) continue;
     alerts.push({
       id: pending
         ? `payable-approval:${payable.id}:${payable.createdAt}`
         : `overdue-payable:${payable.id}:${payable.createdAt}:${payable.dueDate}`,
       page: "payables",
       recordId: payable.id,
-      title: pending ? "Payable awaiting approval" : "Overdue payable",
-      detail: `${payable.invoiceNumber} · ${payable.payeeName}`,
+      ...notification,
+      detail: pending
+        ? `${payable.invoiceNumber} · ${payable.payeeName}`
+        : `${payable.invoiceNumber} · ${payable.payeeName} · Due ${payable.dueDate}`,
       updatedAt: payable.updatedAt,
     });
   }
   for (const receivable of receivables) {
-    if (receivable.archivedAt || receivable.collectionStatus !== "Overdue") continue;
+    if (receivable.archivedAt || receivable.collectionStatus === "Cancelled" || receivable.remainingBalance <= 0) continue;
+    const deadline = getDeadline("Receivable", receivable.dueDate, today);
+    if (!deadline) continue;
     alerts.push({
       id: `overdue-receivable:${receivable.id}:${receivable.createdAt}:${receivable.dueDate}`,
       page: "receivables",
       recordId: receivable.id,
-      title: "Overdue receivable",
-      detail: `${receivable.invoiceNumber} · ${receivable.customerName}`,
+      ...deadline,
+      detail: `${receivable.invoiceNumber} · ${receivable.customerName} · Due ${receivable.dueDate}`,
       updatedAt: receivable.updatedAt,
     });
   }
-  return alerts.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  for (const employee of employees) {
+    const dueDate = employee.requirementFollowUpDate;
+    if (employee.archived || employee.requirementStatus === "Complete" || !dueDate || dueDate > today) continue;
+    alerts.push({
+      id: `employee-requirements:${employee.number}:${dueDate}`,
+      page: "employees",
+      recordId: employee.id,
+      title: "Employee requirements follow-up",
+      urgency: dueDate === today ? "today" : "overdue",
+      detail: `${employee.name} · Follow up ${dueDate}`,
+      updatedAt: dueDate,
+    });
+  }
+  return alerts.sort((a, b) =>
+    urgencyRank[a.urgency ?? "other"] - urgencyRank[b.urgency ?? "other"] ||
+    b.updatedAt.localeCompare(a.updatedAt),
+  );
 }
 
 function loadReadIds(key: string): Set<string> {
@@ -96,6 +150,7 @@ export function NotificationInbox({
   const [readIds, setReadIds] = useState(() => loadReadIds(storageKey));
   const visibleItems = showAll ? items : items.slice(0, initialNotificationCount);
   const unread = items.filter(({ id }) => !readIds.has(id)).length;
+  const urgent = items.filter(({ urgency }) => urgency).length;
 
   useEffect(() => {
     if (!open) return;
@@ -141,7 +196,7 @@ export function NotificationInbox({
         ref={bell}
         type="button"
         className="relative grid size-10 place-items-center hover:bg-[#e7f3fb] aria-expanded:bg-[#e7f3fb]"
-        aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}
+        aria-label={`Notifications${unread ? `, ${unread} unread` : ""}${urgent ? `, ${urgent} due today or overdue` : ""}`}
         aria-controls={open ? panelId : undefined}
         aria-expanded={open}
         onClick={() => {
@@ -150,12 +205,12 @@ export function NotificationInbox({
         }}
       >
         <Bell size={18} aria-hidden="true" />
-        {unread > 0 && (
+        {(unread > 0 || urgent > 0) && (
           <span
             aria-hidden="true"
-            className="absolute top-0 right-0 grid h-4 min-w-4 place-items-center rounded-full bg-[#1f6ea6] px-1 text-[9px] font-bold text-white"
+            className={`absolute top-0 right-0 grid h-5 min-w-5 place-items-center rounded-full px-1 text-[10px] font-bold text-white ${urgent ? "bg-red-700" : "bg-[#1f6ea6]"}`}
           >
-            {unread > 99 ? "99+" : unread}
+            {unread > 99 ? "99+" : unread || "!"}
           </span>
         )}
       </button>
@@ -173,6 +228,7 @@ export function NotificationInbox({
               </h2>
               <p className="mt-1 text-xs text-[#526a7c]" role="status">
                 {unread} unread
+                {urgent > 0 && <span className="font-semibold text-red-700"> · {urgent} due today or overdue</span>}
               </p>
             </div>
             <button
@@ -193,12 +249,13 @@ export function NotificationInbox({
               <ul className="divide-y divide-[#e1eef6]">
                 {visibleItems.map((item, index) => {
                   const isUnread = !readIds.has(item.id);
+                  const urgency = item.urgency && urgencyStyles[item.urgency];
                   return (
                     <li key={item.id}>
                       <button
                         ref={index === initialNotificationCount ? firstAdditionalItem : undefined}
                         type="button"
-                        className={`flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-[#e7f3fb] ${isUnread ? "bg-[#f3f8fc]" : ""}`}
+                        className={`flex w-full items-center gap-3 px-4 py-3 text-left ${urgency ? urgency.row : `hover:bg-[#e7f3fb] ${isUnread ? "bg-[#f3f8fc]" : ""}`}`}
                         onClick={() => {
                           if (isUnread) markRead([item.id]);
                           onSelect(item);
@@ -219,6 +276,11 @@ export function NotificationInbox({
                           <span className="mt-1 block wrap-break-word text-xs text-[#526a7c]">
                             {item.detail}
                           </span>
+                          {urgency && (
+                            <span className={`mt-2 inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${urgency.badge}`}>
+                              {urgency.label}
+                            </span>
+                          )}
                         </span>
                         <ChevronRight
                           size={15}
