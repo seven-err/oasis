@@ -372,6 +372,7 @@ function App() {
     view: employeeView,
     open: setEmployeeView,
     back: backEmployeeView,
+    replace: replaceEmployeeView,
     reset: resetEmployeeView,
   } = useViewHistory<EmployeeView | null>(() => null, null);
   const [toast, setToast] = useState("");
@@ -408,7 +409,7 @@ function App() {
     if (notification?.page === "employees") {
       setEmployeeView({ mode: "details", id: notification.recordId });
     } else if (next !== "employees") {
-      setEmployeeView(null);
+      resetEmployeeView(null);
     }
     setSidebarOpen(false);
     setProfileOpen(false);
@@ -664,53 +665,49 @@ function App() {
           )}
           {page === "employees" && (
             <>
-            <div hidden={employeeView !== null}>
-              <EmployeeRegister
-                data={employees}
-                onAdd={() => openEmployeeView({ mode: "create" })}
-                onView={(id) => openEmployeeView({ mode: "details", id })}
-                onEdit={(id) => openEmployeeView({ mode: "edit", id })}
-              />
-            </div>
-            {employeeView && (
-              <EmployeeRecordPanel
-                key={employeeView.mode === "create" ? "create" : `${employeeView.mode}:${employeeView.id}`}
-                view={employeeView}
-                employees={employees}
-                close={() =>
-                  openEmployeeView(
-                    employeeView.mode === "edit" ? { mode: "details", id: employeeView.id } : null,
-                  )
-                }
-                onDelete={deleteEmployee}
-                saveEmployee={(record) => {
-                  if (employeeView.mode === "edit") {
-                    const { id } = employeeView;
-                    setEmployees((list) =>
-                      list
-                        .map((employee) => employee.id === id ? { ...employee, ...record } : employee)
-                        .sort((a, b) => a.name.localeCompare(b.name)),
-                    );
-                    notify("Employee record updated.");
-                    openEmployeeView({ mode: "details", id });
-                    return;
-                  }
+              <div hidden={employeeView !== null}>
+                <EmployeeRegister
+                  data={employees}
+                  onAdd={() => openEmployeeView({ mode: "create" })}
+                  onView={(id) => openEmployeeView({ mode: "details", id })}
+                  onEdit={(id) => openEmployeeView({ mode: "edit", id })}
+                />
+              </div>
+              {employeeView && (
+                <EmployeeRecordPanel
+                  key={employeeView.mode === "create" ? "create" : `${employeeView.mode}:${employeeView.id}`}
+                  view={employeeView}
+                  employees={employees}
+                  close={backEmployeeView}
+                  onDelete={deleteEmployee}
+                  saveEmployee={(record) => {
+                    if (employeeView.mode === "edit") {
+                      const { id } = employeeView;
+                      setEmployees((list) =>
+                        list
+                          .map((employee) => employee.id === id ? { ...employee, ...record } : employee)
+                          .sort((a, b) => a.name.localeCompare(b.name)),
+                      );
+                      notify("Employee record updated.");
+                      replaceEmployeeView({ mode: "details", id });
+                      return;
+                    }
 
-                  setEmployees((list) =>
-                    [
-                      ...list,
-                      {
-                        ...record,
-                        id: list.reduce((max, employee) => Math.max(max, employee.id), 0) + 1,
-                        number: nextEmployeeNumber(list),
-                      },
-                    ].sort((a, b) => a.name.localeCompare(b.name)),
-                  );
-                  notify("Employee record created.");
-                  openEmployeeView(null);
-                }}
-              />
-            )}
+                    setEmployees((list) =>
+                      [
+                        ...list,
+                        {
+                          ...record,
+                          id: list.reduce((max, employee) => Math.max(max, employee.id), 0) + 1,
+                          number: nextEmployeeNumber(list),
+                        },
+                      ].sort((a, b) => a.name.localeCompare(b.name)),
+                    );
+                    notify("Employee record created.");
+                    openEmployeeView(null);
+                  }}
+                />
+              )}
             </>
           )}
           {page === "reports" && (
