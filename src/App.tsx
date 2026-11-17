@@ -20,6 +20,8 @@ import {
   LogOut,
   Menu,
   MoreHorizontal,
+  PanelLeftClose,
+  Pencil,
   Plus,
   Printer,
   Search,
@@ -121,7 +123,7 @@ const employeeFieldGroups = [
   },
 ] as const;
 type EmployeeField = (typeof employeeFieldGroups)[number]["fields"][number]["name"];
-type EmployeeView = { mode: "create" } | { mode: "details"; id: number };
+type EmployeeView = { mode: "create" } | { mode: "details" | "edit"; id: number };
 
 type Employee = {
   id: number;
@@ -354,12 +356,10 @@ function App() {
     window.scrollTo({ top: 0 });
   };
 
-  const archiveEmployee = (id: number) => {
-    if (!window.confirm("Archive this record? Its history will remain available.")) return;
-    setEmployees((list) =>
-      list.map((x) => (x.id === id ? { ...x, status: "Inactive", archived: true } : x)),
-    );
-    notify("Record archived successfully.");
+  const deleteEmployee = (id: number) => {
+    if (!window.confirm("Delete this employee record? This action cannot be undone.")) return;
+    setEmployees((list) => list.filter((employee) => employee.id !== id));
+    notify("Employee record deleted.");
     openEmployeeView(null);
   };
 
@@ -571,11 +571,28 @@ function App() {
           {page === "employees" &&
             (employeeView ? (
               <EmployeeRecordPanel
+                key={employeeView.mode === "create" ? "create" : `${employeeView.mode}:${employeeView.id}`}
                 view={employeeView}
                 employees={employees}
-                close={() => openEmployeeView(null)}
-                archive={archiveEmployee}
+                close={() =>
+                  openEmployeeView(
+                    employeeView.mode === "edit" ? { mode: "details", id: employeeView.id } : null,
+                  )
+                }
+                onDelete={deleteEmployee}
                 saveEmployee={(record) => {
+                  if (employeeView.mode === "edit") {
+                    const { id } = employeeView;
+                    setEmployees((list) =>
+                      list
+                        .map((employee) => employee.id === id ? { ...employee, ...record } : employee)
+                        .sort((a, b) => a.name.localeCompare(b.name)),
+                    );
+                    notify("Employee record updated.");
+                    openEmployeeView({ mode: "details", id });
+                    return;
+                  }
+
                   setEmployees((list) =>
                     [
                       ...list,
@@ -595,6 +612,7 @@ function App() {
                 data={employees}
                 onAdd={() => openEmployeeView({ mode: "create" })}
                 onView={(id) => openEmployeeView({ mode: "details", id })}
+                onEdit={(id) => openEmployeeView({ mode: "edit", id })}
               />
             ))}
           {page === "reports" && (
@@ -1026,10 +1044,12 @@ function EmployeeRegister({
   data,
   onAdd,
   onView,
+  onEdit,
 }: {
   data: Employee[];
   onAdd: () => void;
   onView: (id: number) => void;
+  onEdit: (id: number) => void;
 }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("All statuses");
@@ -1109,14 +1129,16 @@ function EmployeeRegister({
             </thead>
             <tbody>
               {filtered.map((x) => (
-                <tr key={x.id}>
+                <tr key={x.id} className="cursor-pointer" onClick={() => onView(x.id)}>
                   <td>
                     <div className="flex items-center gap-3">
                       <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#e7f3fb] text-[10px] font-bold">
                         {x.initials}
                       </span>
                       <span>
-                        <strong className="block text-xs">{x.name}</strong>
+                        <button type="button" className="block text-left text-xs font-bold hover:underline">
+                          {x.name}
+                        </button>
                         <span className="mt-1 block text-[10px] text-[#888]">{x.email}</span>
                       </span>
                     </div>
@@ -1131,10 +1153,8 @@ function EmployeeRegister({
                   <td>
                     <Status value={x.requirementStatus ?? "Incomplete"} />
                   </td>
-                  <td>
-                    <button onClick={() => onView(x.id)} className="table-action">
-                      <MoreHorizontal size={17} />
-                    </button>
+                  <td onClick={(event) => event.stopPropagation()}>
+                    <EmployeeActions employee={x} onEdit={() => onEdit(x.id)} />
                   </td>
                 </tr>
               ))}
@@ -1150,21 +1170,54 @@ function EmployeeRegister({
   );
 }
 
+function EmployeeActions({ employee, onEdit }: { employee: Employee; onEdit: () => void }) {
+  const menuId = `employee-actions-${employee.id}`;
+
+  return (
+    <>
+      <button
+        type="button"
+        aria-label={`Actions for ${employee.name}`}
+        popoverTarget={menuId}
+        className="table-action"
+        onClick={(event) => {
+          const menu = document.getElementById(menuId);
+          if (!menu) return;
+          const { top, bottom, right } = event.currentTarget.getBoundingClientRect();
+          const fitsBelow = bottom + 52 <= window.innerHeight;
+          menu.style.right = `${Math.max(8, window.innerWidth - right)}px`;
+          menu.style.top = fitsBelow ? `${bottom + 4}px` : "auto";
+          menu.style.bottom = fitsBelow ? "auto" : `${window.innerHeight - top + 4}px`;
+        }}
+      >
+        <MoreHorizontal size={17} aria-hidden="true" />
+      </button>
+      <div id={menuId} popover="auto" className="fixed inset-auto m-0 w-36 border border-[#d0e3ef] bg-white p-1 shadow-xl">
+        <button type="button" onClick={onEdit} className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]">
+          <Pencil size={14} aria-hidden="true" /> Edit
+        </button>
+      </div>
+    </>
+  );
+}
+
 function EmployeeRecordPanel({
   view,
   employees,
   close,
-  archive,
+  onDelete,
   saveEmployee,
 }: {
   view: EmployeeView;
   employees: Employee[];
   close: () => void;
-  archive: (id: number) => void;
+  onDelete: (id: number) => void;
   saveEmployee: (record: Omit<Employee, "id" | "number">) => void;
 }) {
+  const record = view.mode === "create" ? undefined : employees.find((employee) => employee.id === view.id);
+  if (view.mode !== "create" && !record) return null;
+
   if (view.mode === "details") {
-    const record = employees.find((employee) => employee.id === view.id);
     return record ? (
       <section className="panel">
         <PanelTitle
@@ -1172,7 +1225,7 @@ function EmployeeRecordPanel({
           subtitle={record.number}
           action={<button type="button" onClick={close} className="secondary-btn">Back to register</button>}
         />
-        <EmployeeDetails record={record} archive={() => archive(record.id)} close={close} />
+        <EmployeeDetails record={record} onDelete={() => onDelete(record.id)} close={close} />
       </section>
     ) : null;
   }
@@ -1184,7 +1237,13 @@ function EmployeeRecordPanel({
     const fullName = text("party");
     const pieces = fullName.split(/\s+/);
     const employmentStatus = employmentStatuses.find((status) => status === text("employmentStatus"));
-    if (!fullName || !employmentStatus) return;
+    if (!fullName || (!record && !employmentStatus)) return;
+    const status =
+      record && record.employmentStatus === employmentStatus
+        ? record.status
+        : employmentStatus === "Resigned" || employmentStatus === "Terminated"
+          ? "Inactive"
+          : "Active";
     const personalAndContractFields = Object.fromEntries(
       employeeFieldGroups.flatMap(({ fields }) =>
         fields.map(({ name }) => [name, text(name)]),
@@ -1197,13 +1256,14 @@ function EmployeeRecordPanel({
     const requirementAttachments: Partial<Record<string, File>> = {};
     for (const item of [...requirements, ...checkedLabRequirements]) {
       const file = fd.get(`attachment:${item}`);
-      if (file instanceof File && file.name) requirementAttachments[item] = file;
+      const attachment = file instanceof File && file.name ? file : record?.requirementAttachments?.[item];
+      if (attachment) requirementAttachments[item] = attachment;
     }
 
     saveEmployee({
       ...personalAndContractFields,
       name: fullName,
-      initials: pieces
+      initials: record?.name === fullName ? record.initials : pieces
         .map((x) => x[0])
         .slice(0, 2)
         .join("")
@@ -1213,7 +1273,7 @@ function EmployeeRecordPanel({
       dateHired: text("date"),
       email: text("email"),
       employmentStatus,
-      status: employmentStatus === "Resigned" || employmentStatus === "Terminated" ? "Inactive" : "Active",
+      status,
       requirements,
       laboratoryRequirements: checkedLabRequirements,
       requirementAttachments,
@@ -1222,24 +1282,24 @@ function EmployeeRecordPanel({
   };
   return (
     <section className="panel">
-      <PanelTitle title="Add employee" subtitle="Employee information and requirements" />
+      <PanelTitle title={record ? "Edit employee" : "Add employee"} subtitle="Employee information and requirements" />
       <form onSubmit={onSubmit} className="p-5 md:p-6">
         <div className="space-y-6">
           <fieldset className="grid gap-4 sm:grid-cols-2">
             <legend className="mb-4 text-[10px] font-bold uppercase tracking-[.14em] text-[#1f6ea6]">Employee information</legend>
             <label className="block">
               <span className="field-label">ID No.</span>
-              <input readOnly value={nextEmployeeNumber(employees)} className="input mt-2 bg-gray-50" />
+              <input readOnly value={record?.number ?? nextEmployeeNumber(employees)} className="input mt-2 bg-gray-50" />
             </label>
-            <FormField label="Full Name (Surname, First name)" name="party" required />
-            <FormField label="Email Address" name="email" type="email" required />
-            <FormField label="Date Hired" name="date" type="date" required />
-            <FormField label="Department" name="department" required />
-            <FormField label="Position" name="position" required />
+            <FormField label="Full Name (Surname, First name)" name="party" defaultValue={record?.name} required />
+            <FormField label="Email Address" name="email" defaultValue={record?.email} type="email" required />
+            <FormField label="Date Hired" name="date" defaultValue={record?.dateHired} type="date" required />
+            <FormField label="Department" name="department" defaultValue={record?.department} required />
+            <FormField label="Position" name="position" defaultValue={record?.position} required />
             <label className="block">
               <span className="field-label">Employment Status <span className="text-red-700">*</span></span>
-              <select name="employmentStatus" required defaultValue="" className="input mt-2">
-                <option value="" disabled>Select employment status</option>
+              <select name="employmentStatus" required={!record || !!record.employmentStatus} defaultValue={record?.employmentStatus ?? ""} className="input mt-2">
+                <option value="" disabled={!record || !!record.employmentStatus}>{record && !record.employmentStatus ? record.status : "Select employment status"}</option>
                 {employmentStatuses.map((status) => <option key={status}>{status}</option>)}
               </select>
             </label>
@@ -1253,7 +1313,7 @@ function EmployeeRecordPanel({
                   return (
                     <label key={name} className="block">
                       <span className="field-label">{label}</span>
-                      <select name={name} className="input mt-2">
+                      <select name={name} defaultValue={record?.[name]} className="input mt-2">
                         <option value="">Select {label.toLowerCase()}</option>
                         {field.options.map((option) => <option key={option}>{option}</option>)}
                       </select>
@@ -1264,7 +1324,7 @@ function EmployeeRecordPanel({
                   return (
                     <label key={name} className="block sm:col-span-2">
                       <span className="field-label">{label}</span>
-                      <textarea name={name} rows={3} className="input mt-2 h-auto py-2" />
+                      <textarea name={name} defaultValue={record?.[name]} rows={3} className="input mt-2 h-auto py-2" />
                     </label>
                   );
                 }
@@ -1273,6 +1333,7 @@ function EmployeeRecordPanel({
                     key={name}
                     label={label}
                     name={name}
+                    defaultValue={record?.[name]}
                     type={"type" in field ? field.type : undefined}
                     min={name === "yearsOfService" ? 0 : undefined}
                   />
@@ -1280,11 +1341,11 @@ function EmployeeRecordPanel({
               })}
             </fieldset>
           ))}
-          <EmployeeRequirementChecklist title="Requirements" name="requirements" items={employeeRequirements} />
-          <EmployeeRequirementChecklist title="Laboratory Requirements" name="laboratoryRequirements" items={laboratoryRequirements} />
+          <EmployeeRequirementChecklist title="Requirements" name="requirements" items={employeeRequirements} initialChecked={record?.requirements} />
+          <EmployeeRequirementChecklist title="Laboratory Requirements" name="laboratoryRequirements" items={laboratoryRequirements} initialChecked={record?.laboratoryRequirements} />
           <label className="block sm:max-w-[50%]">
             <span className="field-label">Requirement Status</span>
-            <select name="requirementStatus" className="input mt-2" defaultValue="Incomplete">
+            <select name="requirementStatus" className="input mt-2" defaultValue={record?.requirementStatus ?? "Incomplete"}>
               <option>Incomplete</option>
               <option>Complete</option>
             </select>
@@ -1294,15 +1355,25 @@ function EmployeeRecordPanel({
           <button type="button" onClick={close} className="secondary-btn">
             Cancel
           </button>
-          <button className="primary-btn">Save record</button>
+          <button className="primary-btn">{record ? "Save changes" : "Save record"}</button>
         </div>
       </form>
     </section>
   );
 }
 
-function EmployeeRequirementChecklist({ title, name, items }: { title: string; name: string; items: string[] }) {
-  const [checked, setChecked] = useState<string[]>([]);
+function EmployeeRequirementChecklist({
+  title,
+  name,
+  items,
+  initialChecked = [],
+}: {
+  title: string;
+  name: string;
+  items: string[];
+  initialChecked?: string[];
+}) {
+  const [checked, setChecked] = useState(initialChecked);
   return (
     <fieldset className="grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
       <legend className="mb-4 text-[10px] font-bold uppercase tracking-[.14em] text-[#1f6ea6]">{title}</legend>
@@ -1340,11 +1411,11 @@ function EmployeeRequirementChecklist({ title, name, items }: { title: string; n
 
 function EmployeeDetails({
   record,
-  archive,
+  onDelete,
   close,
 }: {
   record: Employee;
-  archive: () => void;
+  onDelete: () => void;
   close: () => void;
 }) {
   const fields = [
@@ -1413,8 +1484,8 @@ function EmployeeDetails({
         </section>
       ))}
       <div className="mt-7 flex flex-wrap justify-between gap-2 border-t border-[#e1eef6] pt-5">
-        <button onClick={archive} className="secondary-btn text-red-700">
-          Archive record
+        <button onClick={onDelete} className="secondary-btn text-red-700">
+          Delete record
         </button>
         <div className="flex gap-2">
           <button onClick={() => window.print()} className="secondary-btn">
