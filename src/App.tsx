@@ -1355,7 +1355,7 @@ function EmployeeRecordPanel({
                 name="employmentStatus"
                 required={requiresEmploymentStatus}
                 defaultValue={currentEmploymentStatus ?? ""}
-                className="input mt-2"
+                className="input select-input mt-2"
               >
                 <option value="" disabled={requiresEmploymentStatus}>Select employment status</option>
                 {employmentStatuses.map((status) => <option key={status}>{status}</option>)}
@@ -1404,7 +1404,7 @@ function EmployeeRecordPanel({
                   return (
                     <label key={name} className="block">
                       <span className="field-label">{label}</span>
-                      <select name={name} defaultValue={record?.[name]} className="input mt-2">
+                      <select name={name} defaultValue={record?.[name]} className="input select-input mt-2">
                         <option value="">Select {label.toLowerCase()}</option>
                         {field.options.map((option) => <option key={option}>{option}</option>)}
                       </select>
@@ -1436,7 +1436,7 @@ function EmployeeRecordPanel({
           <EmployeeRequirementChecklist title="Laboratory Requirements" name="laboratoryRequirements" items={laboratoryRequirements} initialChecked={record?.laboratoryRequirements} />
           <label className="block sm:max-w-[50%]">
             <span className="field-label">Requirement Status</span>
-            <select name="requirementStatus" className="input mt-2" defaultValue={record?.requirementStatus ?? "Incomplete"}>
+            <select name="requirementStatus" className="input select-input mt-2" defaultValue={record?.requirementStatus ?? "Incomplete"}>
               <option>Incomplete</option>
               <option>Complete</option>
             </select>
@@ -1470,7 +1470,7 @@ function EmployeeRequirementChecklist({
       <legend className="mb-4 text-[10px] font-bold uppercase tracking-[.14em] text-[#1f6ea6]">{title}</legend>
       {items.map((item) => (
         <div key={item} className="min-w-0 border border-[#d0e3ef] p-3">
-          <label className="flex items-center gap-2 text-sm">
+          <label className="flex items-center gap-2 text-[11px]">
             <input
               type="checkbox"
               name={name}
@@ -1480,7 +1480,7 @@ function EmployeeRequirementChecklist({
                 const isChecked = event.currentTarget.checked;
                 setChecked((items) => isChecked ? [...items, item] : items.filter((entry) => entry !== item));
               }}
-              className="size-4 accent-[#1f6ea6]"
+              className="size-4 shrink-0 accent-[#1f6ea6]"
             />
             {item}
           </label>
@@ -1490,7 +1490,7 @@ function EmployeeRequirementChecklist({
               <input
                 type="file"
                 name={`attachment:${item}`}
-                className="input mt-2 h-auto w-full py-2 text-xs file:mr-2 file:bg-[#e7f3fb] file:px-2 file:py-1 file:font-medium file:text-[#1f6ea6]"
+                className="input mt-2 h-auto w-full py-2 file:mr-2 file:bg-[#e7f3fb] file:px-2 file:py-1 file:font-medium file:text-[#1f6ea6]"
               />
             </label>
           )}
@@ -1542,14 +1542,14 @@ function EmployeeDetails({
         { title: "Laboratory Requirements", items: record.laboratoryRequirements },
       ].map(({ title, items }) => (
         <section key={title} className="mt-5 border border-[#d0e3ef]">
-          <h3 className="border-b border-[#d0e3ef] bg-[#e7f3fb] px-4 py-3 text-xs font-bold">{title}</h3>
+          <h3 className="border-b border-[#d0e3ef] bg-[#e7f3fb] px-4 py-3 text-xs font-bold uppercase tracking-[.1em]">{title}</h3>
           {items?.length ? (
             <ul className="divide-y divide-[#e1eef6]">
               {items.map((item) => {
                 const file = record.requirementAttachments?.[item];
                 return (
                   <li key={item} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
-                    <span>{item}</span>
+                    <span className="font-medium">{item}</span>
                     {file ? (
                       <button
                         type="button"
@@ -1567,12 +1567,12 @@ function EmployeeDetails({
                         <Download size={15} className="shrink-0" />
                         <span className="truncate">{file.name}</span>
                       </button>
-                    ) : <span className="text-xs text-gray-600">No attachment</span>}
+                    ) : <span className="text-[11px] text-[#777]">No attachment</span>}
                   </li>
                 );
               })}
             </ul>
-          ) : <p className="px-4 py-3 text-xs text-gray-600">No requirements checked.</p>}
+          ) : <p className="px-4 py-3 text-[11px] text-[#777]">No requirements checked.</p>}
         </section>
       ))}
       <div className="mt-7 flex flex-wrap justify-between gap-2 border-t border-[#e1eef6] pt-5">
