@@ -10,19 +10,32 @@
   display: none;
 }
 
-@page report-records {
-  size: portrait;
-  margin: 15mm;
-}
-
 @media print {
+  html:has(.report-print-sheet),
+  body:has(> .report-print-sheet) {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: white !important;
+  }
+
+  body:has(> .report-print-sheet) {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
   body:has(> .report-print-sheet) > :not(.report-print-sheet) {
     display: none !important;
   }
 
   .report-print-sheet {
     display: block !important;
-    page: report-records;
+    margin: 0;
+    padding: 0;
+    min-height: 0;
+    break-before: auto;
+    break-after: auto;
+    break-inside: auto;
     color: #111;
     font-size: 9pt;
   }
@@ -30,6 +43,7 @@
   .report-print-heading {
     margin-bottom: 5mm;
     break-after: avoid;
+    break-inside: avoid;
   }
 
   .report-print-brand-row {
@@ -62,9 +76,21 @@
     font-size: 9pt;
   }
 
+  .report-print-record-heading h1 {
+    font-size: 11pt;
+    font-weight: 500;
+  }
+
+  .report-print-record-heading .report-print-subtitle {
+    margin: 2mm 0;
+    font-size: 18pt;
+    font-weight: 700;
+  }
+
   .report-print-sheet table {
     width: 100%;
     border-collapse: collapse;
+    break-inside: auto;
   }
 
   .report-print-sheet thead {

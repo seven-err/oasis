@@ -76,11 +76,12 @@ export function ReceivableDetails({
   onChanged,
   notify,
 }: Props) {
+  const printedRecordRef = useRef<number | null>(null);
   const collectionHistoryRef = useRef<HTMLElement>(null);
   const collectionFormRef = useRef<HTMLElement>(null);
   const followUpFormRef = useRef<HTMLElement>(null);
   const attachmentsRef = useRef<HTMLDivElement>(null);
-  const { printReport, printSheet } = usePrintReport();
+  const { printReport, printSheet } = usePrintReport({ emphasizeSubtitle: true });
   const user = receivableService.getUser();
   const [collections, setCollections] = useState(() =>
     receivableService.collectionsFor(record.id),
@@ -328,6 +329,19 @@ export function ReceivableDetails({
     })) : [{ Field: "Activity history", Value: "No history recorded yet." }]));
     void printReport("Receivable record", rows, 1, record.customerName);
   };
+
+  useEffect(() => {
+    if (focus !== "print" || printedRecordRef.current === record.id) return;
+    // Leave the render/effect commit before the shared printer flushes its sheet.
+    const frame = requestAnimationFrame(() => {
+      printedRecordRef.current = record.id;
+      printRecord();
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      printedRecordRef.current = null;
+    };
+  }, [focus, record.id]);
 
   return (
     <div className="space-y-5">

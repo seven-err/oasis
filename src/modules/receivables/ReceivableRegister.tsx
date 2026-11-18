@@ -49,6 +49,7 @@ type Props = {
   records: ReceivableViewModel[];
   onAdd: () => void;
   onView: (id: number) => void;
+  onPrint: (id: number) => void;
   onEdit: (id: number) => void;
   onRecordCollection: (id: number) => void;
   onCollectionHistory: (id: number) => void;
@@ -63,6 +64,7 @@ export function ReceivableRegister({
   records,
   onAdd,
   onView,
+  onPrint,
   onEdit,
   onRecordCollection,
   onCollectionHistory,
@@ -274,8 +276,7 @@ export function ReceivableRegister({
           className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
           onClick={() => {
             setMenu(null);
-            onView(row.id);
-            window.setTimeout(() => window.print(), 100);
+            onPrint(row.id);
           }}
         >
           <FileText size={14} /> Print
