@@ -538,7 +538,7 @@ function App() {
           if (event.pointerType === "mouse") setSidebarHovered(true);
         }}
         onPointerLeave={() => setSidebarHovered(false)}
-        className={`oasis-sidebar fixed inset-y-0 left-0 z-40 flex flex-col overflow-hidden border-r border-[#c5dced] bg-[#d7eef9] text-[#16344d] ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} ${compactMenu ? "lg:w-[70px]" : "lg:w-[264px]"} w-[276px] lg:translate-x-0`}
+        className={`oasis-sidebar fixed inset-y-0 left-0 z-40 flex flex-col overflow-hidden border-r border-[#c5dced] bg-[#d7eef9] text-[#16344d] ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} ${compactMenu ? "lg:w-[70px]" : "lg:w-[248px]"} w-[248px] lg:translate-x-0`}
       >
         <div className={`flex h-[76px] shrink-0 items-center border-b border-[#c5dced] pl-[9px] pr-3 ${compactMenu ? "lg:pr-1" : ""}`}>
           <button
@@ -578,7 +578,7 @@ function App() {
             <X size={20} />
           </button>
         </div>
-        <nav ref={sidebarNavRef} className="relative isolate flex-1 overflow-x-hidden overflow-y-auto px-3 py-7">
+        <nav ref={sidebarNavRef} className="relative isolate min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-4">
           {selectionTop !== null && (
             <div
               aria-hidden="true"
@@ -587,7 +587,7 @@ function App() {
             />
           )}
           {nav.map((group) => (
-            <div key={group.section} className="mb-8">
+            <div key={group.section} className="mb-5 last:mb-0">
                 <p aria-hidden={compactMenu} className="sidebar-copy mb-2 whitespace-nowrap px-3 text-[10px] font-semibold uppercase tracking-[.18em] text-[#6a8aa0]">
                   {group.section}
                 </p>
@@ -609,7 +609,7 @@ function App() {
             </div>
           ))}
         </nav>
-        <div ref={profileMenuRef} className="relative border-t border-[#c5dced] p-3">
+        <div ref={profileMenuRef} className="relative shrink-0 border-t border-[#c5dced] p-3">
           {profileOpen && (
             <div id="sidebar-account-menu" aria-label="Account" className="absolute inset-x-3 bottom-full mb-2 rounded-xl border border-[#d0e3ef] bg-white p-1 text-[#16344d] shadow-xl">
               <button
@@ -658,7 +658,7 @@ function App() {
       </aside>
 
       <div
-        className={`oasis-content min-h-screen min-w-0 ${compactMenu ? "lg:pl-[70px]" : "lg:pl-[264px]"}`}
+        className={`oasis-content min-h-screen min-w-0 ${compactMenu ? "lg:pl-[70px]" : "lg:pl-[248px]"}`}
       >
         <header className="sticky top-0 z-20 flex h-[76px] items-center border-b border-[#d0e3ef]/80 bg-white/70 px-5 shadow-sm backdrop-blur-lg backdrop-saturate-150 md:px-8">
           <button
@@ -899,10 +899,6 @@ function App() {
           {page === "activity" && <ActivityLogs />}
           {page === "profile" && <Profile notify={notify} />}
         </main>
-        <footer className="mx-5 flex flex-col gap-2 border-t border-[#d0e3ef] py-6 text-[11px] text-[#808080] sm:flex-row sm:items-center sm:justify-between md:mx-8 lg:mx-10">
-          <span>OASIS Office Management System · Independent prototype</span>
-          <span>Authorized access only</span>
-        </footer>
       </div>
 
       <dialog
@@ -981,6 +977,7 @@ function ArchivedRecords({ checks, payables, receivables, employees, onRestore, 
   };
   return (
     <section className="panel overflow-hidden">
+      {records.length > 0 && (
         <div className="flex flex-wrap items-center gap-4 border-b border-[#d0e3ef] p-4">
           <button type="button" className="secondary-btn" disabled={!records.length} onClick={() => setSelected(allSelected ? [] : records.map((record) => record.key))}>
             {allSelected ? "Deselect all" : "Select all"}
@@ -997,6 +994,7 @@ function ArchivedRecords({ checks, payables, receivables, employees, onRestore, 
             </div>
           )}
         </div>
+      )}
       {records.length ? (
         <div className="overflow-x-auto">
           <table>
