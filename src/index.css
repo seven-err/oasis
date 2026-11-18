@@ -32,6 +32,26 @@
     break-after: avoid;
   }
 
+  .report-print-brand-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8mm;
+    margin-bottom: 3mm;
+  }
+
+  .report-print-date {
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .report-print-logo {
+    display: block;
+    width: 65mm;
+    max-width: 100%;
+    height: auto;
+  }
+
   .report-print-heading h1 {
     margin: 2mm 0;
     font-size: 18pt;
@@ -337,6 +357,21 @@
 }
 
 @layer components {
+  .section-highlight {
+    position: relative;
+    border-radius: 0;
+  }
+
+  .section-highlight::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border: 2px solid #1f6ea6;
+    border-radius: 0;
+    pointer-events: none;
+  }
+
   .summary-stat-card {
     transition: background-color var(--motion-normal) var(--motion-ease),
       box-shadow var(--motion-normal) var(--motion-ease);

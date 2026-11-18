@@ -342,7 +342,7 @@ export function ReceivableDetails({
           tabIndex={-1}
           aria-label="Record collection"
           className={`panel scroll-mt-24 outline-none ${
-            focus === "collections" ? "border-[#1f6ea6] bg-[#f0f8ff] ring-2 ring-[#1f6ea6] ring-inset" : ""
+            focus === "collections" ? "section-highlight bg-[#f0f8ff]" : ""
           }`}
         >
           <PanelTitle
@@ -470,7 +470,7 @@ export function ReceivableDetails({
           tabIndex={-1}
           aria-label="Schedule follow-up"
           className={`panel scroll-mt-24 outline-none ${
-            focus === "followups" ? "border-[#1f6ea6] bg-[#f0f8ff] ring-2 ring-[#1f6ea6] ring-inset" : ""
+            focus === "followups" ? "section-highlight bg-[#f0f8ff]" : ""
           }`}
         >
           <PanelTitle
@@ -664,7 +664,7 @@ export function ReceivableDetails({
         aria-label="Attachments"
         className={`scroll-mt-24 outline-none ${
           focus === "attachments"
-            ? "relative after:pointer-events-none after:absolute after:inset-0 after:border-2 after:border-[#1f6ea6]"
+            ? "section-highlight"
             : ""
         }`}
       >
@@ -774,7 +774,7 @@ export function ReceivableDetails({
         tabIndex={-1}
         aria-label="Collection history"
         className={`panel scroll-mt-24 outline-none ${
-          focus === "collection-history" ? "border-[#1f6ea6] bg-[#f0f8ff] ring-2 ring-[#1f6ea6] ring-inset" : ""
+          focus === "collection-history" ? "section-highlight bg-[#f0f8ff]" : ""
         }`}
       >
         <PanelTitle

@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal, flushSync } from "react-dom";
+import reportLogo from "@/assets/report-logo-transparent.png";
 
 type PrintReport = { title: string; rows: Record<string, unknown>[]; printedAt: string };
 const currency = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" });
@@ -17,15 +18,29 @@ function cellText(key: string, value: unknown) {
 }
 
 export function usePrintReport() {
+  const logoRef = useRef<HTMLImageElement>(null);
+  const originalTitle = useRef<string | null>(null);
   const [report, setReport] = useState<PrintReport | null>(null);
 
   useEffect(() => {
-    const clear = () => setReport(null);
+    const restoreTitle = () => {
+      if (originalTitle.current !== null) {
+        document.title = originalTitle.current;
+        originalTitle.current = null;
+      }
+    };
+    const clear = () => {
+      restoreTitle();
+      setReport(null);
+    };
     window.addEventListener("afterprint", clear);
-    return () => window.removeEventListener("afterprint", clear);
+    return () => {
+      window.removeEventListener("afterprint", clear);
+      restoreTitle();
+    };
   }, []);
 
-  const printReport = (title: string, rows: Record<string, unknown>[]) => {
+  const printReport = async (title: string, rows: Record<string, unknown>[]) => {
     flushSync(() => setReport({
       title,
       rows,
@@ -33,6 +48,10 @@ export function usePrintReport() {
         dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Manila",
       }).format(new Date()),
     }));
+    await logoRef.current?.decode().catch(() => undefined);
+    originalTitle.current ??= document.title;
+    // Prevent the browser's print header from repeating the app name.
+    document.title = "\u200b";
     window.print();
   };
 
@@ -40,9 +59,12 @@ export function usePrintReport() {
   const printSheet = report && createPortal(
     <section className="report-print-sheet" aria-label={report.title}>
       <div className="report-print-heading">
-        <p>OASIS Office Management System</p>
+        <div className="report-print-brand-row">
+          <img ref={logoRef} src={reportLogo} alt="OASIS Diagnostic & Laboratory Center" className="report-print-logo" />
+          <p className="report-print-date">Printed {report.printedAt}<br />(Philippine time)</p>
+        </div>
         <h1>{report.title}</h1>
-        <p>{report.rows.length} records · Printed {report.printedAt} (Philippine time)</p>
+        <p>{report.rows.length} records</p>
       </div>
       {report.rows.length ? (
         <table>

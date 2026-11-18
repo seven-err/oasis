@@ -306,7 +306,7 @@ export function PayableDetails({
           tabIndex={-1}
           aria-label="Record payment"
           className={`panel scroll-mt-24 outline-none ${
-            focus === "payments" ? "border-[#1f6ea6] bg-[#f0f8ff] ring-2 ring-[#1f6ea6] ring-inset" : ""
+            focus === "payments" ? "section-highlight bg-[#f0f8ff]" : ""
           }`}
         >
           <PanelTitle
@@ -472,7 +472,7 @@ export function PayableDetails({
         tabIndex={-1}
         aria-label="Payment history"
         className={`panel scroll-mt-24 outline-none ${
-          focus === "payment-history" ? "border-[#1f6ea6] bg-[#f0f8ff] ring-2 ring-[#1f6ea6] ring-inset" : ""
+          focus === "payment-history" ? "section-highlight bg-[#f0f8ff]" : ""
         }`}
       >
         <PanelTitle
