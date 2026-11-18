@@ -79,6 +79,7 @@ export type PayableRecord = {
   createdAt: string;
   updatedAt: string;
   archivedAt: string | null;
+  deletedAt?: string | null;
   createdById: number;
   createdByName: string;
   updatedById: number;

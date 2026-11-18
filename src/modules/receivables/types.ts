@@ -137,6 +137,7 @@ export type ReceivableRecord = {
   createdAt: string;
   updatedAt: string;
   archivedAt: string | null;
+  deletedAt?: string | null;
 };
 
 /** Receivable with derived financial fields for UI */
