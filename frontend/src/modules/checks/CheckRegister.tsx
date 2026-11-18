@@ -26,7 +26,6 @@ import type { CheckFilters, CheckRecord, CheckSort, CheckSortKey } from "./types
 import {
   EmptyState,
   PaginationBar,
-  PanelTitle,
   StatusBadge,
 } from "./ui";
 import {
@@ -279,6 +278,9 @@ export function CheckRegister({
                 <SlidersHorizontal size={15} />
                 {showFilters ? "Hide filters" : "More filters"}
               </button>
+              <button type="button" onClick={onOpenReports} className="secondary-btn w-full sm:w-auto">
+                <FileCheck2 size={15} /> Reports
+              </button>
               <button
                 className="secondary-btn w-full sm:w-auto"
                 type="button"
@@ -390,6 +392,7 @@ export function CheckRegister({
           )}
         </div>
 
+        <div className="panel max-w-full overflow-hidden">
         {pageRows.length ? (
           <>
             {/* Mobile / tablet cards — no horizontal scroll */}
@@ -539,6 +542,7 @@ export function CheckRegister({
           total={filtered.length}
           onPageChange={setPage}
         />
+        </div>
       </section>
     </div>
   );

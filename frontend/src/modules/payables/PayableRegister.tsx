@@ -35,7 +35,7 @@ import type {
   PayableSortKey,
   PayableViewModel,
 } from "./types";
-import { EmptyState, PaginationBar, PanelTitle, StatusBadge } from "./ui";
+import { EmptyState, PaginationBar, StatusBadge } from "./ui";
 import {
   filterPayables,
   formatDate,
@@ -302,27 +302,8 @@ export function PayableRegister({
         ]}
       />
 
-      <section className="panel max-w-full overflow-hidden">
-        <PanelTitle
-          title="Payable register"
-          subtitle={`${filtered.length} of ${records.filter((r) => filters.includeArchived || !r.archivedAt).length} records`}
-          action={
-            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-              {user.permissions.manageCategories && (
-                <button
-                  type="button"
-                  onClick={() => setShowCategories((x) => !x)}
-                  className="secondary-btn w-full sm:w-auto"
-                >
-                  Categories
-                </button>
-              )}
-              <button onClick={onOpenReports} className="secondary-btn w-full sm:w-auto">
-                <FileText size={15} /> Reports
-              </button>
-            </div>
-          }
-        />
+      <section className="max-w-full space-y-4">
+
 
         {showCategories && user.permissions.manageCategories && (
           <div className="border-b border-[#d0e3ef] bg-[#f4f9fd] p-4">
@@ -388,7 +369,7 @@ export function PayableRegister({
           </div>
         )}
 
-        <div className="flex flex-col gap-3 border-b border-[#d0e3ef] p-4">
+        <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <label className="relative min-w-0 w-full flex-1">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#888]" />
@@ -421,6 +402,14 @@ export function PayableRegister({
                 <SlidersHorizontal size={15} />
                 {showFilters ? "Hide filters" : "More filters"}
               </button>
+              <button type="button" onClick={onOpenReports} className="secondary-btn w-full sm:w-auto">
+                <FileText size={15} /> Reports
+              </button>
+              {user.permissions.manageCategories && (
+                <button type="button" onClick={() => setShowCategories((visible) => !visible)} className="secondary-btn w-full sm:w-auto">
+                  Categories
+                </button>
+              )}
               <button
                 className="secondary-btn w-full sm:w-auto"
                 type="button"
@@ -606,6 +595,7 @@ export function PayableRegister({
           )}
         </div>
 
+        <div className="panel max-w-full overflow-hidden">
         {pageRows.length ? (
           <>
             <div className="divide-y divide-[#e1eef6] xl:hidden">
@@ -756,6 +746,7 @@ export function PayableRegister({
           total={filtered.length}
           onPageChange={setPage}
         />
+        </div>
       </section>
     </div>
   );
