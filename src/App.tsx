@@ -41,6 +41,7 @@ import {
 import { todayIsoDate } from "@/modules/payables/utils";
 import { CURRENT_USER } from "@/modules/checks/constants";
 import { SummaryStatCards } from "@/components/SummaryStatCards";
+import { usePrintReport } from "@/components/usePrintReport";
 import { HeaderBackButton, HeaderBackProvider, useHeaderBack } from "@/components/HeaderBack";
 import { useViewHistory } from "@/hooks/useViewHistory";
 import {
@@ -1681,6 +1682,7 @@ function EmployeeDetails({
 }
 
 function Reports({ checks, payables, receivables, employees, notify }: any) {
+  const { printReport, printSheet } = usePrintReport();
   const activeChecks = (checks as CheckRecord[]).filter((x) => !x.archivedAt);
   const payableRows = (payables as PayableViewModel[]).filter(
     (x) => !x.archivedAt && x.approvalStatus === "Approved" && x.remainingBalance > 0,
@@ -1747,6 +1749,7 @@ function Reports({ checks, payables, receivables, employees, notify }: any) {
     },
   ];
   return (
+    <>
     <div className="grid gap-5 md:grid-cols-2">
       {reports.map(({ title, detail, Icon, data, exportRows }) => (
         <section key={title} className="panel p-6">
@@ -1770,7 +1773,7 @@ function Reports({ checks, payables, receivables, employees, notify }: any) {
             </div>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => window.print()} className="secondary-btn flex-1">
+            <button onClick={() => printReport(title, exportRows)} className="secondary-btn flex-1">
               <Printer size={15} /> Print
             </button>
             <button
@@ -1789,6 +1792,8 @@ function Reports({ checks, payables, receivables, employees, notify }: any) {
         </section>
       ))}
     </div>
+    {printSheet}
+    </>
   );
 }
 
