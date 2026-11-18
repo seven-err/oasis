@@ -25,7 +25,6 @@ import type { CheckFilters, CheckRecord, CheckSort, CheckSortKey } from "./types
 import {
   EmptyState,
   PaginationBar,
-  PanelTitle,
   StatusBadge,
 } from "./ui";
 import {
@@ -234,18 +233,8 @@ export function CheckRegister({
         ]}
       />
 
-      <section className="panel max-w-full overflow-hidden">
-        <PanelTitle
-          title="Check register"
-          subtitle={`${filtered.length} of ${records.filter((r) => filters.includeArchived || !r.archivedAt).length} records`}
-          action={
-            <button onClick={onOpenReports} className="secondary-btn w-full sm:w-auto">
-              <FileCheck2 size={15} /> Reports
-            </button>
-          }
-        />
-
-        <div className="flex flex-col gap-3 border-b border-[#d0e3ef] p-4">
+      <section className="max-w-full space-y-4">
+        <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <label className="relative min-w-0 w-full flex-1">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#888]" />
@@ -277,6 +266,9 @@ export function CheckRegister({
               >
                 <SlidersHorizontal size={15} />
                 {showFilters ? "Hide filters" : "More filters"}
+              </button>
+              <button type="button" onClick={onOpenReports} className="secondary-btn w-full sm:w-auto">
+                <FileCheck2 size={15} /> Reports
               </button>
               <button
                 className="secondary-btn w-full sm:w-auto"
@@ -381,6 +373,7 @@ export function CheckRegister({
           )}
         </div>
 
+        <div className="panel max-w-full overflow-hidden">
         {pageRows.length ? (
           <>
             {/* Mobile / tablet cards — no horizontal scroll */}
@@ -530,6 +523,7 @@ export function CheckRegister({
           total={filtered.length}
           onPageChange={setPage}
         />
+        </div>
       </section>
     </div>
   );

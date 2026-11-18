@@ -37,7 +37,7 @@ import type {
   ReceivableSortKey,
   ReceivableViewModel,
 } from "./types";
-import { EmptyState, PaginationBar, PanelTitle, StatusBadge } from "./ui";
+import { EmptyState, PaginationBar, StatusBadge } from "./ui";
 import {
   canCancelReceivable,
   filterReceivables,
@@ -401,18 +401,10 @@ export function ReceivableRegister({
         ]}
       />
 
-      <section className="panel max-w-full overflow-hidden">
-        <PanelTitle
-          title="Receivable register"
-          subtitle={`${filtered.length} of ${records.filter((r) => filters.includeArchived || !r.archivedAt).length} records`}
-          action={
-            <button onClick={onOpenReports} className="secondary-btn w-full sm:w-auto">
-              <FileText size={15} /> Reports
-            </button>
-          }
-        />
+      <section className="max-w-full space-y-4">
 
-        <div className="flex flex-col gap-3 border-b border-[#d0e3ef] p-4">
+
+        <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <label className="relative min-w-0 w-full flex-1">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#888]" />
@@ -444,6 +436,9 @@ export function ReceivableRegister({
               >
                 <SlidersHorizontal size={15} />
                 {showFilters ? "Hide filters" : "More filters"}
+              </button>
+              <button type="button" onClick={onOpenReports} className="secondary-btn w-full sm:w-auto">
+                <FileText size={15} /> Reports
               </button>
               <button
                 className="secondary-btn w-full sm:w-auto"
@@ -676,6 +671,7 @@ export function ReceivableRegister({
           )}
         </div>
 
+        <div className="panel max-w-full overflow-hidden">
         {pageRows.length ? (
           <>
             <div className="divide-y divide-[#e1eef6] xl:hidden">
@@ -807,6 +803,7 @@ export function ReceivableRegister({
           total={filtered.length}
           onPageChange={setPage}
         />
+        </div>
       </section>
       {menuRow && actionMenu(menuRow)}
       {cancelling && (

@@ -49,6 +49,7 @@ import { deletionDaysLeft, isDeletionExpired } from "@/components/deletedRecordR
 import { usePrintReport } from "@/components/usePrintReport";
 import { HeaderBackButton, HeaderBackProvider, useHeaderBack } from "@/components/HeaderBack";
 import { useViewHistory } from "@/hooks/useViewHistory";
+import { recordRowClick } from "@/components/recordRowClick";
 import {
   CheckMonitoring,
   checkService,
@@ -445,7 +446,7 @@ function App() {
       setToast("Employee changes could not be saved in this browser. Do not refresh before retrying.");
     }
   }, [employees, deletedEmployees]);
-  const [pendingDeletion, setPendingDeletion] = useState<{ module: ArchiveModule; id: number } | null>(null);
+  const [pendingDeletion, setPendingDeletion] = useState<{ module: ArchiveModule; id: number }[] | null>(null);
   const deletionDialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -542,26 +543,24 @@ function App() {
 
   const confirmPermanentDeletion = () => {
     if (!pendingDeletion) return;
-    const { module, id } = pendingDeletion;
-    try {
-      if (module === "Employees") {
-        setDeletedEmployees((list) => list.filter((record) => record.id !== id));
-      } else {
-        const services = { Checks: checkService, Payables: payableService, Receivables: receivableService };
-        const result = services[module].deletePermanently(id);
-        if (!result.ok) {
-          notify(result.errors.form || "Unable to delete record.");
-          return;
+    const failed: typeof pendingDeletion = [];
+    for (const target of pendingDeletion) {
+      const { module, id } = target;
+      try {
+        if (module === "Employees") {
+          setDeletedEmployees((list) => list.filter((record) => record.id !== id));
+        } else {
+          const services = { Checks: checkService, Payables: payableService, Receivables: receivableService };
+          const result = services[module].deletePermanently(id);
+          if (!result.ok) failed.push(target);
         }
-        setChecks(getCheckRecords());
-        setPayables(getPayableRecords());
-        setReceivables(getReceivableRecords());
+      } catch {
+        failed.push(target);
       }
-      setPendingDeletion(null);
-      notify("Record permanently deleted.");
-    } catch {
-      notify("Unable to delete record. Please try again.");
     }
+    setRetentionVersion((version) => version + 1);
+    setPendingDeletion(failed.length ? failed : null);
+    notify(failed.length ? `${failed.length} record(s) could not be deleted. Please try again.` : "Records permanently deleted.");
   };
 
   const openEmployeeView = (view: EmployeeView | null) => {
@@ -948,8 +947,8 @@ function App() {
               receivables={[]}
               employees={deletedEmployees}
               deletedFinancialRecords={[
-                ...payableService.listDeleted().map((record) => ({ key: `payable-${record.id}`, id: record.id, module: "Payables" as const, reference: record.invoiceNumber, name: record.payeeName, deletedAt: record.deletedAt })),
-                ...receivableService.listDeleted().map((record) => ({ key: `receivable-${record.id}`, id: record.id, module: "Receivables" as const, reference: record.invoiceNumber, name: record.customerName, deletedAt: record.deletedAt })),
+                ...payableService.listDeleted().map((record) => ({ key: `payable-${record.id}`, id: record.id, module: "Payables" as const, reference: record.invoiceNumber, name: record.payeeName, deletedAt: record.deletedAt, details: { ...record } })),
+                ...receivableService.listDeleted().map((record) => ({ key: `receivable-${record.id}`, id: record.id, module: "Receivables" as const, reference: record.invoiceNumber, name: record.customerName, deletedAt: record.deletedAt, details: { ...record } })),
               ]}
               deleted
               onRestore={(module, id) => {
@@ -977,7 +976,8 @@ function App() {
                   return false;
                 }
               }}
-              onDelete={(module, id) => setPendingDeletion({ module, id })}
+              onDelete={(module, id) => setPendingDeletion([{ module, id }])}
+              onDeleteSelected={(records) => setPendingDeletion(records)}
             />
           )}
           {page === "activity" && <ActivityLogs />}
@@ -1001,7 +1001,7 @@ function App() {
       >
         <h2 id="permanent-delete-title" className="text-lg font-semibold">Confirm deletion</h2>
         <p id="permanent-delete-description" className="mt-3 text-sm text-[#737373]">
-          Are you sure you want to permanently delete this record? This action cannot be undone.
+          Are you sure you want to permanently delete {pendingDeletion?.length === 1 ? "this record" : `these ${pendingDeletion?.length ?? 0} records`}? This action cannot be undone.
         </p>
         <div className="mt-6 flex justify-center gap-3">
           <button type="button" autoFocus className="secondary-btn" onClick={() => setPendingDeletion(null)}>Cancel</button>
@@ -1032,32 +1032,48 @@ const officeHour = new Intl.DateTimeFormat("en-PH", {
   hourCycle: "h23",
 });
 
-export function ArchivedRecords({ checks, payables, receivables, employees, onRestore, onDelete, deleted = false, deletedFinancialRecords = [] }: {
+export function ArchivedRecords({ checks, payables, receivables, employees, onRestore, onDelete, onDeleteSelected, deleted = false, deletedFinancialRecords = [] }: {
   checks: CheckRecord[];
   payables: PayableViewModel[];
   receivables: ReceivableViewModel[];
   employees: Employee[];
   onRestore?: (module: ArchiveModule, id: number) => boolean;
   onDelete?: (module: ArchiveModule, id: number) => void;
+  onDeleteSelected?: (records: { module: ArchiveModule; id: number }[]) => void;
   deleted?: boolean;
-  deletedFinancialRecords?: { key: string; id: number; module: ArchiveModule; reference: string; name: string; deletedAt?: string | null }[];
+  deletedFinancialRecords?: { key: string; id: number; module: ArchiveModule; reference: string; name: string; deletedAt?: string | null; details?: Record<string, unknown> }[];
 }) {
   const [selected, setSelected] = useState<string[]>([]);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [reviewKey, setReviewKey] = useState<string | null>(null);
+  const reviewDialogRef = useRef<HTMLDialogElement>(null);
   const records = [
     ...deletedFinancialRecords,
     ...checks.filter((record) => deleted ? record.deletedAt : record.archivedAt).map((record) => ({
-      key: `check-${record.id}`, id: record.id, module: "Checks" as const, reference: record.checkNumber, name: record.payeeName, deletedAt: record.deletedAt,
+      key: `check-${record.id}`, id: record.id, module: "Checks" as const, reference: record.checkNumber, name: record.payeeName, deletedAt: record.deletedAt, details: { ...record },
     })),
     ...payables.filter((record) => deleted ? record.deletedAt : record.archivedAt).map((record) => ({
-      key: `payable-${record.id}`, id: record.id, module: "Payables" as const, reference: record.invoiceNumber, name: record.payeeName, deletedAt: record.deletedAt,
+      key: `payable-${record.id}`, id: record.id, module: "Payables" as const, reference: record.invoiceNumber, name: record.payeeName, deletedAt: record.deletedAt, details: { ...record },
     })),
     ...receivables.filter((record) => deleted ? record.deletedAt : record.archivedAt).map((record) => ({
-      key: `receivable-${record.id}`, id: record.id, module: "Receivables" as const, reference: record.invoiceNumber, name: record.customerName, deletedAt: record.deletedAt,
+      key: `receivable-${record.id}`, id: record.id, module: "Receivables" as const, reference: record.invoiceNumber, name: record.customerName, deletedAt: record.deletedAt, details: { ...record },
     })),
     ...employees.filter((record) => deleted || record.archived).map((record) => ({
-      key: `employee-${record.id}`, id: record.id, module: "Employees" as const, reference: record.number, name: record.name, deletedAt: record.deletedAt,
+      key: `employee-${record.id}`, id: record.id, module: "Employees" as const, reference: record.number, name: record.name, deletedAt: record.deletedAt, details: { ...record },
     })),
   ];
+  const reviewRecord = records.find((record) => record.key === reviewKey);
+  useEffect(() => {
+    if (reviewRecord) reviewDialogRef.current?.showModal();
+    else reviewDialogRef.current?.close();
+  }, [reviewRecord?.key]);
+  const activateRecord = (record: typeof records[number]) => {
+    if (selectionMode) {
+      setSelected((keys) => keys.includes(record.key) ? keys.filter((key) => key !== record.key) : [...keys, record.key]);
+    } else {
+      setReviewKey(record.key);
+    }
+  };
   const selectedRecords = records.filter((record) => selected.includes(record.key));
   const allSelected = records.length > 0 && selectedRecords.length === records.length;
   const restoreRecords = (targets: typeof records) => {
@@ -1067,33 +1083,39 @@ export function ArchivedRecords({ checks, payables, receivables, employees, onRe
     setSelected((keys) => keys.filter((key) => !restoredKeys.has(key)));
   };
   return (
-    <section className="panel overflow-hidden">
-      {deleted && (
-        <p className="border-b border-[#d0e3ef] bg-[#f4f9fd] px-4 py-3 text-xs text-[#555]">
-          Records are permanently deleted after 30 days in Deleted Records and cannot be restored afterward.
-          Automatic cleanup runs while this app is open or when it is reopened.
-        </p>
-      )}
+    <section className="space-y-4">
+
       {records.length > 0 && (
-        <div className="flex flex-wrap items-center gap-4 border-b border-[#d0e3ef] p-4">
-          <button type="button" className="secondary-btn" disabled={!records.length} onClick={() => setSelected(allSelected ? [] : records.map((record) => record.key))}>
-            {allSelected ? "Deselect all" : "Select all"}
+        <div className="flex flex-wrap items-center gap-4">
+          <button type="button" className="secondary-btn" aria-pressed={selectionMode} onClick={() => {
+            setSelectionMode((active) => !active);
+            setSelected([]);
+          }}>
+            {selectionMode ? "Cancel selection" : "Select"}
           </button>
-          <span className="text-xs text-[#737373]">{selectedRecords.length} selected</span>
-          <div className="ml-auto flex flex-wrap gap-2">
-            {selectedRecords.length > 0 && (
-              <button type="button" className="secondary-btn" onClick={() => restoreRecords(selectedRecords)}>
-                <RotateCcw size={15} aria-hidden="true" /> Restore selected
+          {selectionMode && (
+            <>
+              <button type="button" className="secondary-btn" onClick={() => setSelected(allSelected ? [] : records.map((record) => record.key))}>
+                {allSelected ? "Deselect all" : "Select all"}
               </button>
-            )}
-            <button type="button" className="secondary-btn" onClick={() => restoreRecords(records)}>
-              <RotateCcw size={15} aria-hidden="true" /> Restore all
+              <span className="text-xs text-[#737373]">{selectedRecords.length} selected</span>
+            </>
+          )}
+          <div className="ml-auto flex flex-wrap gap-2">
+            <button type="button" className="secondary-btn disabled:cursor-not-allowed disabled:opacity-50" disabled={selectedRecords.length === 0} onClick={() => restoreRecords(selectedRecords)}>
+              <RotateCcw size={15} aria-hidden="true" /> Restore
+            </button>
+            <button type="button" className="secondary-btn text-red-700 disabled:cursor-not-allowed disabled:opacity-50" disabled={selectedRecords.length === 0} onClick={() => {
+              if (onDeleteSelected) onDeleteSelected(selectedRecords);
+              else selectedRecords.forEach((record) => onDelete?.(record.module, record.id));
+            }}>
+              <Trash2 size={15} aria-hidden="true" /> Delete
             </button>
           </div>
         </div>
       )}
       {records.length ? (
-        <div className="overflow-x-auto">
+        <div className="panel overflow-x-auto">
           <table>
             <thead><tr><th>Module</th><th>Reference</th><th>Name</th>{deleted && <th>Days left</th>}<th className="w-16"><span className="sr-only">Actions</span></th></tr></thead>
             <tbody>
@@ -1102,14 +1124,14 @@ export function ArchivedRecords({ checks, payables, receivables, employees, onRe
                 return (
                 <tr
                   key={record.key}
-                  aria-selected={selected.includes(record.key)}
+                  aria-selected={selectionMode ? selected.includes(record.key) : undefined}
                   tabIndex={0}
                   className={`cursor-pointer ${selected.includes(record.key) ? "bg-[#d7eef9] hover:bg-[#d7eef9]" : ""}`}
-                  onClick={() => setSelected((keys) => keys.includes(record.key) ? keys.filter((key) => key !== record.key) : [...keys, record.key])}
+                  onClick={recordRowClick(() => activateRecord(record))}
                   onKeyDown={(event) => {
                     if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
                       event.preventDefault();
-                      setSelected((keys) => keys.includes(record.key) ? keys.filter((key) => key !== record.key) : [...keys, record.key]);
+                      activateRecord(record);
                     }
                   }}
                 >
@@ -1154,7 +1176,55 @@ export function ArchivedRecords({ checks, payables, receivables, employees, onRe
             </tbody>
           </table>
         </div>
-      ) : <p className="p-6 text-sm text-[#737373]">{deleted ? "No deleted records." : "No archived records."}</p>}
+      ) : <p className="panel p-6 text-sm text-[#737373]">{deleted ? "No deleted records." : "No archived records."}</p>}
+      {deleted && (
+        <p className="py-3 text-xs text-[#555]">
+          Records are permanently deleted after 30 days in Deleted Records and cannot be restored afterward.
+          Automatic cleanup runs while this app is open or when it is reopened.
+        </p>
+      )}
+      <dialog
+        ref={reviewDialogRef}
+        aria-labelledby="record-review-title"
+        onCancel={() => setReviewKey(null)}
+        className="m-auto max-h-[85vh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-xl border border-[#d0e3ef] bg-white p-6 text-[#16344d] shadow-2xl backdrop:bg-black/40"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 id="record-review-title" className="text-lg font-semibold">{reviewRecord?.reference || "Record review"}</h2>
+            <p className="mt-1 text-sm text-[#737373]">{reviewRecord?.module} · {reviewRecord?.name}</p>
+          </div>
+          <button type="button" aria-label="Close record review" className="grid size-8 shrink-0 place-items-center rounded hover:bg-[#e7f3fb]" onClick={() => setReviewKey(null)}><X size={18} /></button>
+        </div>
+        <dl className="mt-6 grid gap-4 sm:grid-cols-2">
+          {Object.entries(reviewRecord?.details ?? {}).filter(([key, value]) =>
+            value != null && value !== "" && !key.endsWith("Id") && key !== "id" && key !== "initials"
+          ).map(([key, value]) => (
+            <div key={key} className="min-w-0">
+              <dt className="text-xs capitalize text-[#737373]">{key.replace(/([a-z])([A-Z])/g, "$1 $2")}</dt>
+              <dd className="mt-1 whitespace-pre-wrap break-words text-sm">
+                {key === "accountNumber" ? `•••• ${String(value).slice(-4)}`
+                  : Array.isArray(value) ? value.join(", ") || "None"
+                  : typeof value === "boolean" ? value ? "Yes" : "No"
+                  : value && typeof value === "object" ? Object.values(value).map((item) => item instanceof File ? item.name : String(item)).join(", ") || "None"
+                  : String(value)}
+              </dd>
+            </div>
+          ))}
+        </dl>
+        <div className="mt-6 flex flex-wrap justify-end gap-3 border-t border-[#d0e3ef] pt-4">
+          <button type="button" className="secondary-btn" onClick={() => setReviewKey(null)}>Close</button>
+          <button type="button" className="secondary-btn" onClick={() => {
+            if (reviewRecord && onRestore?.(reviewRecord.module, reviewRecord.id)) setReviewKey(null);
+          }}><RotateCcw size={15} aria-hidden="true" /> Restore</button>
+          <button type="button" className="secondary-btn text-red-700" onClick={() => {
+            if (!reviewRecord) return;
+            setReviewKey(null);
+            reviewDialogRef.current?.close();
+            onDelete?.(reviewRecord.module, reviewRecord.id);
+          }}><Trash2 size={15} aria-hidden="true" /> Delete</button>
+        </div>
+      </dialog>
     </section>
   );
 }
@@ -1485,7 +1555,7 @@ function RegisterTools({
   onToggleSort: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-3 border-b border-[#d0e3ef] p-4 md:flex-row md:items-center">
+    <div className="flex flex-col gap-3 md:flex-row md:items-center">
       <label className="relative min-w-0 flex-1">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#888]" />
         <input
@@ -1593,11 +1663,7 @@ function EmployeeRegister({
           })),
         ]}
       />
-      <section className="panel max-w-full overflow-hidden">
-      <PanelTitle
-        title="Employee directory"
-        subtitle={`${filtered.length} of ${data.length} employees · ${sortDirection === "asc" ? "A–Z" : "Z–A"} by surname`}
-      />
+      <section className="max-w-full space-y-4">
       <RegisterTools
         query={query}
         setQuery={setQuery}
@@ -1610,6 +1676,7 @@ function EmployeeRegister({
         sortDirection={sortDirection}
         onToggleSort={() => setSortDirection((direction) => direction === "asc" ? "desc" : "asc")}
       />
+      <div className="panel max-w-full overflow-hidden">
       {filtered.length ? (
         <div className="overflow-x-auto">
           <table>
@@ -1670,6 +1737,7 @@ function EmployeeRegister({
         <Empty title="No employees found" action={onAdd} />
       )}
       <Pagination count={filtered.length} />
+      </div>
     </section>
     {printSheet}
     </div>
