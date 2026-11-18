@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { SummaryStatCards } from "@/components/SummaryStatCards";
+import { ActiveFilters } from "@/components/ActiveFilters";
 import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 import { recordRowClick } from "@/components/recordRowClick";
 import {
@@ -461,6 +462,15 @@ export function ReceivableRegister({
             </div>
           </div>
 
+          <ActiveFilters
+            filters={filters}
+            defaults={EMPTY_FILTERS}
+            valueLabels={{ customerId: Object.fromEntries(customers.map((customer) => [String(customer.id), customer.customerName])), preparedById: { "1": "Miguel Alvarina", ...Object.fromEntries(records.map((record) => [String(record.preparedById), record.preparedByName])) } }}
+            matched={filtered.length}
+            total={records.filter((record) => filters.includeArchived || !record.archivedAt).length}
+            onRemove={(key) => setFilter(key, EMPTY_FILTERS[key])}
+            onClear={() => { setFilters({ ...EMPTY_FILTERS }); setPage(1); }}
+          />
           {showFilters && (
             <div className="grid gap-3 border border-[#d0e3ef] bg-[#f4f9fd] p-4 md:grid-cols-2 xl:grid-cols-4">
               <label className="block">

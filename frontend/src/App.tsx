@@ -44,6 +44,7 @@ import {
 import { todayIsoDate } from "@/modules/payables/utils";
 import { CURRENT_USER } from "@/modules/checks/constants";
 import { SummaryStatCards } from "@/components/SummaryStatCards";
+import { ActiveFilters } from "@/components/ActiveFilters";
 import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 import { deletionDaysLeft, isDeletionExpired } from "@/components/deletedRecordRetention";
 import { usePrintReport } from "@/components/usePrintReport";
@@ -1603,6 +1604,16 @@ export function EmployeeRegister({
           setPage(1);
         }}
       />
+      <div className="border-b border-[#d0e3ef] px-4 py-3 sm:px-5">
+        <ActiveFilters
+          filters={{ search: query, status }}
+          defaults={{ search: "", status: "All statuses" }}
+          matched={filtered.length}
+          total={data.length}
+          onRemove={(key) => key === "search" ? setQuery("") : setStatus("All statuses")}
+          onClear={() => { setQuery(""); setStatus("All statuses"); }}
+        />
+      </div>
       {filtered.length ? (
         <div className="overflow-x-auto">
           <table>

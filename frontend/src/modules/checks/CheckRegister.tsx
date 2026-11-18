@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { SummaryStatCards } from "@/components/SummaryStatCards";
+import { ActiveFilters } from "@/components/ActiveFilters";
 import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 import { recordRowClick } from "@/components/recordRowClick";
 import { CHECK_STATUSES, CHECK_TYPES, EMPTY_FILTERS, PAGE_SIZE } from "./constants";
@@ -293,6 +294,14 @@ export function CheckRegister({
             </div>
           </div>
 
+          <ActiveFilters
+            filters={filters}
+            defaults={EMPTY_FILTERS}
+            matched={filtered.length}
+            total={records.filter((record) => filters.includeArchived || !record.archivedAt).length}
+            onRemove={(key) => setFilter(key, EMPTY_FILTERS[key])}
+            onClear={() => { setFilters({ ...EMPTY_FILTERS }); setPage(1); }}
+          />
           {showFilters && (
             <div className="grid gap-3 border border-[#d0e3ef] bg-[#f4f9fd] p-4 md:grid-cols-2 xl:grid-cols-4">
               <label className="block">
