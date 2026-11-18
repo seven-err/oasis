@@ -354,7 +354,7 @@ export function PayableReports({ records, onBack, notify }: Props) {
                   onClick={() => {
                     if (!validDateRange(report.kind)) return;
                     flushSync(() => setActive(report.kind));
-                    printReport(hasDateColumn(report.kind) ? `${report.title} · ${reportDateRangeLabel(rangeFor(report.kind).from, rangeFor(report.kind).to)}` : report.title, previewRows(report.kind));
+                    printReport(hasDateColumn(report.kind) && (rangeFor(report.kind).from || rangeFor(report.kind).to) ? `${report.title} · ${reportDateRangeLabel(rangeFor(report.kind).from, rangeFor(report.kind).to)}` : report.title, previewRows(report.kind));
                   }}
                 >
                   <Printer size={14} /> Print

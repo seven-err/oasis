@@ -13,7 +13,7 @@ export const peso = new Intl.NumberFormat("en-PH", {
 });
 
 export function formatDate(value: string | null | undefined): string {
-  if (!value) return "â€”";
+  if (!value) return "\u2014";
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
@@ -33,8 +33,8 @@ export function formatDateTime(value: string): string {
 
 export function maskAccountNumber(accountNumber: string): string {
   const digits = accountNumber.replace(/\s+/g, "");
-  if (digits.length <= 4) return "â€¢â€¢â€¢â€¢";
-  return `${"â€¢".repeat(Math.max(4, digits.length - 4))}${digits.slice(-4)}`;
+  if (digits.length <= 4) return "****";
+  return `${"*".repeat(digits.length - 4)}${digits.slice(-4)}`;
 }
 
 export function isValidIsoDate(value: string): boolean {

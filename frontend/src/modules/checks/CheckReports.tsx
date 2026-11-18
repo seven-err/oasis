@@ -20,7 +20,7 @@ const REPORTS: {
 }[] = [
   {
     kind: "complete_register",
-    title: "Complete Check Register",
+    title: "Complete Check Records",
     detail: "Full authorized check listing with masked account numbers",
   },
   {
@@ -282,7 +282,7 @@ export function CheckReports({ records, onBack, notify }: Props) {
                           Amount: row.checkAmount,
                           Status: row.checkStatus,
                         }));
-                    void printReport(hasDateColumn(report.kind) ? `${report.title} · ${reportDateRangeLabel(rangeFor(report.kind).from, rangeFor(report.kind).to)}` : report.title, printedRows);
+                    void printReport(hasDateColumn(report.kind) && (rangeFor(report.kind).from || rangeFor(report.kind).to) ? `${report.title} · ${reportDateRangeLabel(rangeFor(report.kind).from, rangeFor(report.kind).to)}` : report.title, printedRows);
                   }}
                 >
                   <Printer size={14} /> Print

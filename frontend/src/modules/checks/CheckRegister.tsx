@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { SummaryStatCards } from "@/components/SummaryStatCards";
+import { ActiveFilters } from "@/components/ActiveFilters";
 import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 import { recordRowClick } from "@/components/recordRowClick";
 import { CHECK_STATUSES, CHECK_TYPES, EMPTY_FILTERS, PAGE_SIZE } from "./constants";
@@ -233,8 +234,18 @@ export function CheckRegister({
         ]}
       />
 
-      <section className="max-w-full space-y-4">
-        <div className="flex flex-col gap-3">
+      <section className="panel max-w-full overflow-hidden">
+        <PanelTitle
+          title="Check records"
+          subtitle={`${filtered.length} of ${records.filter((r) => filters.includeArchived || !r.archivedAt).length} records`}
+          action={
+            <button onClick={onOpenReports} className="secondary-btn w-full sm:w-auto">
+              <FileCheck2 size={15} /> Reports
+            </button>
+          }
+        />
+
+        <div className="flex flex-col gap-3 border-b border-[#d0e3ef] p-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <label className="relative min-w-0 w-full flex-1">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#888]" />
@@ -285,6 +296,14 @@ export function CheckRegister({
             </div>
           </div>
 
+          <ActiveFilters
+            filters={filters}
+            defaults={EMPTY_FILTERS}
+            matched={filtered.length}
+            total={records.filter((record) => filters.includeArchived || !record.archivedAt).length}
+            onRemove={(key) => setFilter(key, EMPTY_FILTERS[key])}
+            onClear={() => { setFilters({ ...EMPTY_FILTERS }); setPage(1); }}
+          />
           {showFilters && (
             <div className="grid gap-3 border border-[#d0e3ef] bg-[#f4f9fd] p-4 md:grid-cols-2 xl:grid-cols-4">
               <label className="block">

@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { SummaryStatCards } from "@/components/SummaryStatCards";
+import { ActiveFilters } from "@/components/ActiveFilters";
 import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 import { recordRowClick } from "@/components/recordRowClick";
 import {
@@ -51,6 +52,7 @@ type Props = {
   records: ReceivableViewModel[];
   onAdd: () => void;
   onView: (id: number) => void;
+  onPrint: (id: number) => void;
   onEdit: (id: number) => void;
   onRecordCollection: (id: number) => void;
   onCollectionHistory: (id: number) => void;
@@ -65,6 +67,7 @@ export function ReceivableRegister({
   records,
   onAdd,
   onView,
+  onPrint,
   onEdit,
   onRecordCollection,
   onCollectionHistory,
@@ -289,8 +292,7 @@ export function ReceivableRegister({
           className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
           onClick={() => {
             setMenu(null);
-            onView(row.id);
-            window.setTimeout(() => window.print(), 100);
+            onPrint(row.id);
           }}
         >
           <FileText size={14} /> Print
@@ -455,6 +457,15 @@ export function ReceivableRegister({
             </div>
           </div>
 
+          <ActiveFilters
+            filters={filters}
+            defaults={EMPTY_FILTERS}
+            valueLabels={{ customerId: Object.fromEntries(customers.map((customer) => [String(customer.id), customer.customerName])), preparedById: { "1": "Miguel Alvarina", ...Object.fromEntries(records.map((record) => [String(record.preparedById), record.preparedByName])) } }}
+            matched={filtered.length}
+            total={records.filter((record) => filters.includeArchived || !record.archivedAt).length}
+            onRemove={(key) => setFilter(key, EMPTY_FILTERS[key])}
+            onClear={() => { setFilters({ ...EMPTY_FILTERS }); setPage(1); }}
+          />
           {showFilters && (
             <div className="grid gap-3 border border-[#d0e3ef] bg-[#f4f9fd] p-4 md:grid-cols-2 xl:grid-cols-4">
               <label className="block">
