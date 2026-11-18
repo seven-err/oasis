@@ -730,7 +730,7 @@ function App() {
                       ].sort((a, b) => a.name.localeCompare(b.name)),
                     );
                     notify("Employee record created.");
-                    openEmployeeView(null);
+                    backEmployeeView();
                   }}
                 />
               )}
