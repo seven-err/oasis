@@ -17,7 +17,7 @@ function cellText(key: string, value: unknown) {
   return String(value);
 }
 
-export function usePrintReport() {
+export function usePrintReport({ emphasizeSubtitle = false }: { emphasizeSubtitle?: boolean } = {}) {
   const logoRef = useRef<HTMLImageElement>(null);
   const originalTitle = useRef<string | null>(null);
   const [report, setReport] = useState<PrintReport | null>(null);
@@ -40,7 +40,8 @@ export function usePrintReport() {
     };
   }, []);
 
-  const printReport = async (title: string, rows: Record<string, unknown>[], recordCount = rows.length, subtitle?: string) => {
+  const printReport = (title: string, rows: Record<string, unknown>[], recordCount = rows.length, subtitle?: string) => {
+    if (!rows.length) return;
     flushSync(() => setReport({
       title,
       subtitle,
@@ -50,24 +51,27 @@ export function usePrintReport() {
         dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Manila",
       }).format(new Date()),
     }));
-    await logoRef.current?.decode().catch(() => undefined);
     originalTitle.current ??= document.title;
     // Prevent the browser's print header from repeating the app name.
     document.title = "\u200b";
+    // Keep this in the original click handler. Awaiting image decoding here can
+    // lose the browser's user activation and leave the print preview unopened.
     window.print();
   };
 
   const columns = report?.rows.length ? Object.keys(report.rows[0]) : [];
   const printSheet = report && createPortal(
-    <section className={`report-print-sheet ${report.subtitle ? "report-print-detail" : ""}`} aria-label={report.title}>
-      <div className="report-print-heading">
+    <section
+      className={`report-print-sheet ${report.subtitle ? "report-print-detail" : ""}`}
+      aria-label={report.title}
+    >
+      <div className={`report-print-heading${emphasizeSubtitle && report.subtitle ? " report-print-record-heading" : ""}`}>
         <div className="report-print-brand-row">
           <img ref={logoRef} src={reportLogo} alt="OASIS Diagnostic & Laboratory Center" className="report-print-logo" />
           <p className="report-print-date">Printed {report.printedAt}<br />(Philippine time)</p>
         </div>
         <h1>{report.title}</h1>
-        {report.subtitle && <p className="report-print-subtitle">{report.subtitle}</p>}
-        {!report.subtitle && <p>{report.recordCount} {report.recordCount === 1 ? "record" : "records"}</p>}
+        {report.subtitle ? <p className="report-print-subtitle">{report.subtitle}</p> : <p>{report.recordCount} {report.recordCount === 1 ? "record" : "records"}</p>}
       </div>
       {report.rows.length ? (
         <table>

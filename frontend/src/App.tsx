@@ -224,65 +224,54 @@ function employeeDirectoryRows(employees: Employee[]) {
   }));
 }
 
-const initialEmployees: Employee[] = [
-  {
-    id: 1,
-    number: "EMP-00142",
-    name: "Alvarina, Miguel",
-    initials: "MA",
-    department: "Finance",
-    position: "Finance Administrator",
-    dateHired: "2019-06-17",
-    email: "m.alvarina@oasis.org",
+// People listed under two departments on the org chart are merged into one record.
+const initialEmployees: Employee[] = (
+  [
+    ["Cadorna, Ronnie", "Administration", "Administrative Manager"],
+    ["Zamora, Theodore M.", "Drug Test / Laboratory", "Head of Laboratory / Pathologist"],
+    ["Tahadlangit, Mariane Sarah L.", "Drug Test / Laboratory", "Head of Drug Analyst / Chief Medical Technologist"],
+    ["Tinambunan, Cheerden Lhy T.", "Drug Test / Laboratory", "Drug Analyst / Medical Technologist"],
+    ["Fernan, Wilmer J.", "Drug Test / Administration", "Authorized Specimen Collector / Purchasing Officer"],
+    ["Lepon, Lea", "Drug Test", "Authorized Specimen Collector / Biometric Technician"],
+    ["Montana, Vanessa M.", "Drug Test / Laboratory", "Authorized Specimen Collector / Laboratory Aide"],
+    ["Cadorna, Maria Asuncion H.", "Administration", "HR / Marketing"],
+    ["Lepon, Richard M.", "Administration", "Head Accounting Officer"],
+    ["Nene, Genevieve", "Administration", "Receptionist"],
+    ["Moya, Clinton A.", "Administration", "Receptionist"],
+    ["Atibay, Cristopher P.", "Administration", "Cashier"],
+    ["Japal, Dennis", "Administration", "Information / Maintenance Personnel"],
+    ["Malait, Lester", "Administration", "Information / Maintenance Personnel"],
+    ["Espino, Gaudencio", "Radiology", "Radiologist"],
+    ["Abancio, Cely Ann", "Radiology", "Sonologist - Ultrasound"],
+    ["Moraga, Rhea C.", "Radiology", "Chief Radiologic Technologist"],
+    ["Branzuela, Junrey L.", "Radiology", "Radiologic Aide"],
+    ["Albano, Lucille G.", "Clinic Doctors", "OB-GYNE"],
+    ["Albano, Samuel P.", "Clinic Doctors", "Ophthalmologist"],
+    ["Aranas-Del Rosario, Norina", "Clinic Doctors", "OB-GYNE"],
+    ["Destura, Kenneth Joel", "Clinic Doctors", "Pediatrician"],
+    ["Florita, Charmaine Gee", "Clinic Doctors", "Family Medicine"],
+    ["Hernandez, Daniel Philip", "Clinic Doctors", "IM / Cardiologist"],
+    ["Medina, Daniel", "Clinic Doctors", "General Physician"],
+    ["Rivera, Caryll Ann P.", "Clinic Doctors", "General Physician"],
+    ["Venturillo, Myla", "Clinic Doctors", "Optometrist"],
+  ] as const
+).map(([name, department, position], i) => {
+  const [surname, given] = name.split(", ");
+  return {
+    id: i + 1,
+    number: `EMP-${String(i + 1).padStart(5, "0")}`,
+    name,
+    initials: (given[0] + surname[0]).toUpperCase(),
+    department,
+    position,
+    dateHired: "",
+    email: "",
     status: "Active",
-  },
-  {
-    id: 2,
-    number: "EMP-00118",
-    name: "Bautista, Leon Miguel",
-    initials: "LB",
-    department: "Operations",
-    position: "Operations Supervisor",
-    dateHired: "2018-01-22",
-    email: "l.bautista@oasis.org",
-    status: "Active",
-  },
-  {
-    id: 3,
-    number: "EMP-00167",
-    name: "Cruz, Angela Marie",
-    initials: "AC",
-    department: "Human Resources",
-    position: "HR Specialist",
-    dateHired: "2021-09-06",
-    email: "a.cruz@oasis.org",
-    status: "On Leave",
-  },
-  {
-    id: 4,
-    number: "EMP-00094",
-    name: "Dela Rosa, Nathaniel",
-    initials: "ND",
-    department: "Administration",
-    position: "Administrative Officer",
-    dateHired: "2016-11-14",
-    email: "n.delarosa@oasis.org",
-    status: "Active",
-  },
-  {
-    id: 5,
-    number: "EMP-00153",
-    name: "Evangelista, Sofia",
-    initials: "SE",
-    department: "Information Technology",
-    position: "Systems Analyst",
-    dateHired: "2020-07-13",
-    email: "s.evangelista@oasis.org",
-    status: "Active",
-  },
-];
+  };
+});
 
-const EMPLOYEE_STORAGE_KEY = "oasis.employees.v1";
+// Bump the version whenever initialEmployees changes, or browsers keep their saved old list.
+const EMPLOYEE_STORAGE_KEY = "oasis.employees.v2";
 
 export function loadEmployeeRecords(): { employees: Employee[]; deletedEmployees: Employee[] } {
   try {
@@ -309,7 +298,7 @@ const peso = new Intl.NumberFormat("en-PH", {
   minimumFractionDigits: 2,
 });
 const formatDate = (value: string) =>
-  new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(
+  !value ? "—" : new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(
     new Date(`${value}T00:00:00`),
   );
 
@@ -1259,39 +1248,23 @@ function Dashboard({
       <div className="mt-7 grid gap-7 xl:grid-cols-[1.55fr_1fr]">
         <section className="panel">
           <PanelTitle
-            title="Financial attention"
-            subtitle="Items requiring review"
-            action={
-              <button onClick={() => go("reports")} className="text-link">
-                View reports <ChevronRight size={13} />
-              </button>
-            }
+            title="Recent payables and receivables"
+            subtitle="Three most recently added records in each list"
           />
           <div className="grid gap-px bg-[#d7e8f3] md:grid-cols-2">
             <PayableDueList
               title="Payables"
               records={payables
-                .filter(
-                  (x) =>
-                    !x.archivedAt &&
-                    x.approvalStatus === "Approved" &&
-                    (x.paymentStatus === "Overdue" ||
-                      x.paymentStatus === "Unpaid" ||
-                      x.paymentStatus === "Partial"),
-                )
+                .filter((x) => !x.archivedAt)
+                .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || b.id - a.id)
                 .slice(0, 3)}
               onOpen={() => go("payables")}
             />
             <ReceivableDueList
               title="Receivables"
               records={receivables
-                .filter(
-                  (x) =>
-                    !x.archivedAt &&
-                    (x.collectionStatus === "Overdue" ||
-                      x.collectionStatus === "Unpaid" ||
-                      x.collectionStatus === "Partial"),
-                )
+                .filter((x) => !x.archivedAt)
+                .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || b.id - a.id)
                 .slice(0, 3)}
               onOpen={() => go("receivables")}
             />
@@ -1547,7 +1520,7 @@ function RegisterTools({
   );
 }
 
-function EmployeeRegister({
+export function EmployeeRegister({
   data,
   onAdd,
   onView,
@@ -1564,6 +1537,8 @@ function EmployeeRegister({
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("All statuses");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
   const filtered = data.filter(
     (x) =>
       `${x.number} ${x.name} ${x.department}`.toLowerCase().includes(query.toLowerCase()) &&
@@ -1571,6 +1546,9 @@ function EmployeeRegister({
   ).sort((a, b) =>
     sortDirection === "asc" ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name),
   );
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const pageRows = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const summaryStatuses = [
     { label: "Regular", icon: UserCheck },
     { label: "Probationary", icon: Clock3 },
@@ -1584,13 +1562,19 @@ function EmployeeRegister({
             label: "Total Employees",
             value: data.length,
             icon: Wallet,
-            onClick: () => setStatus("All statuses"),
+            onClick: () => {
+              setStatus("All statuses");
+              setPage(1);
+            },
           },
           ...summaryStatuses.map(({ label, icon }) => ({
             label,
             value: data.filter((employee) => getEmploymentStatus(employee) === label).length,
             icon,
-            onClick: () => setStatus(label),
+            onClick: () => {
+              setStatus(label);
+              setPage(1);
+            },
           })),
         ]}
       />
@@ -1601,15 +1585,24 @@ function EmployeeRegister({
       />
       <RegisterTools
         query={query}
-        setQuery={setQuery}
+        setQuery={(value) => {
+          setQuery(value);
+          setPage(1);
+        }}
         status={status}
-        setStatus={setStatus}
+        setStatus={(value) => {
+          setStatus(value);
+          setPage(1);
+        }}
         statuses={[...employmentStatuses]}
         placeholder="Search employee no., name, or department…"
         exportData={() => exportCsv("employee-alphalist.csv", employeeDirectoryRows(filtered))}
         onPrint={() => { void printReport("Employee alphalist", employeeDirectoryRows(filtered)); }}
         sortDirection={sortDirection}
-        onToggleSort={() => setSortDirection((direction) => direction === "asc" ? "desc" : "asc")}
+        onToggleSort={() => {
+          setSortDirection((direction) => direction === "asc" ? "desc" : "asc");
+          setPage(1);
+        }}
       />
       <div className="border-b border-[#d0e3ef] px-4 py-3 sm:px-5">
         <ActiveFilters
@@ -1640,7 +1633,7 @@ function EmployeeRegister({
               </tr>
             </thead>
             <tbody>
-              {filtered.map((x) => {
+              {pageRows.map((x) => {
                 const employmentStatus = getEmploymentStatus(x);
                 return (
                   <tr key={x.id} className="cursor-pointer" onClick={() => onView(x.id)}>
@@ -1680,7 +1673,7 @@ function EmployeeRegister({
       ) : (
         <Empty title="No employees found" action={onAdd} />
       )}
-      <Pagination count={filtered.length} />
+      <Pagination page={currentPage} pageSize={pageSize} count={filtered.length} onPageChange={setPage} />
     </section>
     {printSheet}
     </div>
@@ -2153,7 +2146,7 @@ function Reports({ checks, payables, receivables, employees, notify }: any) {
   );
   const reports = [
     {
-      title: "Check register",
+      title: "Check records",
       detail: "Open Check Monitoring for full reports, filters, and masked exports",
       Icon: FileCheck2,
       data: activeChecks,
@@ -2522,18 +2515,43 @@ function Empty({ title, action }: { title: string; action: () => void }) {
   );
 }
 
-function Pagination({ count }: { count: number }) {
+function Pagination({
+  page,
+  pageSize,
+  count,
+  onPageChange,
+}: {
+  page: number;
+  pageSize: number;
+  count: number;
+  onPageChange: (page: number) => void;
+}) {
+  const pages = Math.max(1, Math.ceil(count / pageSize));
+  const start = count === 0 ? 0 : (page - 1) * pageSize + 1;
+  const end = Math.min(page * pageSize, count);
   return (
     <div className="flex items-center justify-between border-t border-[#d0e3ef] px-5 py-4 text-[11px] text-[#777]">
       <span>
-        Showing {count ? 1 : 0}–{count} of {count}
+        Showing {start}–{end} of {count}
       </span>
       <div className="flex gap-1">
-        <button disabled className="table-action disabled:opacity-30">
+        <button
+          type="button"
+          disabled={page <= 1}
+          className="table-action disabled:opacity-30"
+          onClick={() => onPageChange(page - 1)}
+          aria-label="Previous page"
+        >
           <ChevronLeft size={15} />
         </button>
-        <button className="grid size-8 place-items-center bg-[#1f6ea6] text-white">1</button>
-        <button disabled className="table-action disabled:opacity-30">
+        <span className="grid size-8 place-items-center bg-[#1f6ea6] text-white">{page}</span>
+        <button
+          type="button"
+          disabled={page >= pages}
+          className="table-action disabled:opacity-30"
+          onClick={() => onPageChange(page + 1)}
+          aria-label="Next page"
+        >
           <ChevronRight size={15} />
         </button>
       </div>

@@ -41,7 +41,23 @@ test("monitoring deletion is authorized, recoverable, audited, and retains relat
   };
   const server = await createServer({ server: { middlewareMode: true }, appType: "custom" });
   try {
-    const { ArchivedRecords, loadEmployeeRecords } = await server.ssrLoadModule("/src/App.tsx");
+    const { ArchivedRecords, EmployeeRegister, loadEmployeeRecords } = await server.ssrLoadModule("/src/App.tsx");
+    const twelveEmployees = Array.from({ length: 12 }, (_, index) => ({
+      ...loadEmployeeRecords().employees[0],
+      id: index + 1,
+      number: `EMP-${String(index + 1).padStart(5, "0")}`,
+      name: `Employee ${String(index + 1).padStart(2, "0")}`,
+    }));
+    const alphalistMarkup = renderToStaticMarkup(createElement(EmployeeRegister, {
+      data: twelveEmployees,
+      onAdd: () => {},
+      onView: () => {},
+      onEdit: () => {},
+      onDelete: () => {},
+    }));
+    assert.match(alphalistMarkup, /Showing 1–10 of 12/);
+    assert.match(alphalistMarkup, /EMP-00010/);
+    assert.doesNotMatch(alphalistMarkup, /EMP-00011/);
     const initialDirectory = loadEmployeeRecords();
     assert.ok(initialDirectory.employees.length > 0);
     assert.deepEqual(initialDirectory.deletedEmployees, []);
@@ -50,14 +66,14 @@ test("monitoring deletion is authorized, recoverable, audited, and retains relat
       employees: initialDirectory.employees.filter((record) => record.id !== deletedEmployee.id),
       deletedEmployees: [deletedEmployee],
     };
-    values.set("oasis.employees.v1", JSON.stringify(savedDirectory));
+    values.set("oasis.employees.v2", JSON.stringify(savedDirectory));
     assert.deepEqual(loadEmployeeRecords(), savedDirectory, "deleted employees remain recoverable after reload");
-    values.set("oasis.employees.v1", JSON.stringify({ ...savedDirectory, deletedEmployees: [initialDirectory.employees[0]] }));
+    values.set("oasis.employees.v2", JSON.stringify({ ...savedDirectory, deletedEmployees: [initialDirectory.employees[0]] }));
     const migrationTime = Date.now();
     const migrated = loadEmployeeRecords().deletedEmployees[0];
     assert.ok(Date.parse(migrated.deletedAt) >= migrationTime);
     assert.equal(isDeletionExpired(migrated.deletedAt), false, "legacy employees receive a full retention period");
-    values.set("oasis.employees.v1", JSON.stringify({ employees: [], deletedEmployees: [] }));
+    values.set("oasis.employees.v2", JSON.stringify({ employees: [], deletedEmployees: [] }));
     assert.deepEqual(loadEmployeeRecords(), { employees: [], deletedEmployees: [] }, "empty saved lists must not reseed employees");
     values.clear();
     const deletedPageProps = {

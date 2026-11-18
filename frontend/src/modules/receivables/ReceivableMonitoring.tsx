@@ -50,6 +50,7 @@ export function ReceivableMonitoring({
           records={records}
           onAdd={() => setView({ mode: "create" })}
           onView={(id) => setView({ mode: "details", id })}
+          onPrint={(id) => setView({ mode: "details", id, focus: "print" })}
           onEdit={(id) => setView({ mode: "edit", id })}
           onRecordCollection={(id) => setView({ mode: "details", id, focus: "collections" })}
           onCollectionHistory={(id) => setView({ mode: "details", id, focus: "collection-history" })}
