@@ -13,10 +13,12 @@ import {
   RotateCcw,
   Search,
   SlidersHorizontal,
+  Trash2,
   X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { SummaryStatCards } from "@/components/SummaryStatCards";
+import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 import { recordRowClick } from "@/components/recordRowClick";
 import {
   APPROVAL_STATUSES,
@@ -67,6 +69,7 @@ export function PayableRegister({
   notify,
 }: Props) {
   const user = payableService.getUser();
+  const [deleting, setDeleting] = useState<PayableViewModel | null>(null);
   const categories = useMemo(() => payableService.categories(false), [records]);
   const [filters, setFilters] = useState<PayableFilters>(EMPTY_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
@@ -107,6 +110,17 @@ export function PayableRegister({
       </button>
     </th>
   );
+
+  const deleteRecord = (record: PayableViewModel) => {
+    const result = payableService.deleteRecord(record.id);
+    if (!result.ok) {
+      notify(result.errors.form ?? "Unable to delete payable.");
+      return;
+    }
+    setDeleting(null);
+    notify("Payable moved to Deleted Records.");
+    onChanged();
+  };
 
   const archiveOrRestore = (record: PayableViewModel) => {
     if (!user.permissions.archivePayables) {
@@ -201,6 +215,18 @@ export function PayableRegister({
             )}
           </button>
         )}
+        {user.permissions.archivePayables && (
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 border-t border-[#e1eef6] px-3 py-2 text-xs text-red-700 hover:bg-red-50"
+            onClick={() => {
+              setMenuId(null);
+              setDeleting(row);
+            }}
+          >
+            <Trash2 size={14} /> Delete
+          </button>
+        )}
         <button
           className="flex w-full items-center gap-2 px-3 py-2 text-xs text-[#888] hover:bg-[#e7f3fb]"
           onClick={() => setMenuId(null)}
@@ -212,6 +238,13 @@ export function PayableRegister({
 
   return (
     <div className="w-full max-w-full space-y-5 overflow-x-hidden">
+      {deleting && (
+        <DeleteConfirmationDialog
+          recordLabel={`Payable ${deleting.invoiceNumber}`}
+          onCancel={() => setDeleting(null)}
+          onConfirm={() => deleteRecord(deleting)}
+        />
+      )}
       <SummaryStatCards
         items={[
           {

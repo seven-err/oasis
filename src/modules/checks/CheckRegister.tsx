@@ -12,10 +12,12 @@ import {
   RotateCcw,
   Search,
   SlidersHorizontal,
+  Trash2,
   X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { SummaryStatCards } from "@/components/SummaryStatCards";
+import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 import { recordRowClick } from "@/components/recordRowClick";
 import { CHECK_STATUSES, CHECK_TYPES, EMPTY_FILTERS, PAGE_SIZE } from "./constants";
 import { checkService } from "./store";
@@ -55,6 +57,7 @@ export function CheckRegister({
   notify,
 }: Props) {
   const user = checkService.getUser();
+  const [deleting, setDeleting] = useState<CheckRecord | null>(null);
   const [filters, setFilters] = useState<CheckFilters>(EMPTY_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
   const [sort, setSort] = useState<CheckSort>({ key: "checkDate", direction: "desc" });
@@ -93,6 +96,17 @@ export function CheckRegister({
       </button>
     </th>
   );
+
+  const deleteRecord = (record: CheckRecord) => {
+    const result = checkService.deleteRecord(record.id);
+    if (!result.ok) {
+      notify(result.errors.form ?? "Unable to delete check.");
+      return;
+    }
+    setDeleting(null);
+    notify("Check moved to Deleted Records.");
+    onChanged();
+  };
 
   const archiveOrRestore = (record: CheckRecord) => {
     if (!user.permissions.archiveChecks) {
@@ -157,6 +171,18 @@ export function CheckRegister({
             )}
           </button>
         )}
+        {user.permissions.archiveChecks && (
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 border-t border-[#e1eef6] px-3 py-2 text-xs text-red-700 hover:bg-red-50"
+            onClick={() => {
+              setMenuId(null);
+              setDeleting(row);
+            }}
+          >
+            <Trash2 size={14} /> Delete
+          </button>
+        )}
         <button
           className="flex w-full items-center gap-2 px-3 py-2 text-xs text-[#888] hover:bg-[#e7f3fb]"
           onClick={() => setMenuId(null)}
@@ -168,6 +194,13 @@ export function CheckRegister({
 
   return (
     <div className="w-full max-w-full space-y-5 overflow-x-hidden">
+      {deleting && (
+        <DeleteConfirmationDialog
+          recordLabel={`Check ${deleting.checkNumber}`}
+          onCancel={() => setDeleting(null)}
+          onConfirm={() => deleteRecord(deleting)}
+        />
+      )}
       <SummaryStatCards
         items={[
           {

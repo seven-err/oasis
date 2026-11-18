@@ -27,6 +27,7 @@ export type ReceivableAuditAction =
   | "customer_created"
   | "customer_updated"
   | "archived"
+  | "deleted"
   | "restored";
 
 export type OasisReceivableUser = {
