@@ -157,6 +157,17 @@ type Employee = {
   requirementFollowUpDate?: string;
 } & Partial<Record<EmployeeField, string>>;
 
+function hasAllEmployeeRequirements(employee?: Pick<Employee, "requirements" | "laboratoryRequirements">) {
+  return employeeRequirements.every((item) => employee?.requirements?.includes(item)) &&
+    laboratoryRequirements.every((item) => employee?.laboratoryRequirements?.includes(item));
+}
+
+function getRequirementStatus(employee: Employee): "Complete" | "Incomplete" {
+  return employee.requirementStatus === "Complete" && hasAllEmployeeRequirements(employee)
+    ? "Complete"
+    : "Incomplete";
+}
+
 function nextEmployeeNumber(employees: Employee[]): string {
   const highest = employees.reduce(
     (max, employee) => Math.max(max, Number(employee.number.replace(/^EMP-/, "")) || 0),
@@ -205,7 +216,7 @@ function employeeDirectoryRows(employees: Employee[]) {
     "Employment Status": getEmploymentStatus(employee) ?? "",
     "Cash Advances": hasEmployeeCashAdvances(employee) ? "Yes" : "No",
     "Cash Advance Amount (PHP)": employee.cashAdvanceAmount ?? "",
-    "Requirement Status": employee.requirementStatus ?? "Incomplete",
+    "Requirement Status": getRequirementStatus(employee),
   }));
 }
 
@@ -1366,6 +1377,7 @@ function RegisterTools({
   statuses,
   placeholder,
   exportData,
+  onPrint,
   sortDirection,
   onToggleSort,
 }: {
@@ -1376,6 +1388,7 @@ function RegisterTools({
   statuses: string[];
   placeholder: string;
   exportData: () => void;
+  onPrint: () => void;
   sortDirection: "asc" | "desc";
   onToggleSort: () => void;
 }) {
@@ -1423,7 +1436,7 @@ function RegisterTools({
           className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2"
         />
       </label>
-      <button onClick={() => window.print()} className="secondary-btn">
+      <button onClick={onPrint} className="secondary-btn">
         <Printer size={15} /> Print
       </button>
       <button onClick={exportData} className="secondary-btn">
@@ -1454,6 +1467,7 @@ function EmployeeRegister({
   onEdit: (id: number) => void;
   onDelete: (id: number) => void;
 }) {
+  const { printReport, printSheet } = usePrintReport();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("All statuses");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -1500,6 +1514,7 @@ function EmployeeRegister({
         statuses={[...employmentStatuses]}
         placeholder="Search employee no., name, or department…"
         exportData={() => exportCsv("employee-alphalist.csv", employeeDirectoryRows(filtered))}
+        onPrint={() => { void printReport("Employee alphalist", employeeDirectoryRows(filtered)); }}
         sortDirection={sortDirection}
         onToggleSort={() => setSortDirection((direction) => direction === "asc" ? "desc" : "asc")}
       />
@@ -1544,11 +1559,11 @@ function EmployeeRegister({
                     <td>{x.position}</td>
                     <td>{formatDate(x.dateHired)}</td>
                     <td>
-                      {employmentStatus ? <Status value={employmentStatus} /> : "—"}
+                      {employmentStatus ?? "—"}
                     </td>
                     <td>{displayEmployeeCashAdvances(x)}</td>
                     <td>
-                      <Status value={x.requirementStatus ?? "Incomplete"} />
+                      <Status value={getRequirementStatus(x)} />
                     </td>
                     <td onClick={(event) => event.stopPropagation()}>
                       <EmployeeActions employee={x} onEdit={() => onEdit(x.id)} onDelete={() => onDelete(x.id)} />
@@ -1564,6 +1579,7 @@ function EmployeeRegister({
       )}
       <Pagination count={filtered.length} />
     </section>
+    {printSheet}
     </div>
   );
 }
@@ -1624,6 +1640,15 @@ function EmployeeRecordPanel({
 }) {
   const record = view.mode === "create" ? undefined : employees.find((employee) => employee.id === view.id);
   const [contactDigits, setContactDigits] = useState(() => getContactDigits(record?.contactNumber ?? ""));
+  const [checkedRequirements, setCheckedRequirements] = useState(record?.requirements ?? []);
+  const [checkedLabRequirements, setCheckedLabRequirements] = useState(record?.laboratoryRequirements ?? []);
+  const [requirementStatus, setRequirementStatus] = useState<"Complete" | "Incomplete">(
+    record ? getRequirementStatus(record) : "Incomplete",
+  );
+  const allRequirementsChecked = hasAllEmployeeRequirements({
+    requirements: checkedRequirements,
+    laboratoryRequirements: checkedLabRequirements,
+  });
   if (view.mode !== "create" && !record) return null;
 
   if (view.mode === "details") {
@@ -1696,7 +1721,7 @@ function EmployeeRecordPanel({
       requirements,
       laboratoryRequirements: checkedLabRequirements,
       requirementAttachments,
-      requirementStatus: text("requirementStatus") === "Complete" ? "Complete" : "Incomplete",
+      requirementStatus: text("requirementStatus") === "Complete" && hasAllEmployeeRequirements({ requirements, laboratoryRequirements: checkedLabRequirements }) ? "Complete" : "Incomplete",
       requirementFollowUpDate: text("requirementFollowUpDate") || undefined,
     });
   };
@@ -1805,15 +1830,41 @@ function EmployeeRecordPanel({
               })}
             </fieldset>
           ))}
-          <EmployeeRequirementChecklist title="Requirements" name="requirements" items={employeeRequirements} initialChecked={record?.requirements} />
-          <EmployeeRequirementChecklist title="Laboratory Requirements" name="laboratoryRequirements" items={laboratoryRequirements} initialChecked={record?.laboratoryRequirements} />
+          <EmployeeRequirementChecklist
+            title="Requirements"
+            name="requirements"
+            items={employeeRequirements}
+            checked={checkedRequirements}
+            onChange={(checked) => {
+              setCheckedRequirements(checked);
+              if (!hasAllEmployeeRequirements({ requirements: checked, laboratoryRequirements: checkedLabRequirements })) setRequirementStatus("Incomplete");
+            }}
+          />
+          <EmployeeRequirementChecklist
+            title="Laboratory Requirements"
+            name="laboratoryRequirements"
+            items={laboratoryRequirements}
+            checked={checkedLabRequirements}
+            onChange={(checked) => {
+              setCheckedLabRequirements(checked);
+              if (!hasAllEmployeeRequirements({ requirements: checkedRequirements, laboratoryRequirements: checked })) setRequirementStatus("Incomplete");
+            }}
+          />
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block">
               <span className="field-label">Requirement Status</span>
-              <select name="requirementStatus" className="input select-input mt-2" defaultValue={record?.requirementStatus ?? "Incomplete"}>
+              <select
+                name="requirementStatus"
+                className={`input select-input mt-2 ${requirementStatus === "Complete" ? "text-green-700" : "text-red-700"}`}
+                value={allRequirementsChecked ? requirementStatus : "Incomplete"}
+                onChange={(event) => setRequirementStatus(event.target.value === "Complete" && allRequirementsChecked ? "Complete" : "Incomplete")}
+              >
                 <option>Incomplete</option>
-                <option>Complete</option>
+                <option disabled={!allRequirementsChecked}>Complete</option>
               </select>
+              {!allRequirementsChecked && (
+                <p className="mt-2 text-[11px] text-[#777]">Check every requirement and laboratory requirement before selecting Complete.</p>
+              )}
             </label>
             <FormField
               label="Requirements follow-up date"
@@ -1835,14 +1886,15 @@ function EmployeeRequirementChecklist({
   title,
   name,
   items,
-  initialChecked = [],
+  checked,
+  onChange,
 }: {
   title: string;
   name: string;
   items: string[];
-  initialChecked?: string[];
+  checked: string[];
+  onChange: (checked: string[]) => void;
 }) {
-  const [checked, setChecked] = useState(initialChecked);
   return (
     <fieldset className="grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
       <legend className="mb-4 text-[10px] font-bold uppercase tracking-[.14em] text-[#1f6ea6]">{title}</legend>
@@ -1856,7 +1908,7 @@ function EmployeeRequirementChecklist({
               checked={checked.includes(item)}
               onChange={(event) => {
                 const isChecked = event.currentTarget.checked;
-                setChecked((items) => isChecked ? [...items, item] : items.filter((entry) => entry !== item));
+                onChange(isChecked ? [...checked, item] : checked.filter((entry) => entry !== item));
               }}
               className="size-4 shrink-0 accent-[#1f6ea6]"
             />
@@ -1902,7 +1954,7 @@ function EmployeeDetails({
         return [field.label, value && "type" in field && field.type === "date" ? formatDate(value) : value];
       }),
     ),
-    ["Requirement Status", record.requirementStatus ?? "Incomplete"],
+    ["Requirement Status", getRequirementStatus(record)],
     ["Requirements follow-up date", record.requirementFollowUpDate && formatDate(record.requirementFollowUpDate)],
     ...(record.archived ? [["Directory Status", "Archived"]] : []),
   ];
@@ -1912,7 +1964,7 @@ function EmployeeDetails({
         {fields.map(([label, value]) => (
           <div key={label} className="bg-white p-4">
             <dt className="field-label">{label}</dt>
-            <dd className="mt-1.5 wrap-break-word whitespace-pre-wrap text-sm font-medium">{value || "—"}</dd>
+            <dd className="mt-1.5 wrap-break-word whitespace-pre-wrap text-sm font-medium">{label === "Requirement Status" ? <Status value={getRequirementStatus(record)} /> : value || "—"}</dd>
           </div>
         ))}
       </dl>
@@ -2317,9 +2369,10 @@ function Status({ value }: { value: string }) {
     "Administrator",
     "Deposited",
     "Approved",
+    "Complete",
   ].includes(value)
     ? "status-good"
-    : ["Overdue", "Cancelled", "Voided", "Bounced", "Inactive", "Rejected"].includes(value)
+    : ["Overdue", "Cancelled", "Voided", "Bounced", "Inactive", "Rejected", "Incomplete"].includes(value)
       ? "status-alert"
       : ["Partial", "Partially Collected", "Partially Paid", "For Deposit", "For Clearing"].includes(
             value,

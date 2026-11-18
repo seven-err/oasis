@@ -1,9 +1,12 @@
+import { ReportDateRange, reportDateRangeLabel, useReportDateRanges, inReportDateRange } from "@/components/ReportDateRange";
 import { Download, FileText, Printer } from "lucide-react";
 import { useMemo, useState } from "react";
+import { flushSync } from "react-dom";
+import { usePrintReport } from "@/components/usePrintReport";
 import { payableService } from "./store";
 import type { PayablePayment, PayableReportKind, PayableViewModel } from "./types";
-import { PanelTitle, StatusBadge } from "./ui";
-import { downloadCsv, formatDate, peso } from "./utils";
+import { PanelTitle } from "./ui";
+import { downloadCsv } from "./utils";
 
 type Props = {
   records: PayableViewModel[];
@@ -74,6 +77,10 @@ const REPORTS: { kind: PayableReportKind; title: string; detail: string }[] = [
   },
 ];
 
+function hasDateColumn(kind: PayableReportKind) {
+  return !['by_category', 'by_payee', 'by_method'].includes(kind);
+}
+
 function activeRecords(records: PayableViewModel[]) {
   return records.filter((r) => !r.archivedAt);
 }
@@ -84,7 +91,7 @@ function selectPayableRows(
   dateFrom: string,
   dateTo: string,
 ): PayableViewModel[] {
-  const active = activeRecords(records);
+  const active = activeRecords(records).filter((r) => inReportDateRange(r.invoiceDate, dateFrom, dateTo));
   const approved = active.filter((r) => r.approvalStatus === "Approved");
 
   switch (kind) {
@@ -196,65 +203,86 @@ function methodExportRows(payments: PayablePayment[]) {
 }
 
 export function PayableReports({ records, onBack, notify }: Props) {
+  const { printReport, printSheet } = usePrintReport();
   const user = payableService.getUser();
   const allPayments = useMemo(() => payableService.allPayments(), [records]);
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const { rangeFor: storedRangeFor, setRange } = useReportDateRanges<PayableReportKind>();
+  const rangeFor = (kind: PayableReportKind) => hasDateColumn(kind) ? storedRangeFor(kind) : { from: "", to: "" };
   const [active, setActive] = useState<PayableReportKind>("complete_register");
+  const { from: dateFrom, to: dateTo } = rangeFor(active);
 
-  const previewPayables = useMemo(
-    () => selectPayableRows(active, records, dateFrom, dateTo),
-    [active, records, dateFrom, dateTo],
-  );
+  const reportRows = (kind: PayableReportKind): Record<string, string | number>[] => {
+    const { from: dateFrom, to: dateTo } = rangeFor(kind);
+    const rows = selectPayableRows(kind, records, dateFrom, dateTo);
+    const payments = allPayments.filter((p) => inReportDateRange(p.paymentDate, dateFrom, dateTo));
+    switch (kind) {
+      case "payment_history": return paymentExportRows(payments, records);
+      case "by_method": return methodExportRows(payments);
+      case "by_category": return groupedExport(rows, "categoryName", "Category");
+      case "by_payee": return groupedExport(rows, "payeeName", "Payee");
+      default: return payableExportRows(rows);
+    }
+  };
 
-  const reportCount = (kind: PayableReportKind) => {
-    if (kind === "payment_history") return allPayments.length;
+  const previewRows = (kind: PayableReportKind): Record<string, string | number>[] =>
+    reportRows(kind).map((row): Record<string, string | number> => {
+    if (kind === "payment_history") {
+      return {
+        Date: row.PaymentDate,
+        Invoice: row.PayableInvoice,
+        Payee: row.Payee,
+        Amount: row.AmountPaid,
+        Method: row.PaymentMethod,
+        Status: row.IsReversal === "Yes" ? "Reversal" : row.Reversed === "Yes" ? "Reversed" : "Valid",
+      };
+    }
+    if (kind === "by_category" || kind === "by_payee") {
+      return {
+        [kind === "by_category" ? "Category" : "Payee"]: row.Category ?? row.Payee,
+        Payables: row.Payables,
+        Total: row.TotalAmount,
+        Paid: row.AmountPaid,
+        Remaining: row.RemainingBalance,
+      };
+    }
     if (kind === "by_method") {
-      return methodExportRows(allPayments).length;
+      return { Method: row.PaymentMethod, Payments: row.Payments, Total: row.TotalAmount };
     }
-    if (kind === "by_category") {
-      return groupedExport(
-        selectPayableRows(kind, records, dateFrom, dateTo),
-        "categoryName",
-        "Category",
-      ).length;
+    return {
+      Invoice: row.InvoiceNumber,
+      Payee: row.Payee,
+      DueDate: row.DueDate,
+      Total: row.TotalAmount,
+      Paid: row.AmountPaid,
+      Remaining: row.RemainingBalance,
+      PaymentStatus: row.PaymentStatus,
+      ApprovalStatus: row.ApprovalStatus,
+    };
+  });
+  const preview = previewRows(active);
+  const columns = preview.length ? Object.keys(preview[0]) : [];
+  const reportTitle = REPORTS.find((r) => r.kind === active)?.title ?? "";
+  const currency = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" });
+  const displayValue = (key: string, value: string | number) =>
+    ["Amount", "Total", "Paid", "Remaining"].includes(key) ? currency.format(Number(value)) : value;
+
+  const validDateRange = (kind: PayableReportKind) => {
+    const { from: dateFrom, to: dateTo } = rangeFor(kind);
+    if (dateFrom && dateTo && dateFrom > dateTo) {
+      notify("The start date must be on or before the end date.");
+      return false;
     }
-    if (kind === "by_payee") {
-      return groupedExport(
-        selectPayableRows(kind, records, dateFrom, dateTo),
-        "payeeName",
-        "Payee",
-      ).length;
-    }
-    return selectPayableRows(kind, records, dateFrom, dateTo).length;
+    return true;
   };
 
   const runExport = (kind: PayableReportKind) => {
+    if (!validDateRange(kind)) return;
     if (!user.permissions.exportReports) {
       notify("You are not authorized to export reports.");
       return;
     }
 
-    let exported: Record<string, string | number>[] = [];
-    if (kind === "payment_history") {
-      exported = paymentExportRows(allPayments, records);
-    } else if (kind === "by_method") {
-      exported = methodExportRows(allPayments);
-    } else if (kind === "by_category") {
-      exported = groupedExport(
-        selectPayableRows(kind, records, dateFrom, dateTo),
-        "categoryName",
-        "Category",
-      );
-    } else if (kind === "by_payee") {
-      exported = groupedExport(
-        selectPayableRows(kind, records, dateFrom, dateTo),
-        "payeeName",
-        "Payee",
-      );
-    } else {
-      exported = payableExportRows(selectPayableRows(kind, records, dateFrom, dateTo));
-    }
+    const exported = reportRows(kind);
 
     if (!exported.length) {
       notify("No records match this report.");
@@ -272,40 +300,15 @@ export function PayableReports({ records, onBack, notify }: Props) {
           title="Payable reports"
           subtitle="Filters, printing, and authorized exports"
         />
-        <div className="grid gap-3 border-b border-[#d0e3ef] p-4 sm:grid-cols-2 md:grid-cols-3">
-          <label className="block">
-            <span className="field-label">Invoice date from</span>
-            <input
-              type="date"
-              className="input mt-2"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-            />
-          </label>
-          <label className="block">
-            <span className="field-label">Invoice date to</span>
-            <input
-              type="date"
-              className="input mt-2"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-            />
-          </label>
-          <div className="flex items-end">
-            <p className="text-[11px] text-[#888]">
-              Date range applies to the date-range report and can narrow related previews.
-            </p>
-          </div>
-        </div>
       </section>
 
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {REPORTS.map((report) => {
-          const count = reportCount(report.kind);
+          const count = reportRows(report.kind).length;
           return (
             <section
               key={report.kind}
-              className={`panel p-5 ${active === report.kind ? "ring-2 ring-[#1f6ea6]" : ""}`}
+              className={`panel p-5 ${active === report.kind ? "section-highlight" : ""}`}
             >
               <button
                 type="button"
@@ -322,6 +325,19 @@ export function PayableReports({ records, onBack, notify }: Props) {
                   </div>
                 </div>
               </button>
+
+              {hasDateColumn(report.kind) && (
+                <ReportDateRange
+                  compact
+                  dateLabel={report.kind === "payment_history" || report.kind === "by_method" ? "Payment date" : "Invoice date"}
+                  dateFrom={rangeFor(report.kind).from}
+                  dateTo={rangeFor(report.kind).to}
+                  onChange={(from, to) => {
+                    setRange(report.kind, from, to);
+                    setActive(report.kind);
+                  }}
+                />
+              )}
               <div className="my-4 grid grid-cols-2 gap-3 border-y border-[#d7e8f3] py-3">
                 <div>
                   <span className="field-label">Records</span>
@@ -332,12 +348,13 @@ export function PayableReports({ records, onBack, notify }: Props) {
                   <strong className="mt-1 block text-xs">CSV / Print</strong>
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 px-2">
                 <button
                   className="secondary-btn flex-1"
                   onClick={() => {
-                    setActive(report.kind);
-                    window.print();
+                    if (!validDateRange(report.kind)) return;
+                    flushSync(() => setActive(report.kind));
+                    printReport(hasDateColumn(report.kind) ? `${report.title} · ${reportDateRangeLabel(rangeFor(report.kind).from, rangeFor(report.kind).to)}` : report.title, previewRows(report.kind));
                   }}
                 >
                   <Printer size={14} /> Print
@@ -351,82 +368,33 @@ export function PayableReports({ records, onBack, notify }: Props) {
         })}
       </div>
 
-      <section className="panel print:border-0">
+      <section className="panel">
         <PanelTitle
-          title="Report preview"
-          subtitle={`${REPORTS.find((r) => r.kind === active)?.title ?? ""} · ${
-            active === "payment_history"
-              ? allPayments.length
-              : active === "by_method"
-                ? methodExportRows(allPayments).length
-                : previewPayables.length
-          } rows`}
+          title={reportTitle}
+          subtitle={`Report preview · ${preview.length} rows${hasDateColumn(active) ? ` · ${reportDateRangeLabel(dateFrom, dateTo)}` : ""}`}
         />
-        <div className="w-full">
-          {active === "payment_history" ? (
-            <table className="w-full table-fixed">
+        <div className="w-full overflow-x-auto">
+          {preview.length ? (
+            <table className="w-full">
               <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Invoice</th>
-                  <th>Amount</th>
-                  <th>Method</th>
-                  <th className="hidden sm:table-cell">Status</th>
-                </tr>
+                <tr>{columns.map((key) => (
+                  <th key={key}>{key.replace(/([a-z])([A-Z])/g, "$1 $2")}</th>
+                ))}</tr>
               </thead>
               <tbody>
-                {allPayments.slice(0, 25).map((p) => {
-                  const payable = records.find((r) => r.id === p.payableId);
-                  return (
-                    <tr key={p.id}>
-                      <td>{formatDate(p.paymentDate)}</td>
-                      <td className="overflow-hidden text-ellipsis">
-                        {payable?.invoiceNumber ?? "—"}
-                      </td>
-                      <td>{peso.format(p.amountPaid)}</td>
-                      <td>{p.paymentMethod}</td>
-                      <td className="hidden sm:table-cell">
-                        {p.isReversal ? "Reversal" : p.reversedAt ? "Reversed" : "Valid"}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          ) : (
-            <table className="w-full table-fixed">
-              <thead>
-                <tr>
-                  <th>Invoice</th>
-                  <th>Payee</th>
-                  <th className="hidden sm:table-cell">Due</th>
-                  <th>Balance</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {previewPayables.slice(0, 25).map((r) => (
-                  <tr key={r.id}>
-                    <td className="overflow-hidden text-ellipsis font-semibold">
-                      {r.invoiceNumber}
-                    </td>
-                    <td className="overflow-hidden text-ellipsis">{r.payeeName}</td>
-                    <td className="hidden overflow-hidden text-ellipsis sm:table-cell">
-                      {formatDate(r.dueDate)}
-                    </td>
-                    <td className="overflow-hidden text-ellipsis">
-                      {peso.format(r.remainingBalance)}
-                    </td>
-                    <td className="overflow-hidden text-ellipsis">
-                      <StatusBadge value={r.paymentStatus} />
-                    </td>
+                {preview.map((row, index) => (
+                  <tr key={index}>
+                    {columns.map((key) => (
+                      <td key={key}>{displayValue(key, row[key])}</td>
+                    ))}
                   </tr>
                 ))}
               </tbody>
             </table>
-          )}
+          ) : <p className="px-5 py-8 text-xs text-[#888]">No records match this report.</p>}
         </div>
       </section>
+      {printSheet}
     </div>
   );
 }

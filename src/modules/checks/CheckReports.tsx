@@ -1,5 +1,7 @@
+import { ReportDateRange, reportDateRangeLabel, useReportDateRanges, inReportDateRange } from "@/components/ReportDateRange";
 import { Download, FileCheck2, Printer } from "lucide-react";
 import { useMemo, useState } from "react";
+import { usePrintReport } from "@/components/usePrintReport";
 import { checkService } from "./store";
 import type { CheckRecord, CheckReportKind } from "./types";
 import { PanelTitle, StatusBadge } from "./ui";
@@ -78,13 +80,17 @@ const REPORTS: {
   },
 ];
 
+function hasDateColumn(kind: CheckReportKind) {
+  return !['by_bank', 'by_payee', 'by_drawer', 'by_prepared_by'].includes(kind);
+}
+
 function selectRows(
   kind: CheckReportKind,
   records: CheckRecord[],
   dateFrom: string,
   dateTo: string,
 ): CheckRecord[] {
-  const active = records.filter((r) => !r.archivedAt);
+  const active = records.filter((r) => !r.archivedAt && inReportDateRange(r.checkDate, dateFrom, dateTo));
   switch (kind) {
     case "complete_register":
       return active;
@@ -162,21 +168,34 @@ function exportRows(
 }
 
 export function CheckReports({ records, onBack, notify }: Props) {
+  const { printReport, printSheet } = usePrintReport();
   const user = checkService.getUser();
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const { rangeFor: storedRangeFor, setRange } = useReportDateRanges<CheckReportKind>();
+  const rangeFor = (kind: CheckReportKind) => hasDateColumn(kind) ? storedRangeFor(kind) : { from: "", to: "" };
   const [active, setActive] = useState<CheckReportKind>("complete_register");
+  const { from: dateFrom, to: dateTo } = rangeFor(active);
 
   const preview = useMemo(
     () => selectRows(active, records, dateFrom, dateTo),
     [active, records, dateFrom, dateTo],
   );
 
+  const validDateRange = (kind: CheckReportKind) => {
+    const { from: dateFrom, to: dateTo } = rangeFor(kind);
+    if (dateFrom && dateTo && dateFrom > dateTo) {
+      notify("The start date must be on or before the end date.");
+      return false;
+    }
+    return true;
+  };
+
   const runExport = (kind: CheckReportKind) => {
+    if (!validDateRange(kind)) return;
     if (!user.permissions.exportReports) {
       notify("You are not authorized to export reports.");
       return;
     }
+    const { from: dateFrom, to: dateTo } = rangeFor(kind);
     const rows = selectRows(kind, records, dateFrom, dateTo);
     const exported = exportRows(kind, rows, user.permissions.viewAccountNumber);
     if (!exported.length) {
@@ -195,40 +214,16 @@ export function CheckReports({ records, onBack, notify }: Props) {
           title="Check reports"
           subtitle="Filters, printing, and authorized exports · attachments excluded from CSV"
         />
-        <div className="grid gap-3 border-b border-[#d0e3ef] p-4 sm:grid-cols-2 md:grid-cols-3">
-          <label className="block">
-            <span className="field-label">Check date from</span>
-            <input
-              type="date"
-              className="input mt-2"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-            />
-          </label>
-          <label className="block">
-            <span className="field-label">Check date to</span>
-            <input
-              type="date"
-              className="input mt-2"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-            />
-          </label>
-          <div className="flex items-end">
-            <p className="text-[11px] text-[#888]">
-              Date range applies to the date-range report and can narrow preview exports.
-            </p>
-          </div>
-        </div>
+
       </section>
 
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {REPORTS.map((report) => {
-          const count = selectRows(report.kind, records, dateFrom, dateTo).length;
+          const count = selectRows(report.kind, records, rangeFor(report.kind).from, rangeFor(report.kind).to).length;
           return (
             <section
               key={report.kind}
-              className={`panel p-5 ${active === report.kind ? "ring-2 ring-[#1f6ea6]" : ""}`}
+              className={`panel p-5 ${active === report.kind ? "section-highlight" : ""}`}
             >
               <button
                 type="button"
@@ -245,6 +240,18 @@ export function CheckReports({ records, onBack, notify }: Props) {
                   </div>
                 </div>
               </button>
+              {hasDateColumn(report.kind) && (
+                <ReportDateRange
+                  compact
+                  dateLabel={"Check date"}
+                  dateFrom={rangeFor(report.kind).from}
+                  dateTo={rangeFor(report.kind).to}
+                  onChange={(from, to) => {
+                    setRange(report.kind, from, to);
+                    setActive(report.kind);
+                  }}
+                />
+              )}
               <div className="my-4 grid grid-cols-2 gap-3 border-y border-[#d7e8f3] py-3">
                 <div>
                   <span className="field-label">Records</span>
@@ -257,12 +264,25 @@ export function CheckReports({ records, onBack, notify }: Props) {
                   </strong>
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 px-2">
                 <button
                   className="secondary-btn flex-1"
                   onClick={() => {
+                    if (!validDateRange(report.kind)) return;
                     setActive(report.kind);
-                    window.print();
+                    const rows = selectRows(report.kind, records, rangeFor(report.kind).from, rangeFor(report.kind).to);
+                    const printedRows = report.kind === "by_bank" || report.kind === "by_payee" || report.kind === "by_drawer" || report.kind === "by_prepared_by"
+                      ? exportRows(report.kind, rows, user.permissions.viewAccountNumber)
+                      : rows.map((row) => ({
+                          CheckNumber: row.checkNumber,
+                          Type: row.checkType,
+                          Date: row.checkDate,
+                          Payee: row.payeeName,
+                          Bank: row.bankName,
+                          Amount: row.checkAmount,
+                          Status: row.checkStatus,
+                        }));
+                    void printReport(hasDateColumn(report.kind) ? `${report.title} · ${reportDateRangeLabel(rangeFor(report.kind).from, rangeFor(report.kind).to)}` : report.title, printedRows);
                   }}
                 >
                   <Printer size={14} /> Print
@@ -279,7 +299,7 @@ export function CheckReports({ records, onBack, notify }: Props) {
       <section className="panel print:border-0">
         <PanelTitle
           title="Report preview"
-          subtitle={`${REPORTS.find((r) => r.kind === active)?.title ?? ""} · ${preview.length} rows`}
+          subtitle={`${REPORTS.find((r) => r.kind === active)?.title ?? ""} · ${preview.length} rows${hasDateColumn(active) ? ` · ${reportDateRangeLabel(dateFrom, dateTo)}` : ""}`}
         />
         <div className="w-full">
           <table className="w-full table-fixed">
@@ -319,6 +339,7 @@ export function CheckReports({ records, onBack, notify }: Props) {
           </p>
         )}
       </section>
+      {printSheet}
     </div>
   );
 }

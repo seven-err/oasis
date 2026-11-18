@@ -1,5 +1,7 @@
+import { ReportDateRange, reportDateRangeLabel, useReportDateRanges, inReportDateRange } from "@/components/ReportDateRange";
 import { Download, FileText, Printer } from "lucide-react";
 import { useMemo, useState } from "react";
+import { usePrintReport } from "@/components/usePrintReport";
 import { receivableService } from "./store";
 import type {
   ReceivableCollection,
@@ -83,6 +85,10 @@ const REPORTS: { kind: ReceivableReportKind; title: string; detail: string }[] =
   },
 ];
 
+function hasDateColumn(kind: ReceivableReportKind) {
+  return !['collections_by_customer', 'collections_by_method', 'collections_by_bank', 'by_prepared_by'].includes(kind);
+}
+
 function activeRecords(records: ReceivableViewModel[]) {
   return records.filter((r) => !r.archivedAt);
 }
@@ -93,7 +99,7 @@ function selectReceivableRows(
   dateFrom: string,
   dateTo: string,
 ): ReceivableViewModel[] {
-  const active = activeRecords(records);
+  const active = activeRecords(records).filter((r) => inReportDateRange(r.invoiceDate, dateFrom, dateTo));
 
   switch (kind) {
     case "complete_register":
@@ -225,12 +231,14 @@ function preparedByExport(rows: ReceivableViewModel[]) {
 }
 
 export function ReceivableReports({ records, onBack, notify }: Props) {
+  const { printReport, printSheet } = usePrintReport();
   const user = receivableService.getUser();
   const allCollections = useMemo(() => receivableService.allCollections(), [records]);
   const allFollowUps = useMemo(() => receivableService.allFollowUps(), [records]);
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const { rangeFor: storedRangeFor, setRange } = useReportDateRanges<ReceivableReportKind>();
+  const rangeFor = (kind: ReceivableReportKind) => hasDateColumn(kind) ? storedRangeFor(kind) : { from: "", to: "" };
   const [active, setActive] = useState<ReceivableReportKind>("complete_register");
+  const { from: dateFrom, to: dateTo } = rangeFor(active);
 
   const previewReceivables = useMemo(
     () => selectReceivableRows(active, records, dateFrom, dateTo),
@@ -238,38 +246,39 @@ export function ReceivableReports({ records, onBack, notify }: Props) {
   );
 
   const reportCount = (kind: ReceivableReportKind) => {
-    if (kind === "collections_by_date") return validCollections(allCollections).length;
+    const { from: dateFrom, to: dateTo } = rangeFor(kind);
+    const collections = allCollections.filter((c) => inReportDateRange(c.collectionDate, dateFrom, dateTo));
+    const followUps = allFollowUps.filter((f) => inReportDateRange(f.followUpDate, dateFrom, dateTo));
+    if (kind === "collections_by_date") return validCollections(collections).length;
     if (kind === "collections_by_customer")
-      return groupCollectionsBy(allCollections, records, "customer").length;
+      return groupCollectionsBy(collections, records, "customer").length;
     if (kind === "collections_by_method")
-      return groupCollectionsBy(allCollections, records, "method").length;
+      return groupCollectionsBy(collections, records, "method").length;
     if (kind === "collections_by_bank")
-      return groupCollectionsBy(allCollections, records, "bank").length;
-    if (kind === "follow_up") return allFollowUps.length;
+      return groupCollectionsBy(collections, records, "bank").length;
+    if (kind === "follow_up") return followUps.length;
     if (kind === "by_prepared_by")
       return preparedByExport(selectReceivableRows(kind, records, dateFrom, dateTo))
         .length;
     return selectReceivableRows(kind, records, dateFrom, dateTo).length;
   };
 
-  const runExport = (kind: ReceivableReportKind) => {
-    if (!user.permissions.exportReports) {
-      notify("You are not authorized to export reports.");
-      return;
-    }
-
+  const reportRows = (kind: ReceivableReportKind): Record<string, string | number>[] => {
+    const { from: dateFrom, to: dateTo } = rangeFor(kind);
+    const collections = allCollections.filter((c) => inReportDateRange(c.collectionDate, dateFrom, dateTo));
+    const followUps = allFollowUps.filter((f) => inReportDateRange(f.followUpDate, dateFrom, dateTo));
     let exported: Record<string, string | number>[] = [];
     if (kind === "collections_by_date") {
-      exported = collectionExportRows(allCollections, records);
+      exported = collectionExportRows(collections, records);
     } else if (kind === "collections_by_customer") {
-      exported = groupCollectionsBy(allCollections, records, "customer");
+      exported = groupCollectionsBy(collections, records, "customer");
     } else if (kind === "collections_by_method") {
-      exported = groupCollectionsBy(allCollections, records, "method");
+      exported = groupCollectionsBy(collections, records, "method");
     } else if (kind === "collections_by_bank") {
-      exported = groupCollectionsBy(allCollections, records, "bank");
+      exported = groupCollectionsBy(collections, records, "bank");
     } else if (kind === "follow_up") {
       const byId = new Map(records.map((r) => [r.id, r]));
-      exported = allFollowUps.map((f) => {
+      exported = followUps.map((f) => {
         const receivable = byId.get(f.receivableId);
         return {
           InvoiceNumber: receivable?.invoiceNumber ?? "",
@@ -289,6 +298,27 @@ export function ReceivableReports({ records, onBack, notify }: Props) {
       );
     }
 
+    return exported;
+  };
+
+  const validDateRange = (kind: ReceivableReportKind) => {
+    const { from: dateFrom, to: dateTo } = rangeFor(kind);
+    if (dateFrom && dateTo && dateFrom > dateTo) {
+      notify("The start date must be on or before the end date.");
+      return false;
+    }
+    return true;
+  };
+
+  const runExport = (kind: ReceivableReportKind) => {
+    if (!validDateRange(kind)) return;
+    if (!user.permissions.exportReports) {
+      notify("You are not authorized to export reports.");
+      return;
+    }
+
+    const exported = reportRows(kind);
+
     if (!exported.length) {
       notify("No records match this report.");
       return;
@@ -296,6 +326,9 @@ export function ReceivableReports({ records, onBack, notify }: Props) {
     downloadCsv(`oasis-receivable-${kind}.csv`, exported);
     notify("Authorized export generated.");
   };
+
+  const previewCollections = allCollections.filter((c) => inReportDateRange(c.collectionDate, dateFrom, dateTo));
+  const previewFollowUps = allFollowUps.filter((f) => inReportDateRange(f.followUpDate, dateFrom, dateTo));
 
   const isCollectionKind =
     active === "collections_by_date" ||
@@ -311,32 +344,7 @@ export function ReceivableReports({ records, onBack, notify }: Props) {
           title="Receivable reports"
           subtitle="Filters, printing, and authorized exports"
         />
-        <div className="grid gap-3 border-b border-[#d0e3ef] p-4 sm:grid-cols-2 md:grid-cols-3">
-          <label className="block">
-            <span className="field-label">Invoice date from</span>
-            <input
-              type="date"
-              className="input mt-2"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-            />
-          </label>
-          <label className="block">
-            <span className="field-label">Invoice date to</span>
-            <input
-              type="date"
-              className="input mt-2"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-            />
-          </label>
-          <div className="flex items-end">
-            <p className="text-[11px] text-[#888]">
-              Date range applies to the date-range report and can narrow related previews.
-              Customer data and attachments remain permission-protected.
-            </p>
-          </div>
-        </div>
+
       </section>
 
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
@@ -345,7 +353,7 @@ export function ReceivableReports({ records, onBack, notify }: Props) {
           return (
             <section
               key={report.kind}
-              className={`panel p-5 ${active === report.kind ? "ring-2 ring-[#1f6ea6]" : ""}`}
+              className={`panel p-5 ${active === report.kind ? "section-highlight" : ""}`}
             >
               <button
                 type="button"
@@ -362,6 +370,18 @@ export function ReceivableReports({ records, onBack, notify }: Props) {
                   </div>
                 </div>
               </button>
+              {hasDateColumn(report.kind) && (
+                <ReportDateRange
+                  compact
+                  dateLabel={report.kind.startsWith("collections_") ? "Collection date" : report.kind === "follow_up" ? "Follow-up date" : "Invoice date"}
+                  dateFrom={rangeFor(report.kind).from}
+                  dateTo={rangeFor(report.kind).to}
+                  onChange={(from, to) => {
+                    setRange(report.kind, from, to);
+                    setActive(report.kind);
+                  }}
+                />
+              )}
               <div className="my-4 grid grid-cols-2 gap-3 border-y border-[#d7e8f3] py-3">
                 <div>
                   <span className="field-label">Records</span>
@@ -372,12 +392,25 @@ export function ReceivableReports({ records, onBack, notify }: Props) {
                   <strong className="mt-1 block text-xs">CSV / Print</strong>
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 px-2">
                 <button
                   className="secondary-btn flex-1"
                   onClick={() => {
+                    if (!validDateRange(report.kind)) return;
                     setActive(report.kind);
-                    window.print();
+                    const rows = reportRows(report.kind).map((row) => {
+                      if (!("TotalReceivable" in row) || report.kind === "by_prepared_by") return row;
+                      return {
+                        Invoice: row.InvoiceNumber,
+                        Customer: row.CustomerName,
+                        DueDate: row.DueDate,
+                        Total: row.TotalReceivable,
+                        Collected: row.AmountPaid,
+                        Remaining: row.RemainingBalance,
+                        Status: row.CollectionStatus,
+                      };
+                    });
+                    void printReport(hasDateColumn(report.kind) ? `${report.title} · ${reportDateRangeLabel(rangeFor(report.kind).from, rangeFor(report.kind).to)}` : report.title, rows);
                   }}
                 >
                   <Printer size={14} /> Print
@@ -394,7 +427,7 @@ export function ReceivableReports({ records, onBack, notify }: Props) {
       <section className="panel print:border-0">
         <PanelTitle
           title="Report preview"
-          subtitle={`${REPORTS.find((r) => r.kind === active)?.title ?? ""} · ${reportCount(active)} rows`}
+          subtitle={`${REPORTS.find((r) => r.kind === active)?.title ?? ""} · ${reportCount(active)} rows${hasDateColumn(active) ? ` · ${reportDateRangeLabel(dateFrom, dateTo)}` : ""}`}
         />
         <div className="w-full">
           {active === "collections_by_date" ? (
@@ -409,7 +442,7 @@ export function ReceivableReports({ records, onBack, notify }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {validCollections(allCollections)
+                {validCollections(previewCollections)
                   .slice(0, 25)
                   .map((c) => {
                     const receivable = records.find((r) => r.id === c.receivableId);
@@ -441,7 +474,7 @@ export function ReceivableReports({ records, onBack, notify }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {allFollowUps.slice(0, 25).map((f) => {
+                {previewFollowUps.slice(0, 25).map((f) => {
                   const receivable = records.find((r) => r.id === f.receivableId);
                   return (
                     <tr key={f.id}>
@@ -472,10 +505,10 @@ export function ReceivableReports({ records, onBack, notify }: Props) {
               </thead>
               <tbody>
                 {(active === "collections_by_customer"
-                  ? groupCollectionsBy(allCollections, records, "customer")
+                  ? groupCollectionsBy(previewCollections, records, "customer")
                   : active === "collections_by_method"
-                    ? groupCollectionsBy(allCollections, records, "method")
-                    : groupCollectionsBy(allCollections, records, "bank")
+                    ? groupCollectionsBy(previewCollections, records, "method")
+                    : groupCollectionsBy(previewCollections, records, "bank")
                 )
                   .slice(0, 25)
                   .map((row) => {
@@ -524,6 +557,7 @@ export function ReceivableReports({ records, onBack, notify }: Props) {
           )}
         </div>
       </section>
+      {printSheet}
     </div>
   );
 }

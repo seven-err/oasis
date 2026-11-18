@@ -1,0 +1,2 @@
+Tool: built-in image_gen
+Use case: background-extraction. Edit target: supplied OASIS logo. Remove only the flat pale blue background, making it fully transparent including openings between the letters and shapes. Preserve the complete existing logo and the exact text 'Diagnostic & Laboratory Center', colors, typography, proportions and horizontal composition unchanged. Keep tight original framing. No added text, no new elements, no background, no shadow. This is a faithful transparent cutout for a printed report header.
