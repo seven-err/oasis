@@ -9,10 +9,11 @@ import {
   Undo2,
   XCircle,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PAYMENT_METHODS } from "./constants";
 import { payableService } from "./store";
 import type {
+  PayableView,
   PaymentFormValues,
   PayablePayment,
   PayableViewModel,
@@ -32,7 +33,7 @@ import { formatDate, formatDateTime, peso, todayIsoDate } from "./utils";
 
 type Props = {
   record: PayableViewModel;
-  focus?: "payments" | "approve";
+  focus?: Extract<PayableView, { mode: "details" }>["focus"];
   onBack: () => void;
   onEdit: () => void;
   onChanged: () => void;
@@ -56,6 +57,8 @@ export function PayableDetails({
   onChanged,
   notify,
 }: Props) {
+  const paymentHistoryRef = useRef<HTMLElement>(null);
+  const paymentFormRef = useRef<HTMLElement>(null);
   const user = payableService.getUser();
   const [payments, setPayments] = useState(() => payableService.paymentsFor(record.id));
   const activity = useMemo(
@@ -76,6 +79,21 @@ export function PayableDetails({
     if (focus === "payments") setShowPaymentForm(true);
     if (focus === "approve") setShowApprovePanel(true);
   }, [focus]);
+
+  useEffect(() => {
+    const target = focus === "payment-history"
+      ? paymentHistoryRef
+      : focus === "payments" && showPaymentForm
+        ? paymentFormRef
+        : null;
+    if (!target) return;
+    // Run after the view history hook resets the page scroll position.
+    const frame = requestAnimationFrame(() => {
+      target.current?.focus({ preventScroll: true });
+      target.current?.scrollIntoView({ behavior: "instant", block: "start" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focus, record.id, showPaymentForm]);
 
   const refreshPayments = () => setPayments(payableService.paymentsFor(record.id));
 
@@ -231,14 +249,6 @@ export function PayableDetails({
                 <CheckCircle2 size={15} /> Approve / Reject
               </button>
             )}
-            {canRecordPayment && (
-              <button
-                onClick={() => setShowPaymentForm((x) => !x)}
-                className="primary-btn"
-              >
-                <Banknote size={15} /> Record payment
-              </button>
-            )}
             {record.archivedAt ? (
               <button onClick={onRestore} className="secondary-btn">
                 <RotateCcw size={15} /> Restore
@@ -291,7 +301,14 @@ export function PayableDetails({
       )}
 
       {showPaymentForm && canRecordPayment && (
-        <section className="panel">
+        <section
+          ref={paymentFormRef}
+          tabIndex={-1}
+          aria-label="Record payment"
+          className={`panel scroll-mt-24 outline-none ${
+            focus === "payments" ? "border-[#1f6ea6] bg-[#f0f8ff] ring-2 ring-[#1f6ea6] ring-inset" : ""
+          }`}
+        >
           <PanelTitle
             title="Record payment"
             subtitle={`Remaining balance ${peso.format(record.remainingBalance)}. Overpayments are not allowed.`}
@@ -450,7 +467,14 @@ export function PayableDetails({
         />
       </SectionCard>
 
-      <section className="panel">
+      <section
+        ref={paymentHistoryRef}
+        tabIndex={-1}
+        aria-label="Payment history"
+        className={`panel scroll-mt-24 outline-none ${
+          focus === "payment-history" ? "border-[#1f6ea6] bg-[#f0f8ff] ring-2 ring-[#1f6ea6] ring-inset" : ""
+        }`}
+      >
         <PanelTitle
           title="Payment history"
           subtitle="Valid payments contribute to Amount Paid. Reversals are retained for audit."

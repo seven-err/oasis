@@ -8,8 +8,8 @@ import {
   FileCheck2,
   MoreHorizontal,
   Pencil,
-  RotateCcw,
   Printer,
+  RotateCcw,
   Search,
   SlidersHorizontal,
   X,
@@ -365,7 +365,11 @@ export function CheckRegister({
                       <button
                         type="button"
                         className="truncate text-left text-sm font-semibold text-[#1f6ea6]"
-                        onClick={() => onView(row.id)}
+                        onClick={() => {
+                          setMenuId(null);
+                          onView(row.id);
+                        }}
+                        aria-label={`Open check ${row.checkNumber}`}
                       >
                         {row.checkNumber}
                       </button>
@@ -374,7 +378,7 @@ export function CheckRegister({
                         {row.checkType} · {row.bankName}
                       </p>
                     </div>
-                    <div className="relative shrink-0">
+                    <div className="relative shrink-0" onClick={(event) => event.stopPropagation()}>
                       <button
                         className="table-action"
                         aria-label={`Actions for ${row.checkNumber}`}
@@ -464,7 +468,7 @@ export function CheckRegister({
                       <td>
                         <StatusBadge value={row.checkStatus} />
                       </td>
-                      <td>
+                      <td onClick={(event) => event.stopPropagation()}>
                         <div className="relative flex justify-end">
                           <button
                             className="table-action"

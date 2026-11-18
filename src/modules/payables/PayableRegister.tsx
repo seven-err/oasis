@@ -9,8 +9,8 @@ import {
   History,
   MoreHorizontal,
   Pencil,
-  RotateCcw,
   Plus,
+  RotateCcw,
   Search,
   SlidersHorizontal,
   X,
@@ -47,6 +47,7 @@ type Props = {
   onView: (id: number) => void;
   onEdit: (id: number) => void;
   onRecordPayment: (id: number) => void;
+  onPaymentHistory: (id: number) => void;
   onApprove: (id: number) => void;
   onOpenReports: () => void;
   onChanged: () => void;
@@ -59,6 +60,7 @@ export function PayableRegister({
   onView,
   onEdit,
   onRecordPayment,
+  onPaymentHistory,
   onApprove,
   onOpenReports,
   onChanged,
@@ -175,7 +177,7 @@ export function PayableRegister({
           className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
           onClick={() => {
             setMenuId(null);
-            onRecordPayment(row.id);
+            onPaymentHistory(row.id);
           }}
         >
           <History size={14} /> Payment history
@@ -577,7 +579,11 @@ export function PayableRegister({
                       <button
                         type="button"
                         className="truncate text-left text-sm font-semibold text-[#1f6ea6]"
-                        onClick={() => onView(row.id)}
+                        onClick={() => {
+                          setMenuId(null);
+                          onView(row.id);
+                        }}
+                        aria-label={`Open payable ${row.invoiceNumber}`}
                       >
                         {row.invoiceNumber}
                       </button>
@@ -586,7 +592,7 @@ export function PayableRegister({
                         {row.categoryName} · Due {formatDate(row.dueDate)}
                       </p>
                     </div>
-                    <div className="relative shrink-0">
+                    <div className="relative shrink-0" onClick={(event) => event.stopPropagation()}>
                       <button
                         className="table-action"
                         aria-label={`Actions for ${row.invoiceNumber}`}
@@ -678,7 +684,7 @@ export function PayableRegister({
                       <td>
                         <StatusBadge value={row.approvalStatus} />
                       </td>
-                      <td>
+                      <td onClick={(event) => event.stopPropagation()}>
                         <div className="relative flex justify-end">
                           <button
                             className="table-action"
