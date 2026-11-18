@@ -147,7 +147,6 @@ function exportRows(
   }
 
   return records.map((r) => ({
-    CheckNumber: r.checkNumber,
     CheckType: r.checkType,
     CheckDate: r.checkDate,
     DateReceivedIssued: r.dateReceivedIssued,
@@ -274,7 +273,6 @@ export function CheckReports({ records, onBack, notify }: Props) {
                     const printedRows = report.kind === "by_bank" || report.kind === "by_payee" || report.kind === "by_drawer" || report.kind === "by_prepared_by"
                       ? exportRows(report.kind, rows, user.permissions.viewAccountNumber)
                       : rows.map((row) => ({
-                          CheckNumber: row.checkNumber,
                           Type: row.checkType,
                           Date: row.checkDate,
                           Payee: row.payeeName,
@@ -305,7 +303,6 @@ export function CheckReports({ records, onBack, notify }: Props) {
           <table className="w-full table-fixed">
             <thead>
               <tr>
-                <th>Check no.</th>
                 <th className="hidden sm:table-cell">Type</th>
                 <th>Payee</th>
                 <th className="hidden md:table-cell">Bank</th>
@@ -316,7 +313,6 @@ export function CheckReports({ records, onBack, notify }: Props) {
             <tbody>
               {preview.slice(0, 25).map((r) => (
                 <tr key={r.id}>
-                  <td className="overflow-hidden text-ellipsis font-semibold">{r.checkNumber}</td>
                   <td className="hidden overflow-hidden text-ellipsis sm:table-cell">
                     {r.checkType.replace(" Check", "")}
                   </td>

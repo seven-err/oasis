@@ -1385,7 +1385,6 @@ function Dashboard({
           <table>
             <thead>
               <tr>
-                <th>Check no.</th>
                 <th>Payee</th>
                 <th>Bank</th>
                 <th>Check date</th>
@@ -1399,7 +1398,6 @@ function Dashboard({
                 .slice(0, 4)
                 .map((x) => (
                   <tr key={x.id}>
-                    <td className="font-semibold">{x.checkNumber}</td>
                     <td>
                       <strong className="block text-xs">{x.payeeName}</strong>
                       <span className="mt-1 block text-[10px] text-[#888]">{x.checkType}</span>
@@ -2219,7 +2217,6 @@ function Reports({ checks, payables, receivables, employees, notify }: any) {
       Icon: FileCheck2,
       data: activeChecks,
       exportRows: activeChecks.map((x) => ({
-        CheckNumber: x.checkNumber,
         CheckType: x.checkType,
         Payee: x.payeeName,
         Drawer: x.drawerName,

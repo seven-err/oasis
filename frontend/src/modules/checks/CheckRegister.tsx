@@ -405,11 +405,10 @@ export function CheckRegister({
                           setMenuId(null);
                           onView(row.id);
                         }}
-                        aria-label={`Open check ${row.checkNumber}`}
+                        aria-label={`Open check for ${row.payeeName}`}
                       >
-                        {row.checkNumber}
+                        {row.payeeName}
                       </button>
-                      <p className="mt-1 truncate text-xs text-[#555]">{row.payeeName}</p>
                       <p className="mt-1 text-[10px] text-[#888]">
                         {row.checkType} · {row.bankName}
                       </p>
@@ -442,7 +441,6 @@ export function CheckRegister({
               <table className="w-full table-fixed">
                 <thead>
                   <tr>
-                    <SortHeader label="Check no." sortKey="checkNumber" />
                     <SortHeader label="Type" sortKey="checkType" />
                     <SortHeader label="Payee" sortKey="payeeName" />
                     <th className="hidden xl:table-cell">
@@ -478,16 +476,13 @@ export function CheckRegister({
                         onView(row.id);
                       })}
                     >
-                      <td className="overflow-hidden text-ellipsis font-semibold text-[#1f6ea6]">
-                        <button type="button" className="block max-w-full truncate text-left hover:underline" onClick={() => { setMenuId(null); onView(row.id); }} aria-label={`Open check ${row.checkNumber}`}>
-                          {row.checkNumber}
-                        </button>
-                      </td>
                       <td className="overflow-hidden text-ellipsis">
                         {row.checkType.replace(" Check", "")}
                       </td>
                       <td className="overflow-hidden text-ellipsis">
-                        <strong className="block truncate text-xs">{row.payeeName}</strong>
+                        <button type="button" className="block max-w-full truncate text-left text-xs font-bold hover:underline" onClick={() => { setMenuId(null); onView(row.id); }} aria-label={`Open check for ${row.payeeName}`}>
+                          {row.payeeName}
+                        </button>
                         <span className="mt-1 block truncate text-[10px] text-[#888]">
                           {row.drawerName}
                         </span>
