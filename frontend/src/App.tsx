@@ -220,63 +220,51 @@ function employeeDirectoryRows(employees: Employee[]) {
   }));
 }
 
-const initialEmployees: Employee[] = [
-  {
-    id: 1,
-    number: "EMP-00142",
-    name: "Alvarina, Miguel",
-    initials: "MA",
-    department: "Finance",
-    position: "Finance Administrator",
-    dateHired: "2019-06-17",
-    email: "m.alvarina@oasis.org",
+// People listed under two departments on the org chart are merged into one record.
+const initialEmployees: Employee[] = (
+  [
+    ["Cadorna, Ronnie", "Administration", "Administrative Manager"],
+    ["Zamora, Theodore M.", "Drug Test / Laboratory", "Head of Laboratory / Pathologist"],
+    ["Tahadlangit, Mariane Sarah L.", "Drug Test / Laboratory", "Head of Drug Analyst / Chief Medical Technologist"],
+    ["Tinambunan, Cheerden Lhy T.", "Drug Test / Laboratory", "Drug Analyst / Medical Technologist"],
+    ["Fernan, Wilmer J.", "Drug Test / Administration", "Authorized Specimen Collector / Purchasing Officer"],
+    ["Lepon, Lea", "Drug Test", "Authorized Specimen Collector / Biometric Technician"],
+    ["Montana, Vanessa M.", "Drug Test / Laboratory", "Authorized Specimen Collector / Laboratory Aide"],
+    ["Cadorna, Maria Asuncion H.", "Administration", "HR / Marketing"],
+    ["Lepon, Richard M.", "Administration", "Head Accounting Officer"],
+    ["Nene, Genevieve", "Administration", "Receptionist"],
+    ["Moya, Clinton A.", "Administration", "Receptionist"],
+    ["Atibay, Cristopher P.", "Administration", "Cashier"],
+    ["Japal, Dennis", "Administration", "Information / Maintenance Personnel"],
+    ["Malait, Lester", "Administration", "Information / Maintenance Personnel"],
+    ["Espino, Gaudencio", "Radiology", "Radiologist"],
+    ["Abancio, Cely Ann", "Radiology", "Sonologist - Ultrasound"],
+    ["Moraga, Rhea C.", "Radiology", "Chief Radiologic Technologist"],
+    ["Branzuela, Junrey L.", "Radiology", "Radiologic Aide"],
+    ["Albano, Lucille G.", "Clinic Doctors", "OB-GYNE"],
+    ["Albano, Samuel P.", "Clinic Doctors", "Ophthalmologist"],
+    ["Aranas-Del Rosario, Norina", "Clinic Doctors", "OB-GYNE"],
+    ["Destura, Kenneth Joel", "Clinic Doctors", "Pediatrician"],
+    ["Florita, Charmaine Gee", "Clinic Doctors", "Family Medicine"],
+    ["Hernandez, Daniel Philip", "Clinic Doctors", "IM / Cardiologist"],
+    ["Medina, Daniel", "Clinic Doctors", "General Physician"],
+    ["Rivera, Caryll Ann P.", "Clinic Doctors", "General Physician"],
+    ["Venturillo, Myla", "Clinic Doctors", "Optometrist"],
+  ] as const
+).map(([name, department, position], i) => {
+  const [surname, given] = name.split(", ");
+  return {
+    id: i + 1,
+    number: `EMP-${String(i + 1).padStart(5, "0")}`,
+    name,
+    initials: (given[0] + surname[0]).toUpperCase(),
+    department,
+    position,
+    dateHired: "",
+    email: "",
     status: "Active",
-  },
-  {
-    id: 2,
-    number: "EMP-00118",
-    name: "Bautista, Leon Miguel",
-    initials: "LB",
-    department: "Operations",
-    position: "Operations Supervisor",
-    dateHired: "2018-01-22",
-    email: "l.bautista@oasis.org",
-    status: "Active",
-  },
-  {
-    id: 3,
-    number: "EMP-00167",
-    name: "Cruz, Angela Marie",
-    initials: "AC",
-    department: "Human Resources",
-    position: "HR Specialist",
-    dateHired: "2021-09-06",
-    email: "a.cruz@oasis.org",
-    status: "On Leave",
-  },
-  {
-    id: 4,
-    number: "EMP-00094",
-    name: "Dela Rosa, Nathaniel",
-    initials: "ND",
-    department: "Administration",
-    position: "Administrative Officer",
-    dateHired: "2016-11-14",
-    email: "n.delarosa@oasis.org",
-    status: "Active",
-  },
-  {
-    id: 5,
-    number: "EMP-00153",
-    name: "Evangelista, Sofia",
-    initials: "SE",
-    department: "Information Technology",
-    position: "Systems Analyst",
-    dateHired: "2020-07-13",
-    email: "s.evangelista@oasis.org",
-    status: "Active",
-  },
-];
+  };
+});
 
 const peso = new Intl.NumberFormat("en-PH", {
   style: "currency",
@@ -284,7 +272,7 @@ const peso = new Intl.NumberFormat("en-PH", {
   minimumFractionDigits: 2,
 });
 const formatDate = (value: string) =>
-  new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(
+  !value ? "—" : new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(
     new Date(`${value}T00:00:00`),
   );
 
