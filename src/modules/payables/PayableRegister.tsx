@@ -47,6 +47,7 @@ type Props = {
   onView: (id: number) => void;
   onEdit: (id: number) => void;
   onRecordPayment: (id: number) => void;
+  onPaymentHistory: (id: number) => void;
   onApprove: (id: number) => void;
   onOpenReports: () => void;
   onChanged: () => void;
@@ -59,6 +60,7 @@ export function PayableRegister({
   onView,
   onEdit,
   onRecordPayment,
+  onPaymentHistory,
   onApprove,
   onOpenReports,
   onChanged,
@@ -175,7 +177,7 @@ export function PayableRegister({
           className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
           onClick={() => {
             setMenuId(null);
-            onRecordPayment(row.id);
+            onPaymentHistory(row.id);
           }}
         >
           <History size={14} /> Payment history
