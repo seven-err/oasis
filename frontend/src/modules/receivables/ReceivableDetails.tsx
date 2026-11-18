@@ -10,6 +10,7 @@ import {
   Upload,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { usePrintReport } from "@/components/usePrintReport";
 import { ATTACHMENT_KINDS, PAYMENT_METHODS } from "./constants";
 import { receivableService } from "./store";
 import type {
@@ -79,6 +80,7 @@ export function ReceivableDetails({
   const collectionFormRef = useRef<HTMLElement>(null);
   const followUpFormRef = useRef<HTMLElement>(null);
   const attachmentsRef = useRef<HTMLDivElement>(null);
+  const { printReport, printSheet } = usePrintReport();
   const user = receivableService.getUser();
   const [collections, setCollections] = useState(() =>
     receivableService.collectionsFor(record.id),
@@ -276,6 +278,57 @@ export function ReceivableDetails({
   const canFollowUp = user.permissions.manageFollowUps && !record.archivedAt;
   const canAttach = user.permissions.manageAttachments && !record.archivedAt;
 
+  const printRecord = () => {
+    const details = {
+      "Customer name": record.customerName,
+      "Client ID": record.clientId,
+      "Contact number": record.contactNumber,
+      "Email address": record.emailAddress,
+      "Billing address": record.billingAddress,
+      "Invoice number": record.invoiceNumber,
+      "Reference number": record.referenceNumber,
+      "Transaction date": formatDate(record.transactionDate),
+      "Invoice date": formatDate(record.invoiceDate),
+      "Due date": formatDate(record.dueDate),
+      Description: record.description,
+      Remarks: record.remarks,
+      "Total receivable amount": peso.format(record.totalReceivableAmount),
+      "Amount paid": peso.format(record.amountPaid),
+      "Remaining balance": peso.format(record.remainingBalance),
+      "Expected payment method": record.paymentMethod,
+      "Latest payment method": record.displayPaymentMethod,
+      "Latest payment reference": record.displayPaymentReference,
+      "Bank name": record.displayBankName,
+      "Check number": record.displayCheckNumber,
+      "Collection status": record.collectionStatus,
+      "Days overdue": record.daysOverdue,
+      "Collection follow-up date": record.collectionFollowUpDate ? formatDate(record.collectionFollowUpDate) : null,
+      "Prepared by": record.preparedByName,
+      Created: formatDateTime(record.createdAt),
+      "Last updated": formatDateTime(record.updatedAt),
+      ...(record.cancellationReason ? { "Reason for cancellation": record.cancellationReason } : {}),
+      "Archive status": record.archivedAt ? `Archived ${formatDateTime(record.archivedAt)}` : "Active",
+    };
+    const rows: Record<string, unknown>[] = Object.entries(details).map(([Field, Value]) => ({ Field, Value }));
+    rows.push(...(collections.length ? collections.map((c) => ({
+      Field: `Collection · ${formatDate(c.collectionDate)}`,
+      Value: `${peso.format(c.amountCollected)} · ${c.paymentMethod} · Reference: ${c.paymentReferenceNumber || "—"} · Bank: ${c.bankName || "—"} · Check: ${c.checkNumber || "—"} · Recorded by: ${c.recordedByName} · ${c.isReversal ? "Reversal" : c.reversedAt ? "Reversed" : "Valid"}`,
+    })) : [{ Field: "Collection history", Value: "No collections recorded yet." }]));
+    rows.push(...(followUps.length ? followUps.map((f) => ({
+      Field: `Follow-up · ${formatDate(f.followUpDate)}`,
+      Value: `${f.followUpNotes} · Result: ${f.followUpResult || "—"} · Next: ${f.nextFollowUpDate ? formatDate(f.nextFollowUpDate) : "—"} · ${f.followedUpByName} · ${formatDateTime(f.createdAt)}`,
+    })) : [{ Field: "Follow-up history", Value: "No follow-ups recorded yet." }]));
+    rows.push(...(attachments.length ? attachments.map((a) => ({
+      Field: `Attachment · ${a.fileName}`,
+      Value: `${ATTACHMENT_KINDS.find((k) => k.value === a.kind)?.label ?? a.kind} · ${(a.sizeBytes / 1024).toFixed(1)} KB · ${a.uploadedByName} · ${formatDateTime(a.uploadedAt)}`,
+    })) : [{ Field: "Attachments", Value: "No attachments uploaded yet." }]));
+    rows.push(...(activity.length ? activity.map((item) => ({
+      Field: `Activity · ${formatDateTime(item.performedAt)}`,
+      Value: `${item.summary} · ${item.performedByName}`,
+    })) : [{ Field: "Activity history", Value: "No history recorded yet." }]));
+    void printReport("Receivable record", rows, 1, record.customerName);
+  };
+
   return (
     <div className="space-y-5">
       <section className="panel">
@@ -311,7 +364,7 @@ export function ReceivableDetails({
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button onClick={() => window.print()} className="secondary-btn">
+            <button onClick={printRecord} className="secondary-btn">
               <Printer size={15} /> Print
             </button>
             {record.archivedAt ? (
@@ -894,6 +947,7 @@ export function ReceivableDetails({
           </div>
         )}
       </section>
+      {printSheet}
     </div>
   );
 }
