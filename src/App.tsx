@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Activity,
   AlertCircle,
+  Archive,
   ArrowUpDown,
   CalendarDays,
   Check,
@@ -22,6 +23,7 @@ import {
   Pencil,
   Plus,
   Printer,
+  RotateCcw,
   Search,
   Settings,
   ShieldCheck,
@@ -47,17 +49,20 @@ import { HeaderBackButton, HeaderBackProvider, useHeaderBack } from "@/component
 import { useViewHistory } from "@/hooks/useViewHistory";
 import {
   CheckMonitoring,
+  checkService,
   getCheckRecords,
   type CheckRecord,
 } from "@/modules/checks";
 import {
   PayableMonitoring,
+  payableService,
   getPayableRecords,
   summarizePayables,
   type PayableViewModel,
 } from "@/modules/payables";
 import {
   ReceivableMonitoring,
+  receivableService,
   getReceivableRecords,
   summarizeReceivables,
   type ReceivableViewModel,
@@ -72,7 +77,11 @@ type Page =
   | "reports"
   | "users"
   | "activity"
+  | "archives"
+  | "deleted"
   | "profile";
+
+type ArchiveModule = "Checks" | "Payables" | "Receivables" | "Employees";
 
 const employmentStatuses = [
   "Probationary",
@@ -307,6 +316,16 @@ const pageMeta: Record<Page, { eyebrow: string; title: string; description: stri
     title: "User Management",
     description: "Manage application roles and module access.",
   },
+  archives: {
+    eyebrow: "Management",
+    title: "Archive Records",
+    description: "Review archived checks, payables, receivables, and employees.",
+  },
+  deleted: {
+    eyebrow: "Management",
+    title: "Deleted Records",
+    description: "Review records deleted from the archive.",
+  },
   activity: {
     eyebrow: "Security",
     title: "Activity Logs",
@@ -333,6 +352,8 @@ const nav = [
   {
     section: "Management",
     items: [
+      { page: "archives" as Page, label: "Archive Records", icon: Archive },
+      { page: "deleted" as Page, label: "Deleted Records", icon: Trash2 },
       { page: "users" as Page, label: "User Management", icon: ShieldCheck },
       { page: "activity" as Page, label: "Activity Logs", icon: Activity },
     ],
@@ -368,6 +389,7 @@ function App() {
     getReceivableRecords(),
   );
   const [employees, setEmployees] = useState(initialEmployees);
+  const [deletedEmployees, setDeletedEmployees] = useState<Employee[]>([]);
   const [checkCreateSignal, setCheckCreateSignal] = useState(0);
   const [payableCreateSignal, setPayableCreateSignal] = useState(0);
   const [receivableCreateSignal, setReceivableCreateSignal] = useState(0);
@@ -379,6 +401,13 @@ function App() {
     reset: resetEmployeeView,
   } = useViewHistory<EmployeeView | null>(() => null, null);
   const [toast, setToast] = useState("");
+  const [pendingDeletion, setPendingDeletion] = useState<{ module: ArchiveModule; id: number } | null>(null);
+  const deletionDialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    if (pendingDeletion) deletionDialogRef.current?.showModal();
+    else deletionDialogRef.current?.close();
+  }, [pendingDeletion]);
 
   useEffect(() => {
     if (!profileOpen) return;
@@ -442,6 +471,30 @@ function App() {
     window.setTimeout(() => setToast(""), 2800);
   };
 
+  const confirmPermanentDeletion = () => {
+    if (!pendingDeletion) return;
+    const { module, id } = pendingDeletion;
+    try {
+      if (module === "Employees") {
+        setDeletedEmployees((list) => list.filter((record) => record.id !== id));
+      } else {
+        const services = { Checks: checkService, Payables: payableService, Receivables: receivableService };
+        const result = services[module].deletePermanently(id);
+        if (!result.ok) {
+          notify(result.errors.form || "Unable to delete record.");
+          return;
+        }
+        setChecks(getCheckRecords());
+        setPayables(getPayableRecords());
+        setReceivables(getReceivableRecords());
+      }
+      setPendingDeletion(null);
+      notify("Record permanently deleted.");
+    } catch {
+      notify("Unable to delete record. Please try again.");
+    }
+  };
+
   const openEmployeeView = (view: EmployeeView | null) => {
     if (view === null) resetEmployeeView(null);
     else setEmployeeView(view);
@@ -486,9 +539,9 @@ function App() {
           if (event.pointerType === "mouse") setSidebarHovered(true);
         }}
         onPointerLeave={() => setSidebarHovered(false)}
-        className={`oasis-sidebar fixed inset-y-0 left-0 z-40 flex flex-col overflow-hidden border-r border-[#c5dced] bg-[#d7eef9] text-[#16344d] ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} ${compactMenu ? "lg:w-[84px]" : "lg:w-[264px]"} w-[276px] lg:translate-x-0`}
+        className={`oasis-sidebar fixed inset-y-0 left-0 z-40 flex flex-col overflow-hidden border-r border-[#c5dced] bg-[#d7eef9] text-[#16344d] ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} ${compactMenu ? "lg:w-[70px]" : "lg:w-[264px]"} w-[276px] lg:translate-x-0`}
       >
-        <div className="flex h-[76px] items-center border-b border-[#c5dced] px-5 lg:pl-3.5 lg:pr-3">
+        <div className={`flex h-[76px] shrink-0 items-center border-b border-[#c5dced] pl-[9px] pr-3 ${compactMenu ? "lg:pr-1" : ""}`}>
           <button
             aria-label="OASIS home"
             onClick={() => go("dashboard")}
@@ -592,7 +645,7 @@ function App() {
             aria-label="Account options for Miguel Alvarina"
             aria-expanded={profileOpen}
             aria-controls="sidebar-account-menu"
-            className="flex w-full items-center gap-3 p-2 text-left hover:bg-white/70"
+            className="flex w-full items-center gap-3 py-2 pl-[5px] pr-2 text-left hover:bg-white/70"
           >
             <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#1f6ea6] text-xs font-bold text-white">
               MA
@@ -606,7 +659,7 @@ function App() {
       </aside>
 
       <div
-        className={`oasis-content min-h-screen min-w-0 ${compactMenu ? "lg:pl-[84px]" : "lg:pl-[264px]"}`}
+        className={`oasis-content min-h-screen min-w-0 ${compactMenu ? "lg:pl-[70px]" : "lg:pl-[264px]"}`}
       >
         <header className="sticky top-0 z-20 flex h-[76px] items-center border-b border-[#d0e3ef]/80 bg-white/70 px-5 shadow-sm backdrop-blur-lg backdrop-saturate-150 md:px-8">
           <button
@@ -752,6 +805,99 @@ function App() {
             />
           )}
           {page === "users" && <UserManagement notify={notify} />}
+          {page === "archives" && (
+            <ArchivedRecords
+              checks={checks}
+              payables={payables}
+              receivables={receivables}
+              employees={employees}
+              onDelete={(module, id) => {
+                try {
+                  if (module === "Employees") {
+                    const employee = employees.find((record) => record.id === id && record.archived);
+                    if (!employee) return;
+                    setDeletedEmployees((list) => [...list, employee]);
+                    setEmployees((list) => list.filter((record) => record.id !== id));
+                  } else {
+                    const services = { Checks: checkService, Payables: payableService, Receivables: receivableService };
+                    const result = services[module].deleteArchived(id);
+                    if (!result.ok) {
+                      notify(result.errors.form || "Unable to delete record.");
+                      return;
+                    }
+                    setChecks(getCheckRecords());
+                    setPayables(getPayableRecords());
+                    setReceivables(getReceivableRecords());
+                  }
+                  notify("Record moved to Deleted Records.");
+                } catch {
+                  notify("Unable to delete record. Please try again.");
+                }
+              }}
+              onRestore={(module, id) => {
+                try {
+                  if (module === "Employees") {
+                    setEmployees((list) => list.map((record) => record.id === id ? { ...record, archived: false } : record));
+                  } else {
+                    const services = { Checks: checkService, Payables: payableService, Receivables: receivableService };
+                    const result = services[module].restore(id);
+                    if (!result.ok) {
+                      notify(result.errors.form || "Unable to restore record.");
+                      return false;
+                    }
+                    setChecks(getCheckRecords());
+                    setPayables(getPayableRecords());
+                    setReceivables(getReceivableRecords());
+                  }
+                  notify("Record restored.");
+                  return true;
+                } catch {
+                  notify("Unable to restore record. Please try again.");
+                  return false;
+                }
+              }}
+            />
+          )}
+          {page === "deleted" && (
+            <ArchivedRecords
+              key="deleted-records"
+              checks={checkService.listDeleted()}
+              payables={[]}
+              receivables={[]}
+              employees={deletedEmployees}
+              deletedFinancialRecords={[
+                ...payableService.listDeleted().map((record) => ({ key: `payable-${record.id}`, id: record.id, module: "Payables" as const, reference: record.invoiceNumber, name: record.payeeName })),
+                ...receivableService.listDeleted().map((record) => ({ key: `receivable-${record.id}`, id: record.id, module: "Receivables" as const, reference: record.invoiceNumber, name: record.customerName })),
+              ]}
+              deleted
+              onRestore={(module, id) => {
+                try {
+                  if (module === "Employees") {
+                    const record = deletedEmployees.find((employee) => employee.id === id);
+                    if (!record) return false;
+                    setEmployees((list) => [...list, record]);
+                    setDeletedEmployees((list) => list.filter((employee) => employee.id !== id));
+                  } else {
+                    const services = { Checks: checkService, Payables: payableService, Receivables: receivableService };
+                    const result = services[module].restoreDeleted(id);
+                    if (!result.ok) {
+                      notify(result.errors.form || "Unable to restore record.");
+                      return false;
+                    }
+                    setChecks(getCheckRecords());
+                    setPayables(getPayableRecords());
+                    setReceivables(getReceivableRecords());
+                  }
+                  notify("Record restored to Archive Records.");
+                  return true;
+                } catch {
+                  notify("Unable to restore record. Please try again.");
+                  return false;
+                }
+              }}
+              onDelete={(module, id) => setPendingDeletion({ module, id })}
+            />
+          )}
           {page === "activity" && <ActivityLogs />}
           {page === "profile" && <Profile notify={notify} />}
         </main>
@@ -761,6 +907,24 @@ function App() {
         </footer>
       </div>
 
+      <dialog
+        ref={deletionDialogRef}
+        aria-labelledby="permanent-delete-title"
+        aria-describedby="permanent-delete-description"
+        onCancel={() => setPendingDeletion(null)}
+        className="m-auto w-[calc(100%-2rem)] max-w-sm rounded-xl border border-[#d0e3ef] bg-white p-6 text-[#16344d] shadow-2xl backdrop:bg-black/40"
+      >
+        <h2 id="permanent-delete-title" className="text-lg font-semibold">Confirm deletion</h2>
+        <p id="permanent-delete-description" className="mt-3 text-sm text-[#737373]">
+          Are you sure you want to permanently delete this record? This action cannot be undone.
+        </p>
+        <div className="mt-6 flex justify-center gap-3">
+          <button type="button" autoFocus className="secondary-btn" onClick={() => setPendingDeletion(null)}>Cancel</button>
+          <button type="button" className="flex items-center gap-2 rounded bg-red-700 px-4 py-2 text-xs font-medium text-white hover:bg-red-800" onClick={confirmPermanentDeletion}>
+            <Trash2 size={14} aria-hidden="true" /> Delete permanently
+          </button>
+        </div>
+      </dialog>
       {toast && (
         <div
           role="status"
@@ -782,6 +946,117 @@ const officeHour = new Intl.DateTimeFormat("en-PH", {
   hour: "numeric",
   hourCycle: "h23",
 });
+
+function ArchivedRecords({ checks, payables, receivables, employees, onRestore, onDelete, deleted = false, deletedFinancialRecords = [] }: {
+  checks: CheckRecord[];
+  payables: PayableViewModel[];
+  receivables: ReceivableViewModel[];
+  employees: Employee[];
+  onRestore?: (module: ArchiveModule, id: number) => boolean;
+  onDelete?: (module: ArchiveModule, id: number) => void;
+  deleted?: boolean;
+  deletedFinancialRecords?: { key: string; id: number; module: ArchiveModule; reference: string; name: string }[];
+}) {
+  const [selected, setSelected] = useState<string[]>([]);
+  const records = [
+    ...deletedFinancialRecords,
+    ...checks.filter((record) => record.archivedAt).map((record) => ({
+      key: `check-${record.id}`, id: record.id, module: "Checks" as const, reference: record.checkNumber, name: record.payeeName,
+    })),
+    ...payables.filter((record) => record.archivedAt).map((record) => ({
+      key: `payable-${record.id}`, id: record.id, module: "Payables" as const, reference: record.invoiceNumber, name: record.payeeName,
+    })),
+    ...receivables.filter((record) => record.archivedAt).map((record) => ({
+      key: `receivable-${record.id}`, id: record.id, module: "Receivables" as const, reference: record.invoiceNumber, name: record.customerName,
+    })),
+    ...employees.filter((record) => record.archived).map((record) => ({
+      key: `employee-${record.id}`, id: record.id, module: "Employees" as const, reference: record.number, name: record.name,
+    })),
+  ];
+  const selectedRecords = records.filter((record) => selected.includes(record.key));
+  const allSelected = records.length > 0 && selectedRecords.length === records.length;
+  const restoreRecords = (targets: typeof records) => {
+    const restoredKeys = new Set(
+      targets.filter((record) => onRestore?.(record.module, record.id)).map((record) => record.key),
+    );
+    setSelected((keys) => keys.filter((key) => !restoredKeys.has(key)));
+  };
+  return (
+    <section className="panel overflow-hidden">
+        <div className="flex flex-wrap items-center gap-4 border-b border-[#d0e3ef] p-4">
+          <button type="button" className="secondary-btn" disabled={!records.length} onClick={() => setSelected(allSelected ? [] : records.map((record) => record.key))}>
+            {allSelected ? "Deselect all" : "Select all"}
+          </button>
+          <span className="text-xs text-[#737373]">{selectedRecords.length} selected</span>
+          {selectedRecords.length > 0 && (
+            <div className="ml-auto flex flex-wrap gap-2">
+              <button type="button" className="secondary-btn" onClick={() => restoreRecords(selectedRecords)}>
+                <RotateCcw size={15} aria-hidden="true" /> Restore selected
+              </button>
+              <button type="button" className="secondary-btn" onClick={() => restoreRecords(records)}>
+                <RotateCcw size={15} aria-hidden="true" /> Restore all
+              </button>
+            </div>
+          )}
+        </div>
+      {records.length ? (
+        <div className="overflow-x-auto">
+          <table>
+            <thead><tr><th>Module</th><th>Reference</th><th>Name</th><th className="w-16"><span className="sr-only">Actions</span></th></tr></thead>
+            <tbody>
+              {records.map((record) => (
+                <tr
+                  key={record.key}
+                  aria-selected={selected.includes(record.key)}
+                  tabIndex={0}
+                  className={`cursor-pointer ${selected.includes(record.key) ? "bg-[#d7eef9] hover:bg-[#d7eef9]" : ""}`}
+                  onClick={() => setSelected((keys) => keys.includes(record.key) ? keys.filter((key) => key !== record.key) : [...keys, record.key])}
+                  onKeyDown={(event) => {
+                    if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
+                      event.preventDefault();
+                      setSelected((keys) => keys.includes(record.key) ? keys.filter((key) => key !== record.key) : [...keys, record.key]);
+                    }
+                  }}
+                >
+                  <td>{record.module}</td><td>{record.reference}</td><td>{record.name}</td>
+                  <td className="w-16 text-right" onClick={(event) => event.stopPropagation()}>
+                    <button
+                      type="button"
+                      aria-label={`Actions for ${record.module} ${record.reference}`}
+                      popoverTarget={`archive-actions-${record.key}`}
+                      className="ml-auto grid size-8 place-items-center rounded hover:bg-[#e7f3fb]"
+                      onClick={(event) => {
+                        const menu = document.getElementById(`archive-actions-${record.key}`);
+                        if (!menu) return;
+                        const { top, bottom, right } = event.currentTarget.getBoundingClientRect();
+                        const fitsBelow = bottom + 96 <= window.innerHeight;
+                        menu.style.right = `${Math.max(8, window.innerWidth - right)}px`;
+                        menu.style.top = fitsBelow ? `${bottom + 4}px` : "auto";
+                        menu.style.bottom = fitsBelow ? "auto" : `${window.innerHeight - top + 4}px`;
+                      }}
+                    ><MoreHorizontal size={17} aria-hidden="true" /></button>
+                    <div id={`archive-actions-${record.key}`} popover="auto" className="fixed inset-auto m-0 w-44 rounded border border-[#d0e3ef] bg-white p-1 shadow-xl">
+                      <button className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]" onClick={(event) => {
+                        event.currentTarget.parentElement?.hidePopover();
+                        if (onRestore?.(record.module, record.id)) {
+                          setSelected((keys) => keys.filter((key) => key !== record.key));
+                        }
+                      }}><RotateCcw size={14} aria-hidden="true" /> Restore</button>
+                      <button className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-700 hover:bg-red-50" onClick={(event) => {
+                        event.currentTarget.parentElement?.hidePopover();
+                        onDelete?.(record.module, record.id);
+                      }}><Trash2 size={14} aria-hidden="true" /> Delete</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : <p className="p-6 text-sm text-[#737373]">{deleted ? "No deleted records." : "No archived records."}</p>}
+    </section>
+  );
+}
 
 function getDashboardGreeting() {
   const hour = Number(officeHour.format(new Date()));

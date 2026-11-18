@@ -95,6 +95,7 @@ export type CheckRecord = {
   createdAt: string;
   updatedAt: string;
   archivedAt: string | null;
+  deletedAt?: string | null;
   createdById: number;
   updatedById: number;
 };

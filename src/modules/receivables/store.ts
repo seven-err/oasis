@@ -171,21 +171,21 @@ export const receivableService = {
   },
 
   list(): ReceivableRecord[] {
-    return load().receivables;
+    return load().receivables.filter((record) => !record.deletedAt);
   },
 
   listViewModels(): ReceivableViewModel[] {
     const snapshot = load();
-    return enrichReceivables(snapshot.receivables, snapshot.collections);
+    return enrichReceivables(snapshot.receivables.filter((record) => !record.deletedAt), snapshot.collections);
   },
 
   get(id: number): ReceivableRecord | undefined {
-    return load().receivables.find((r) => r.id === id);
+    return load().receivables.find((r) => r.id === id && !r.deletedAt);
   },
 
   getViewModel(id: number): ReceivableViewModel | undefined {
     const snapshot = load();
-    const record = snapshot.receivables.find((r) => r.id === id);
+    const record = snapshot.receivables.find((r) => r.id === id && !r.deletedAt);
     if (!record) return undefined;
     return toViewModel(record, snapshot.collections);
   },
@@ -355,7 +355,7 @@ export const receivableService = {
     if (!user.permissions.editReceivables) {
       return { ok: false, errors: { form: "You are not authorized to edit receivables." } };
     }
-    const existing = snapshot.receivables.find((r) => r.id === id);
+    const existing = snapshot.receivables.find((r) => r.id === id && !r.deletedAt);
     if (!existing) return { ok: false, errors: { form: "Receivable record not found." } };
     if (existing.archivedAt) {
       return { ok: false, errors: { form: "Archived receivables cannot be edited." } };
@@ -788,7 +788,7 @@ export const receivableService = {
         errors: { form: "You are not authorized to archive receivables." },
       };
     }
-    const existing = snapshot.receivables.find((r) => r.id === id);
+    const existing = snapshot.receivables.find((r) => r.id === id && !r.deletedAt);
     if (!existing) return { ok: false, errors: { form: "Receivable record not found." } };
 
     const record: ReceivableRecord = {
@@ -809,6 +809,47 @@ export const receivableService = {
     return { ok: true, data: record };
   },
 
+  listDeleted(): ReceivableRecord[] {
+    return load().receivables.filter((record) => !!record.deletedAt);
+  },
+
+  restoreDeleted(id: number): ReceivableServiceResult<ReceivableRecord> {
+    if (!CURRENT_USER.permissions.archiveReceivables) {
+      return { ok: false, errors: { form: "You are not authorized to restore deleted records." } };
+    }
+    const snapshot = load();
+    const existing = snapshot.receivables.find((record) => record.id === id && record.deletedAt);
+    if (!existing) return { ok: false, errors: { form: "Deleted record not found." } };
+    const record = { ...existing, deletedAt: null, updatedAt: nowIso() };
+    writeJson(RECEIVABLES_STORAGE_KEY, snapshot.receivables.map((item) => item.id === id ? record : item));
+    return { ok: true, data: record };
+  },
+
+  deletePermanently(id: number): ReceivableServiceResult<ReceivableRecord> {
+    if (!CURRENT_USER.permissions.archiveReceivables) {
+      return { ok: false, errors: { form: "You are not authorized to permanently delete records." } };
+    }
+    const snapshot = load();
+    const record = snapshot.receivables.find((item) => item.id === id && item.deletedAt);
+    if (!record) return { ok: false, errors: { form: "Deleted record not found." } };
+    writeJson(RECEIVABLES_STORAGE_KEY, snapshot.receivables.filter((item) => item.id !== id));
+    return { ok: true, data: record };
+  },
+
+  deleteArchived(id: number): ReceivableServiceResult<ReceivableRecord> {
+    if (!CURRENT_USER.permissions.archiveReceivables) {
+      return { ok: false, errors: { form: "You are not authorized to delete archived records." } };
+    }
+    const snapshot = load();
+    const existing = snapshot.receivables.find((record) => record.id === id);
+    if (!existing?.archivedAt || existing.deletedAt) {
+      return { ok: false, errors: { form: "Archived record not found." } };
+    }
+    const record = { ...existing, deletedAt: nowIso(), updatedAt: nowIso() };
+    writeJson(RECEIVABLES_STORAGE_KEY, snapshot.receivables.map((item) => item.id === id ? record : item));
+    return { ok: true, data: record };
+  },
+
   restore(id: number): ReceivableServiceResult<ReceivableRecord> {
     const snapshot = load();
     const user = CURRENT_USER;
@@ -818,7 +859,7 @@ export const receivableService = {
         errors: { form: "You are not authorized to restore receivables." },
       };
     }
-    const existing = snapshot.receivables.find((r) => r.id === id);
+    const existing = snapshot.receivables.find((r) => r.id === id && !r.deletedAt);
     if (!existing) return { ok: false, errors: { form: "Receivable record not found." } };
 
     const record: ReceivableRecord = {

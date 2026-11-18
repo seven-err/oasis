@@ -135,21 +135,21 @@ export const payableService = {
   },
 
   list(): PayableRecord[] {
-    return load().payables;
+    return load().payables.filter((record) => !record.deletedAt);
   },
 
   listViewModels(): PayableViewModel[] {
     const snapshot = load();
-    return enrichPayables(snapshot.payables, snapshot.payments);
+    return enrichPayables(snapshot.payables.filter((record) => !record.deletedAt), snapshot.payments);
   },
 
   get(id: number): PayableRecord | undefined {
-    return load().payables.find((p) => p.id === id);
+    return load().payables.find((p) => p.id === id && !p.deletedAt);
   },
 
   getViewModel(id: number): PayableViewModel | undefined {
     const snapshot = load();
-    const record = snapshot.payables.find((p) => p.id === id);
+    const record = snapshot.payables.find((p) => p.id === id && !p.deletedAt);
     if (!record) return undefined;
     return toViewModel(record, snapshot.payments);
   },
@@ -216,7 +216,7 @@ export const payableService = {
     if (!user.permissions.editPayables) {
       return { ok: false, errors: { form: "You are not authorized to edit payables." } };
     }
-    const existing = snapshot.payables.find((p) => p.id === id);
+    const existing = snapshot.payables.find((p) => p.id === id && !p.deletedAt);
     if (!existing) return { ok: false, errors: { form: "Payable record not found." } };
     if (existing.archivedAt) {
       return { ok: false, errors: { form: "Archived payables cannot be edited." } };
@@ -262,7 +262,7 @@ export const payableService = {
     if (!user.permissions.approvePayables) {
       return { ok: false, errors: { form: "You are not authorized to approve payables." } };
     }
-    const existing = snapshot.payables.find((p) => p.id === id);
+    const existing = snapshot.payables.find((p) => p.id === id && !p.deletedAt);
     if (!existing) return { ok: false, errors: { form: "Payable record not found." } };
     if (existing.archivedAt) {
       return { ok: false, errors: { form: "Archived payables cannot be approved." } };
@@ -302,7 +302,7 @@ export const payableService = {
     if (!user.permissions.approvePayables) {
       return { ok: false, errors: { form: "You are not authorized to reject payables." } };
     }
-    const existing = snapshot.payables.find((p) => p.id === id);
+    const existing = snapshot.payables.find((p) => p.id === id && !p.deletedAt);
     if (!existing) return { ok: false, errors: { form: "Payable record not found." } };
     if (existing.archivedAt) {
       return { ok: false, errors: { form: "Archived payables cannot be rejected." } };
@@ -508,7 +508,7 @@ export const payableService = {
     if (!user.permissions.archivePayables) {
       return { ok: false, errors: { form: "You are not authorized to archive payables." } };
     }
-    const existing = snapshot.payables.find((p) => p.id === id);
+    const existing = snapshot.payables.find((p) => p.id === id && !p.deletedAt);
     if (!existing) return { ok: false, errors: { form: "Payable record not found." } };
 
     const record: PayableRecord = {
@@ -529,13 +529,54 @@ export const payableService = {
     return { ok: true, data: record };
   },
 
+  listDeleted(): PayableRecord[] {
+    return load().payables.filter((record) => !!record.deletedAt);
+  },
+
+  restoreDeleted(id: number): PayableServiceResult<PayableRecord> {
+    if (!CURRENT_USER.permissions.archivePayables) {
+      return { ok: false, errors: { form: "You are not authorized to restore deleted records." } };
+    }
+    const snapshot = load();
+    const existing = snapshot.payables.find((record) => record.id === id && record.deletedAt);
+    if (!existing) return { ok: false, errors: { form: "Deleted record not found." } };
+    const record = { ...existing, deletedAt: null, updatedAt: nowIso() };
+    writeJson(PAYABLES_STORAGE_KEY, snapshot.payables.map((item) => item.id === id ? record : item));
+    return { ok: true, data: record };
+  },
+
+  deletePermanently(id: number): PayableServiceResult<PayableRecord> {
+    if (!CURRENT_USER.permissions.archivePayables) {
+      return { ok: false, errors: { form: "You are not authorized to permanently delete records." } };
+    }
+    const snapshot = load();
+    const record = snapshot.payables.find((item) => item.id === id && item.deletedAt);
+    if (!record) return { ok: false, errors: { form: "Deleted record not found." } };
+    writeJson(PAYABLES_STORAGE_KEY, snapshot.payables.filter((item) => item.id !== id));
+    return { ok: true, data: record };
+  },
+
+  deleteArchived(id: number): PayableServiceResult<PayableRecord> {
+    if (!CURRENT_USER.permissions.archivePayables) {
+      return { ok: false, errors: { form: "You are not authorized to delete archived records." } };
+    }
+    const snapshot = load();
+    const existing = snapshot.payables.find((record) => record.id === id);
+    if (!existing?.archivedAt || existing.deletedAt) {
+      return { ok: false, errors: { form: "Archived record not found." } };
+    }
+    const record = { ...existing, deletedAt: nowIso(), updatedAt: nowIso() };
+    writeJson(PAYABLES_STORAGE_KEY, snapshot.payables.map((item) => item.id === id ? record : item));
+    return { ok: true, data: record };
+  },
+
   restore(id: number): PayableServiceResult<PayableRecord> {
     const snapshot = load();
     const user = CURRENT_USER;
     if (!user.permissions.archivePayables) {
       return { ok: false, errors: { form: "You are not authorized to restore payables." } };
     }
-    const existing = snapshot.payables.find((p) => p.id === id);
+    const existing = snapshot.payables.find((p) => p.id === id && !p.deletedAt);
     if (!existing) return { ok: false, errors: { form: "Payable record not found." } };
 
     const record: PayableRecord = {

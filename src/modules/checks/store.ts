@@ -124,11 +124,11 @@ export const checkService = {
   },
 
   list(): CheckRecord[] {
-    return load().checks;
+    return load().checks.filter((record) => !record.deletedAt);
   },
 
   get(id: number): CheckRecord | undefined {
-    return load().checks.find((c) => c.id === id);
+    return load().checks.find((c) => c.id === id && !c.deletedAt);
   },
 
   attachmentsFor(checkId: number): CheckAttachment[] {
@@ -168,7 +168,7 @@ export const checkService = {
   update(id: number, values: CheckFormValues): CheckServiceResult<CheckRecord> {
     const snapshot = load();
     const user = CURRENT_USER;
-    const existing = snapshot.checks.find((c) => c.id === id);
+    const existing = snapshot.checks.find((c) => c.id === id && !c.deletedAt);
     if (!existing) return { ok: false, errors: { form: "Check record not found." } };
 
     const validation = validateCheckPayload(values, {
@@ -212,7 +212,7 @@ export const checkService = {
     if (!user.permissions.archiveChecks) {
       return { ok: false, errors: { form: "You are not authorized to archive checks." } };
     }
-    const existing = snapshot.checks.find((c) => c.id === id);
+    const existing = snapshot.checks.find((c) => c.id === id && !c.deletedAt);
     if (!existing) return { ok: false, errors: { form: "Check record not found." } };
 
     const record: CheckRecord = {
@@ -235,13 +235,54 @@ export const checkService = {
     return { ok: true, data: record };
   },
 
+  listDeleted(): CheckRecord[] {
+    return load().checks.filter((record) => !!record.deletedAt);
+  },
+
+  restoreDeleted(id: number): CheckServiceResult<CheckRecord> {
+    if (!CURRENT_USER.permissions.archiveChecks) {
+      return { ok: false, errors: { form: "You are not authorized to restore deleted records." } };
+    }
+    const snapshot = load();
+    const existing = snapshot.checks.find((record) => record.id === id && record.deletedAt);
+    if (!existing) return { ok: false, errors: { form: "Deleted record not found." } };
+    const record = { ...existing, deletedAt: null, updatedAt: nowIso() };
+    writeJson(CHECKS_STORAGE_KEY, snapshot.checks.map((item) => item.id === id ? record : item));
+    return { ok: true, data: record };
+  },
+
+  deletePermanently(id: number): CheckServiceResult<CheckRecord> {
+    if (!CURRENT_USER.permissions.archiveChecks) {
+      return { ok: false, errors: { form: "You are not authorized to permanently delete records." } };
+    }
+    const snapshot = load();
+    const record = snapshot.checks.find((item) => item.id === id && item.deletedAt);
+    if (!record) return { ok: false, errors: { form: "Deleted record not found." } };
+    writeJson(CHECKS_STORAGE_KEY, snapshot.checks.filter((item) => item.id !== id));
+    return { ok: true, data: record };
+  },
+
+  deleteArchived(id: number): CheckServiceResult<CheckRecord> {
+    if (!CURRENT_USER.permissions.archiveChecks) {
+      return { ok: false, errors: { form: "You are not authorized to delete archived records." } };
+    }
+    const snapshot = load();
+    const existing = snapshot.checks.find((record) => record.id === id);
+    if (!existing?.archivedAt || existing.deletedAt) {
+      return { ok: false, errors: { form: "Archived record not found." } };
+    }
+    const record = { ...existing, deletedAt: nowIso(), updatedAt: nowIso() };
+    writeJson(CHECKS_STORAGE_KEY, snapshot.checks.map((item) => item.id === id ? record : item));
+    return { ok: true, data: record };
+  },
+
   restore(id: number): CheckServiceResult<CheckRecord> {
     const snapshot = load();
     const user = CURRENT_USER;
     if (!user.permissions.archiveChecks) {
       return { ok: false, errors: { form: "You are not authorized to restore checks." } };
     }
-    const existing = snapshot.checks.find((c) => c.id === id);
+    const existing = snapshot.checks.find((c) => c.id === id && !c.deletedAt);
     if (!existing) return { ok: false, errors: { form: "Check record not found." } };
 
     const record: CheckRecord = {
