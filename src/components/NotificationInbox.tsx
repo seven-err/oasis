@@ -195,7 +195,7 @@ export function NotificationInbox({
       <button
         ref={bell}
         type="button"
-        className="relative grid size-10 place-items-center hover:bg-[#e7f3fb] aria-expanded:bg-[#e7f3fb]"
+        className="relative grid size-10 place-items-center border-0 bg-transparent shadow-none transition-colors duration-300 ease-out hover:text-[#1f6ea6] aria-expanded:text-[#1f6ea6] motion-reduce:transition-none"
         aria-label={`Notifications${unread ? `, ${unread} unread` : ""}${urgent ? `, ${urgent} due today or overdue` : ""}`}
         aria-controls={open ? panelId : undefined}
         aria-expanded={open}
@@ -204,7 +204,7 @@ export function NotificationInbox({
           onOpenChange(!open);
         }}
       >
-        <Bell size={18} aria-hidden="true" />
+        <Bell size={18} fill="currentColor" className={`notification-bell ${open ? "is-open" : ""}`} aria-hidden="true" />
         {(unread > 0 || urgent > 0) && (
           <span
             aria-hidden="true"
@@ -214,12 +214,14 @@ export function NotificationInbox({
           </span>
         )}
       </button>
-      {open && (
         <section
           ref={panel}
           id={panelId}
+          data-open={open}
+          aria-hidden={!open}
+          inert={!open}
           aria-labelledby={titleId}
-          className="absolute top-full right-4 z-10 w-[min(22rem,calc(100%-2rem))] border border-[#d0e3ef] bg-white shadow-xl sm:right-8"
+          className="notification-panel absolute top-full right-4 z-10 w-[min(22rem,calc(100%-2rem))] border border-[#d0e3ef] bg-white shadow-xl sm:right-8"
         >
           <div className="flex items-center justify-between gap-3 border-b border-[#d0e3ef] px-4 py-3">
             <div>
@@ -304,7 +306,6 @@ export function NotificationInbox({
             </div>
           )}
         </section>
-      )}
     </>
   );
 }

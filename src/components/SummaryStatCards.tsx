@@ -37,7 +37,7 @@ export function SummaryStatCards({ items }: Props) {
         );
 
         const className =
-          "flex min-h-[120px] flex-col rounded-xl bg-[#d4eaf8] p-5 text-left transition sm:min-h-[132px] sm:p-6";
+          "summary-stat-card flex min-h-[120px] flex-col rounded-xl bg-[#d4eaf8] p-5 text-left sm:min-h-[132px] sm:p-6";
 
         if (onClick) {
           return (
