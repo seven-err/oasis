@@ -1108,7 +1108,7 @@ function RegisterTools({
 }) {
   return (
     <div className="flex flex-col gap-3 border-b border-[#d0e3ef] p-4 md:flex-row md:items-center">
-      <label className="relative min-w-0 flex-1 md:max-w-md">
+      <label className="relative min-w-0 flex-1">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#888]" />
         <input
           value={query}
