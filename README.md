@@ -30,7 +30,7 @@ pnpm install
 
 ```bash
 cd backend && composer run dev   # http://localhost:8000
-cd frontend && pnpm dev          # http://localhost:5173
+cd frontend && pnpm dev          # http://localhost:5173 (stop other apps using this port first)
 ```
 
 ## After pulling new changes

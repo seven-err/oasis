@@ -10,7 +10,7 @@ Setup for a fresh clone is in `README.md`.
 ## Development Servers
 
 ```bash
-cd frontend && pnpm dev        # http://localhost:5173
+cd frontend && pnpm dev        # http://localhost:5173 (stop other apps using this port first)
 cd backend && composer dev     # http://localhost:8000 (server, queue, logs, Vite)
 ```
 
