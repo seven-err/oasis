@@ -2409,7 +2409,6 @@ function ActivityLogs() {
   ];
   return (
     <section className="panel">
-      <PanelTitle title="Audit trail" subtitle="Non-sensitive activity summaries" />
       <div className="overflow-x-auto">
         <table>
           <thead>
