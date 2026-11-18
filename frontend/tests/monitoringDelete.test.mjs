@@ -63,8 +63,8 @@ test("monitoring deletion is authorized, recoverable, audited, and retains relat
       onDelete: () => {},
     }));
     assert.match(alphalistMarkup, /Showing 1–10 of 12/);
-    assert.match(alphalistMarkup, /EMP-00010/);
-    assert.doesNotMatch(alphalistMarkup, /EMP-00011/);
+    assert.match(alphalistMarkup, /Employee 10/);
+    assert.doesNotMatch(alphalistMarkup, /Employee 11/);
     const initialDirectory = loadEmployeeRecords();
     assert.ok(initialDirectory.employees.length > 0);
     assert.deepEqual(initialDirectory.deletedEmployees, []);
