@@ -1080,16 +1080,16 @@ export function ArchivedRecords({ checks, payables, receivables, employees, onRe
             {allSelected ? "Deselect all" : "Select all"}
           </button>
           <span className="text-xs text-[#737373]">{selectedRecords.length} selected</span>
-          {selectedRecords.length > 0 && (
-            <div className="ml-auto flex flex-wrap gap-2">
+          <div className="ml-auto flex flex-wrap gap-2">
+            {selectedRecords.length > 0 && (
               <button type="button" className="secondary-btn" onClick={() => restoreRecords(selectedRecords)}>
                 <RotateCcw size={15} aria-hidden="true" /> Restore selected
               </button>
-              <button type="button" className="secondary-btn" onClick={() => restoreRecords(records)}>
-                <RotateCcw size={15} aria-hidden="true" /> Restore all
-              </button>
-            </div>
-          )}
+            )}
+            <button type="button" className="secondary-btn" onClick={() => restoreRecords(records)}>
+              <RotateCcw size={15} aria-hidden="true" /> Restore all
+            </button>
+          </div>
         </div>
       )}
       {records.length ? (
