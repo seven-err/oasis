@@ -1,0 +1,77 @@
+name: Ponytail Review & Auto-Merge
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+
+concurrency:
+  group: pr-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review-and-merge:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Ponytail review and checks
+        id: review
+        continue-on-error: true
+        env:
+          BASE_REF: origin/${{ github.event.pull_request.base.ref }}
+          HEAD_REF: HEAD
+          RUN_CHECKS: "1"
+        run: |
+          node scripts/ponytail-review.mjs > ponytail-report.md
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Build production bundle
+        id: build
+        if: steps.review.outputs.exit_code == '0'
+        run: pnpm build
+
+      - name: Post Ponytail review comment
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if [ -f ponytail-report.md ]; then
+            gh pr comment "$PR_NUMBER" --body-file ponytail-report.md
+          fi
+
+      - name: Fail if Ponytail review found Must Fix issues
+        if: steps.review.outputs.exit_code != '0'
+        run: |
+          cat ponytail-report.md
+          exit 1
+
+      - name: Auto-merge Pull Request
+        if: steps.review.outputs.exit_code == '0' && steps.build.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr merge "$PR_NUMBER" --merge --delete-branch || gh pr merge "$PR_NUMBER" --auto --merge --delete-branch

@@ -1,0 +1,13 @@
+---
+description: Keep contributor sync quiet and token-efficient
+alwaysApply: true
+---
+
+# Contributor sync
+
+When watching OASIS PRs or syncing contributor merges:
+
+- On open / synchronize / clean merge / automation "already clean" reviews: sync quietly. Do not post a user-facing summary.
+- Only speak when something needs the user: unresolved conflicts, typecheck/build failure after merge, a fix you pushed, or a decision that needs their input.
+- Prefer `git fetch` + fast-forward; run typecheck only after a merge lands on `main`.
+- Do not narrate routine status, restate automation comments, or dump PR metadata when nothing broke.
