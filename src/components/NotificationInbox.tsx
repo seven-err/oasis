@@ -204,7 +204,7 @@ export function NotificationInbox({
           onOpenChange(!open);
         }}
       >
-        <Bell size={18} fill={open ? "currentColor" : "none"} className="transition-[fill] duration-300 ease-out motion-reduce:transition-none" aria-hidden="true" />
+        <Bell size={18} fill="currentColor" className={`notification-bell ${open ? "is-open" : ""}`} aria-hidden="true" />
         {(unread > 0 || urgent > 0) && (
           <span
             aria-hidden="true"
@@ -214,12 +214,14 @@ export function NotificationInbox({
           </span>
         )}
       </button>
-      {open && (
         <section
           ref={panel}
           id={panelId}
+          data-open={open}
+          aria-hidden={!open}
+          inert={!open}
           aria-labelledby={titleId}
-          className="absolute top-full right-4 z-10 w-[min(22rem,calc(100%-2rem))] border border-[#d0e3ef] bg-white shadow-xl sm:right-8"
+          className="notification-panel absolute top-full right-4 z-10 w-[min(22rem,calc(100%-2rem))] border border-[#d0e3ef] bg-white shadow-xl sm:right-8"
         >
           <div className="flex items-center justify-between gap-3 border-b border-[#d0e3ef] px-4 py-3">
             <div>
@@ -304,7 +306,6 @@ export function NotificationInbox({
             </div>
           )}
         </section>
-      )}
     </>
   );
 }
