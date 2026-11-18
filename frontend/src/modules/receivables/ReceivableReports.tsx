@@ -410,7 +410,7 @@ export function ReceivableReports({ records, onBack, notify }: Props) {
                         Status: row.CollectionStatus,
                       };
                     });
-                    void printReport(hasDateColumn(report.kind) ? `${report.title} · ${reportDateRangeLabel(rangeFor(report.kind).from, rangeFor(report.kind).to)}` : report.title, rows);
+                    void printReport(hasDateColumn(report.kind) && (rangeFor(report.kind).from || rangeFor(report.kind).to) ? `${report.title} · ${reportDateRangeLabel(rangeFor(report.kind).from, rangeFor(report.kind).to)}` : report.title, rows);
                   }}
                 >
                   <Printer size={14} /> Print

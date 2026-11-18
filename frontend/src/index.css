@@ -76,6 +76,17 @@
     font-size: 9pt;
   }
 
+  .report-print-record-heading h1 {
+    font-size: 11pt;
+    font-weight: 500;
+  }
+
+  .report-print-record-heading .report-print-subtitle {
+    margin: 2mm 0;
+    font-size: 18pt;
+    font-weight: 700;
+  }
+
   .report-print-sheet table {
     width: 100%;
     border-collapse: collapse;

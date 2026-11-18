@@ -10,6 +10,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { usePrintReport } from "@/components/usePrintReport";
 import { checkService } from "./store";
 import type { CheckAttachment, CheckRecord } from "./types";
 import {
@@ -19,7 +20,7 @@ import {
   SectionCard,
   StatusBadge,
 } from "./ui";
-import { formatBytes, formatDate, formatDateTime, peso } from "./utils";
+import { formatBytes, formatDate, formatDateTime, maskAccountNumber, peso } from "./utils";
 
 type Props = {
   record: CheckRecord;
@@ -30,6 +31,7 @@ type Props = {
 };
 
 export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Props) {
+  const { printReport, printSheet } = usePrintReport();
   const user = checkService.getUser();
   const [revealed, setRevealed] = useState(false);
   const [attachments, setAttachments] = useState(() => checkService.attachmentsFor(record.id));
@@ -107,6 +109,43 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
     link.click();
   };
 
+  const printRecord = () => {
+    const details = {
+      "Check number": record.checkNumber,
+      "Check type": record.checkType,
+      "Check date": formatDate(record.checkDate),
+      "Date received / issued": formatDate(record.dateReceivedIssued),
+      Purpose: record.purpose,
+      "Reference number": record.referenceNumber,
+      "Payee name": record.payeeName,
+      "Drawer name": record.drawerName,
+      "Bank name": record.bankName,
+      Branch: record.branch,
+      "Account number": user.permissions.viewAccountNumber && revealed
+        ? record.accountNumber : maskAccountNumber(record.accountNumber),
+      "Check amount": peso.format(record.checkAmount),
+      "Due date": formatDate(record.dueDate),
+      "Deposit date": formatDate(record.depositDate),
+      "Clearing date": formatDate(record.clearingDate),
+      "Check status": record.checkStatus,
+      Remarks: record.remarks,
+      "Prepared by": record.preparedByName,
+      Created: formatDateTime(record.createdAt),
+      "Last updated": formatDateTime(record.updatedAt),
+      "Archive status": record.archivedAt ? `Archived ${formatDateTime(record.archivedAt)}` : "Active",
+    };
+    const rows: Record<string, unknown>[] = Object.entries(details).map(([Field, Value]) => ({ Field, Value }));
+    rows.push(...(attachments.length ? attachments.map((a) => ({
+      Field: `Attachment · ${a.fileName}`,
+      Value: `${formatBytes(a.sizeBytes)} · ${formatDateTime(a.uploadedAt)} · ${a.uploadedByName}`,
+    })) : [{ Field: "Attachments", Value: "No attachments on file." }]));
+    rows.push(...(activity.length ? activity.map((item) => ({
+      Field: `Activity · ${formatDateTime(item.performedAt)}`,
+      Value: `${item.summary} · ${item.performedByName}${item.previousStatus && item.newStatus ? ` · ${item.previousStatus} → ${item.newStatus}` : ""}`,
+    })) : [{ Field: "Check history", Value: "No history recorded yet." }]));
+    void printReport("Check record", rows, 1, record.payeeName);
+  };
+
   return (
     <div className="space-y-5">
       <section className="panel">
@@ -137,7 +176,7 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button onClick={() => window.print()} className="secondary-btn">
+            <button onClick={printRecord} className="secondary-btn">
               <Printer size={15} /> Print
             </button>
             {record.archivedAt ? (
@@ -329,6 +368,7 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
           </div>
         )}
       </section>
+      {printSheet}
     </div>
   );
 }

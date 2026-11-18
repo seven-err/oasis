@@ -236,7 +236,7 @@ export function CheckRegister({
 
       <section className="panel max-w-full overflow-hidden">
         <PanelTitle
-          title="Check register"
+          title="Check records"
           subtitle={`${filtered.length} of ${records.filter((r) => filters.includeArchived || !r.archivedAt).length} records`}
           action={
             <button onClick={onOpenReports} className="secondary-btn w-full sm:w-auto">

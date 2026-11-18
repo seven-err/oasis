@@ -1247,39 +1247,23 @@ function Dashboard({
       <div className="mt-7 grid gap-7 xl:grid-cols-[1.55fr_1fr]">
         <section className="panel">
           <PanelTitle
-            title="Financial attention"
-            subtitle="Items requiring review"
-            action={
-              <button onClick={() => go("reports")} className="text-link">
-                View reports <ChevronRight size={13} />
-              </button>
-            }
+            title="Recent payables and receivables"
+            subtitle="Three most recently added records in each list"
           />
           <div className="grid gap-px bg-[#d7e8f3] md:grid-cols-2">
             <PayableDueList
               title="Payables"
               records={payables
-                .filter(
-                  (x) =>
-                    !x.archivedAt &&
-                    x.approvalStatus === "Approved" &&
-                    (x.paymentStatus === "Overdue" ||
-                      x.paymentStatus === "Unpaid" ||
-                      x.paymentStatus === "Partial"),
-                )
+                .filter((x) => !x.archivedAt)
+                .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || b.id - a.id)
                 .slice(0, 3)}
               onOpen={() => go("payables")}
             />
             <ReceivableDueList
               title="Receivables"
               records={receivables
-                .filter(
-                  (x) =>
-                    !x.archivedAt &&
-                    (x.collectionStatus === "Overdue" ||
-                      x.collectionStatus === "Unpaid" ||
-                      x.collectionStatus === "Partial"),
-                )
+                .filter((x) => !x.archivedAt)
+                .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || b.id - a.id)
                 .slice(0, 3)}
               onOpen={() => go("receivables")}
             />
@@ -2151,7 +2135,7 @@ function Reports({ checks, payables, receivables, employees, notify }: any) {
   );
   const reports = [
     {
-      title: "Check register",
+      title: "Check records",
       detail: "Open Check Monitoring for full reports, filters, and masked exports",
       Icon: FileCheck2,
       data: activeChecks,
