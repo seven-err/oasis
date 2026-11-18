@@ -650,16 +650,14 @@ export function ReceivableDetails({
         />
       </SectionCard>
 
-      <section className="panel">
-        <PanelTitle
-          title="7. Collection follow-up history"
-          subtitle="Follow-up notes are append-only and never overwritten."
-          action={<CalendarClock size={16} className="text-[#1f6ea6]" />}
-        />
+      <SectionCard title="7. Collection follow-up history">
+        <p className="mb-4 text-[11px] text-[#888]">
+          Follow-up notes are append-only and never overwritten.
+        </p>
         {followUps.length === 0 ? (
-          <p className="px-5 py-8 text-xs text-[#888]">No follow-ups recorded yet.</p>
+          <p className="bg-white p-4 text-xs text-[#888]">No follow-ups recorded yet.</p>
         ) : (
-          <div className="divide-y divide-[#e1eef6] px-5">
+          <div className="divide-y divide-[#e1eef6] bg-white px-4">
             {followUps.map((f) => (
               <div key={f.id} className="py-4">
                 <div className="flex flex-wrap items-start justify-between gap-2">
@@ -683,22 +681,20 @@ export function ReceivableDetails({
             ))}
           </div>
         )}
-      </section>
+      </SectionCard>
 
-      <section className="panel">
-        <PanelTitle
-          title="8. Attachments"
-          subtitle="Authorized preview and download only — no public URLs"
-          action={<Paperclip size={16} className="text-[#1f6ea6]" />}
-        />
+      <SectionCard title="8. Attachments">
+        <p className="mb-4 text-[11px] text-[#888]">
+          Authorized preview and download only — no public URLs
+        </p>
         {attachments.length === 0 ? (
-          <p className="px-5 py-8 text-xs text-[#888]">No attachments uploaded yet.</p>
+          <p className="bg-white p-4 text-xs text-[#888]">No attachments uploaded yet.</p>
         ) : (
-          <div className="divide-y divide-[#e1eef6]">
+          <div className="divide-y divide-[#e1eef6] bg-white">
             {attachments.map((a) => (
               <div
                 key={a.id}
-                className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
                   <strong className="block truncate text-xs">{a.fileName}</strong>
@@ -735,7 +731,7 @@ export function ReceivableDetails({
             ))}
           </div>
         )}
-      </section>
+      </SectionCard>
 
       <section className="panel">
         <PanelTitle

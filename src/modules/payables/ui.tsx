@@ -1,5 +1,4 @@
 import {
-  ArrowLeft,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -7,6 +6,7 @@ import {
   Search,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import { useHeaderBack } from "@/components/HeaderBack";
 
 export function PanelTitle({
   title,
@@ -21,20 +21,16 @@ export function PanelTitle({
   onBack?: () => void;
   backDisabled?: boolean;
 }) {
+  useHeaderBack(onBack, backDisabled);
   return (
-    <div className={`min-h-[76px] gap-3 border-b border-[#d0e3ef] px-4 py-4 sm:px-5 ${onBack ? "grid grid-cols-[minmax(0,1fr)_auto] items-start" : "flex flex-col sm:flex-row sm:items-center sm:justify-between"}`}>
+    <div className="flex min-h-[76px] flex-col gap-3 border-b border-[#d0e3ef] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
       <div className="min-w-0">
         <h2 className="truncate text-sm font-bold tracking-[-.01em]">{title}</h2>
         <p className="mt-1 text-[11px] text-[#888]">{subtitle}</p>
       </div>
-      {(action || onBack) && (
-        <div className={onBack ? "flex items-start justify-end gap-2" : "flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end"}>
+      {action && (
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
           {action}
-          {onBack && (
-            <button type="button" onClick={onBack} disabled={backDisabled} className="secondary-btn shrink-0">
-              <ArrowLeft size={15} aria-hidden="true" /> Back
-            </button>
-          )}
         </div>
       )}
     </div>
