@@ -2480,7 +2480,7 @@ function PanelTitle({
   onBack,
 }: {
   title: string;
-  subtitle: string;
+  subtitle?: string;
   action?: React.ReactNode;
   onBack?: () => void;
 }) {
@@ -2489,7 +2489,7 @@ function PanelTitle({
     <div className="flex min-h-[76px] flex-col gap-3 border-b border-[#d0e3ef] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
         <h2 className="text-sm font-bold tracking-[-.01em]">{title}</h2>
-        <p className="mt-1 text-[11px] text-[#888]">{subtitle}</p>
+        {subtitle && <p className="mt-1 text-[11px] text-[#888]">{subtitle}</p>}
       </div>
       {action && (
         <div className="flex items-start justify-end gap-2">
