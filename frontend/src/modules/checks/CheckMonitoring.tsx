@@ -39,7 +39,7 @@ export function CheckMonitoring({ notify, createSignal = 0, initialRecordId, onR
       : undefined;
 
   const renderView = (content?: ReactNode) => (
-    <div className="w-full max-w-full overflow-x-hidden">
+    <div className="w-full max-w-full overflow-x-clip">
       <div hidden={view.mode !== "register"} className="record-view-enter">
         <CheckRegister
           records={records}

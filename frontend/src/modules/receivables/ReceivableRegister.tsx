@@ -354,7 +354,7 @@ export function ReceivableRegister({
   );
 
   return (
-    <div className="w-full max-w-full space-y-5 overflow-x-hidden">
+    <div className="w-full max-w-full space-y-5 overflow-x-clip">
       {deleting && (
         <DeleteConfirmationDialog
           recordLabel={`Receivable ${deleting.invoiceNumber}`}
@@ -439,9 +439,6 @@ export function ReceivableRegister({
                 <SlidersHorizontal size={15} />
                 {showFilters ? "Hide filters" : "More filters"}
               </button>
-              <button type="button" onClick={onOpenReports} className="secondary-btn w-full sm:w-auto">
-                <FileText size={15} /> Reports
-              </button>
               <button
                 className="secondary-btn w-full sm:w-auto"
                 type="button"
@@ -453,6 +450,9 @@ export function ReceivableRegister({
               >
                 <ArrowUpDown size={15} />
                 {sort.key === "customerName" && sort.direction === "desc" ? "Z-A" : "A-Z"}
+              </button>
+              <button type="button" onClick={onOpenReports} className="secondary-btn w-full sm:w-auto">
+                <FileText size={15} /> Reports
               </button>
             </div>
           </div>

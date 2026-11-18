@@ -194,7 +194,7 @@ export function CheckRegister({
     ) : null;
 
   return (
-    <div className="w-full max-w-full space-y-5 overflow-x-hidden">
+    <div className="w-full max-w-full space-y-5 overflow-x-clip">
       {deleting && (
         <DeleteConfirmationDialog
           recordLabel={`Check ${deleting.checkNumber}`}
@@ -268,9 +268,6 @@ export function CheckRegister({
                 <SlidersHorizontal size={15} />
                 {showFilters ? "Hide filters" : "More filters"}
               </button>
-              <button type="button" onClick={onOpenReports} className="secondary-btn w-full sm:w-auto">
-                <FileCheck2 size={15} /> Reports
-              </button>
               <button
                 className="secondary-btn w-full sm:w-auto"
                 type="button"
@@ -282,6 +279,9 @@ export function CheckRegister({
               >
                 <ArrowUpDown size={15} />
                 {sort.key === "payeeName" && sort.direction === "desc" ? "Z-A" : "A-Z"}
+              </button>
+              <button type="button" onClick={onOpenReports} className="secondary-btn w-full sm:w-auto">
+                <FileCheck2 size={15} /> Reports
               </button>
             </div>
           </div>
