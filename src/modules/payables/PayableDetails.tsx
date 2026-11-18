@@ -10,6 +10,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { usePrintReport } from "@/components/usePrintReport";
 import { PAYMENT_METHODS } from "./constants";
 import { payableService } from "./store";
 import type {
@@ -59,6 +60,7 @@ export function PayableDetails({
 }: Props) {
   const paymentHistoryRef = useRef<HTMLElement>(null);
   const paymentFormRef = useRef<HTMLElement>(null);
+  const { printReport, printSheet } = usePrintReport();
   const user = payableService.getUser();
   const [payments, setPayments] = useState(() => payableService.paymentsFor(record.id));
   const activity = useMemo(
@@ -205,6 +207,43 @@ export function PayableDetails({
     !record.archivedAt &&
     record.approvalStatus === "Pending";
 
+  const printRecord = () => {
+    const details = {
+      "Payee name": record.payeeName,
+      "Invoice number": record.invoiceNumber,
+      Category: record.categoryName,
+      Description: record.description,
+      "Invoice date": formatDate(record.invoiceDate),
+      "Due date": formatDate(record.dueDate),
+      "Expected payment method": record.paymentMethod,
+      "Reference number": record.referenceNumber,
+      "Total amount": peso.format(record.totalAmount),
+      "Amount paid": peso.format(record.amountPaid),
+      "Remaining balance": peso.format(record.remainingBalance),
+      "Payment status": record.paymentStatus,
+      "Latest payment method": record.displayPaymentMethod,
+      "Latest payment reference": record.displayReferenceNumber,
+      "Approval status": record.approvalStatus,
+      Approver: record.approvedByName,
+      "Decision date": record.approvedAt ? formatDateTime(record.approvedAt) : null,
+      "Rejection reason": record.rejectionReason,
+      "Created by": record.createdByName,
+      Created: formatDateTime(record.createdAt),
+      "Last updated": formatDateTime(record.updatedAt),
+      "Archive status": record.archivedAt ? `Archived ${formatDateTime(record.archivedAt)}` : "Active",
+    };
+    const rows: Record<string, unknown>[] = Object.entries(details).map(([Field, Value]) => ({ Field, Value }));
+    rows.push(...(payments.length ? payments.map((p) => ({
+      Field: `Payment · ${formatDate(p.paymentDate)}`,
+      Value: `${peso.format(p.amountPaid)} · ${p.paymentMethod} · Reference: ${p.referenceNumber || "—"} · Check: ${p.checkNumber || "—"} · Recorded by: ${p.recordedByName} · ${p.isReversal ? "Reversal" : p.reversedAt ? "Reversed" : "Valid"}`,
+    })) : [{ Field: "Payment history", Value: "No payments recorded yet." }]));
+    rows.push(...(activity.length ? activity.map((item) => ({
+      Field: `Activity · ${formatDateTime(item.performedAt)}`,
+      Value: `${item.summary} · ${item.performedByName}${item.previousApprovalStatus && item.newApprovalStatus ? ` · ${item.previousApprovalStatus} → ${item.newApprovalStatus}` : ""}`,
+    })) : [{ Field: "Activity history", Value: "No history recorded yet." }]));
+    void printReport("Payable record", rows, 1, record.payeeName);
+  };
+
   return (
     <div className="space-y-5">
       <section className="panel">
@@ -238,7 +277,7 @@ export function PayableDetails({
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button onClick={() => window.print()} className="secondary-btn">
+            <button onClick={printRecord} className="secondary-btn">
               <Printer size={15} /> Print
             </button>
             {canDecide && (
@@ -590,6 +629,7 @@ export function PayableDetails({
           </div>
         )}
       </section>
+      {printSheet}
     </div>
   );
 }
