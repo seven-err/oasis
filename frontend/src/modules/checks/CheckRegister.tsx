@@ -100,6 +100,7 @@ export function CheckRegister({
   const deleteRecord = (record: CheckRecord) => {
     const result = checkService.deleteRecord(record.id);
     if (!result.ok) {
+      setDeleting(null);
       notify(result.errors.form ?? "Unable to delete check.");
       return;
     }

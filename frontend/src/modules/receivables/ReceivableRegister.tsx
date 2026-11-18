@@ -161,6 +161,7 @@ export function ReceivableRegister({
   const deleteRecord = (record: ReceivableViewModel) => {
     const result = receivableService.deleteRecord(record.id);
     if (!result.ok) {
+      setDeleting(null);
       notify(result.errors.form ?? "Unable to delete receivable.");
       return;
     }

@@ -114,6 +114,7 @@ export function PayableRegister({
   const deleteRecord = (record: PayableViewModel) => {
     const result = payableService.deleteRecord(record.id);
     if (!result.ok) {
+      setDeleting(null);
       notify(result.errors.form ?? "Unable to delete payable.");
       return;
     }
