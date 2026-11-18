@@ -14,7 +14,6 @@ import {
   Wallet,
   Download,
   FileCheck2,
-  FileText,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -332,7 +331,6 @@ const nav = [
   {
     section: "Management",
     items: [
-      { page: "reports" as Page, label: "Reports", icon: FileText },
       { page: "users" as Page, label: "User Management", icon: ShieldCheck },
       { page: "activity" as Page, label: "Activity Logs", icon: Activity },
     ],
@@ -1416,7 +1414,11 @@ function EmployeeRecordPanel({
   };
   return (
     <section className="panel">
-      <PanelTitle title={record ? "Edit employee" : "Add employee"} subtitle="Employee information and requirements" onBack={close} />
+      <PanelTitle
+        title={record ? "Edit employee" : "Add employee"}
+        subtitle="Employee information and requirements"
+        onBack={close}
+      />
       <form onSubmit={onSubmit} className="p-5 md:p-6">
         <div className="space-y-6">
           <fieldset className="grid gap-4 sm:grid-cols-2">
