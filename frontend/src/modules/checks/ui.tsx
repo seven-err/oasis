@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useHeaderBack } from "@/components/HeaderBack";
+import { maskAccountNumber } from "./utils";
 
 export function PanelTitle({
   title,
@@ -194,16 +195,18 @@ export function AccountNumberDisplay({
   revealed: boolean;
   onToggle: () => void;
 }) {
-  const masked =
-    accountNumber.length <= 4
-      ? "â€¢â€¢â€¢â€¢"
-      : `${"â€¢".repeat(Math.max(4, accountNumber.length - 4))}${accountNumber.slice(-4)}`;
+  const masked = maskAccountNumber(accountNumber);
 
   return (
     <div className="flex items-center gap-2">
-      <code className="font-mono text-sm tracking-wide">
-        {revealed && canReveal ? accountNumber : masked}
-      </code>
+      <span className="inline-flex items-center whitespace-nowrap">
+        {revealed && canReveal ? accountNumber : (
+          <>
+            <span className="relative top-[0.18em] [font-variant-ligatures:none]">{masked.replace(/[^*]/g, "")}</span>
+            <span>{masked.replace(/\*/g, "")}</span>
+          </>
+        )}
+      </span>
       {canReveal && (
         <button
           type="button"
