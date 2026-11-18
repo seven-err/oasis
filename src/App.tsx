@@ -343,7 +343,10 @@ function App() {
   const [page, setPage] = useState<Page>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarHovered, setSidebarHovered] = useState(false);
-  const compactMenu = !sidebarHovered && !sidebarOpen;
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+  const profileButtonRef = useRef<HTMLButtonElement>(null);
+  const compactMenu = !sidebarHovered && !sidebarOpen && !profileOpen;
   const sidebarNavRef = useRef<HTMLElement>(null);
   const [selectionTop, setSelectionTop] = useState<number | null>(null);
 
@@ -376,7 +379,25 @@ function App() {
     reset: resetEmployeeView,
   } = useViewHistory<EmployeeView | null>(() => null, null);
   const [toast, setToast] = useState("");
-  const [profileOpen, setProfileOpen] = useState(false);
+
+  useEffect(() => {
+    if (!profileOpen) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (!profileMenuRef.current?.contains(event.target as Node)) setProfileOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setProfileOpen(false);
+        profileButtonRef.current?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [profileOpen]);
 
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notificationDate, setNotificationDate] = useState(() => todayIsoDate());
@@ -535,10 +556,41 @@ function App() {
             </div>
           ))}
         </nav>
-        <div className="border-t border-[#c5dced] p-3">
+        <div ref={profileMenuRef} className="relative border-t border-[#c5dced] p-3">
+          {profileOpen && (
+            <div id="sidebar-account-menu" aria-label="Account" className="absolute inset-x-3 bottom-full mb-2 rounded-xl border border-[#d0e3ef] bg-white p-1 text-[#16344d] shadow-xl">
+              <button
+                onClick={() => go("profile")}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-xs hover:bg-[#e7f3fb]"
+              >
+                <UserRound size={15} /> My profile
+              </button>
+              <button
+                onClick={() => go("users")}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-xs hover:bg-[#e7f3fb]"
+              >
+                <Settings size={15} /> Administration
+              </button>
+              <button
+                onClick={() => {
+                  setProfileOpen(false);
+                  notify("Prototype session remains active.");
+                }}
+                className="flex w-full items-center gap-2 border-t border-[#e1eef6] px-3 py-2.5 text-xs text-red-700 hover:bg-red-50"
+              >
+                <LogOut size={15} /> Log out
+              </button>
+            </div>
+          )}
           <button
-            onClick={() => go("profile")}
-            aria-label="Open profile"
+            ref={profileButtonRef}
+            onClick={() => {
+              setNotificationsOpen(false);
+              setProfileOpen((open) => !open);
+            }}
+            aria-label="Account options for Miguel Alvarina"
+            aria-expanded={profileOpen}
+            aria-controls="sidebar-account-menu"
             className="flex w-full items-center gap-3 p-2 text-left hover:bg-white/70"
           >
             <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#1f6ea6] text-xs font-bold text-white">
@@ -548,7 +600,6 @@ function App() {
                 <strong className="block truncate text-xs">Miguel Alvarina</strong>
                 <span className="text-[10px] text-[#5c7890]">Administrator</span>
               </span>
-            <MoreHorizontal size={16} className="sidebar-copy shrink-0 text-[#5c7890]" />
           </button>
         </div>
       </aside>
@@ -586,42 +637,17 @@ function App() {
               }}
               onSelect={(item) => go(item.page, item)}
             />
-            <div className="relative">
+            {page !== "profile" && (
               <button
+                aria-label="My profile"
                 className="flex h-10 items-center gap-2 px-2 hover:bg-[#e7f3fb]"
-                onClick={() => {
-                  setNotificationsOpen(false);
-                  setProfileOpen((x) => !x);
-                }}
+                onClick={() => go("profile")}
               >
                 <span className="grid size-7 place-items-center rounded-full bg-[#1f6ea6] text-[10px] font-bold text-white">
                   MA
                 </span>
-                <ChevronDown size={14} className="hidden sm:block" />
               </button>
-              {profileOpen && (
-                <div className="absolute right-0 top-12 w-52 border border-[#d0e3ef] bg-white p-1 shadow-xl">
-                  <button
-                    onClick={() => go("profile")}
-                    className="flex w-full items-center gap-2 px-3 py-2.5 text-xs hover:bg-[#e7f3fb]"
-                  >
-                    <UserRound size={15} /> My profile
-                  </button>
-                  <button
-                    onClick={() => go("users")}
-                    className="flex w-full items-center gap-2 px-3 py-2.5 text-xs hover:bg-[#e7f3fb]"
-                  >
-                    <Settings size={15} /> Administration
-                  </button>
-                  <button
-                    onClick={() => notify("Prototype session remains active.")}
-                    className="flex w-full items-center gap-2 border-t border-[#e1eef6] px-3 py-2.5 text-xs text-red-700 hover:bg-red-50"
-                  >
-                    <LogOut size={15} /> Log out
-                  </button>
-                </div>
-              )}
-            </div>
+            )}
           </div>
         </header>
 
@@ -1384,7 +1410,11 @@ function EmployeeRecordPanel({
   };
   return (
     <section className="panel">
-      <PanelTitle title={record ? "Edit employee" : "Add employee"} subtitle="Employee information and requirements" />
+      <PanelTitle
+        title={record ? "Edit employee" : "Add employee"}
+        subtitle="Employee information and requirements"
+        onBack={close}
+      />
       <form onSubmit={onSubmit} className="p-5 md:p-6">
         <div className="space-y-6">
           <fieldset className="grid gap-4 sm:grid-cols-2">
