@@ -2330,20 +2330,16 @@ function UserManagement({ notify }: { notify: (s: string) => void }) {
     ["Nathaniel Dela Rosa", "n.delarosa@oasis.org", "Viewer", "Active"],
   ];
   return (
-    <section className="panel">
-      <PanelTitle
-        title="Authorized users"
-        subtitle="Role and permission assignments"
-        action={
+    <section className="space-y-4">
+      <div className="flex justify-end">
           <button
             onClick={() => notify("User invitation workflow opened in prototype mode.")}
             className="primary-btn"
           >
             <Plus size={15} /> Invite user
           </button>
-        }
-      />
-      <div className="overflow-x-auto">
+      </div>
+      <div className="panel overflow-x-auto">
         <table>
           <thead>
             <tr>
