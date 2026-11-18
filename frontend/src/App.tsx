@@ -7,7 +7,6 @@ import {
   CalendarDays,
   Check,
   CheckCircle2,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   CircleDollarSign,
@@ -1528,8 +1527,11 @@ function RegisterTools({
   sortDirection: "asc" | "desc";
   onToggleSort: () => void;
 }) {
+  const [showFilters, setShowFilters] = useState(false);
+  const [showReports, setShowReports] = useState(false);
   return (
-    <div className="flex flex-col gap-3 md:flex-row md:items-center">
+    <div className="space-y-3">
+    <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
       <label className="relative min-w-0 flex-1">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#888]" />
         <input
@@ -1552,40 +1554,40 @@ function RegisterTools({
           </button>
         )}
       </label>
-      <label className="relative">
-        <SlidersHorizontal
-          size={15}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-[#777]"
-        />
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-          className="input min-w-40 appearance-none pl-9 pr-8"
-        >
-          <option>All statuses</option>
-          {statuses.map((x) => (
-            <option key={x}>{x}</option>
-          ))}
-        </select>
-        <ChevronDown
-          size={14}
-          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2"
-        />
-      </label>
-      <button onClick={onPrint} className="secondary-btn">
-        <Printer size={15} /> Print
-      </button>
-      <button onClick={exportData} className="secondary-btn">
-        <Download size={15} /> Export
-      </button>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <button type="button" className="secondary-btn w-full sm:w-auto" aria-expanded={showFilters} aria-controls="employee-filter-panel" onClick={() => setShowFilters((visible) => !visible)}>
+          <SlidersHorizontal size={15} /> {showFilters ? "Hide filters" : "More filters"}
+        </button>
+        <button type="button" className="secondary-btn w-full sm:w-auto" aria-expanded={showReports} aria-controls="employee-report-panel" onClick={() => setShowReports((visible) => !visible)}>
+          <FileCheck2 size={15} /> Reports
+        </button>
       <button
         type="button"
         onClick={onToggleSort}
-        className="secondary-btn"
+        className="secondary-btn w-full sm:w-auto"
         aria-label="Sort employees by surname alphabetically"
       >
         <ArrowUpDown size={15} /> {sortDirection === "asc" ? "A-Z" : "Z-A"}
       </button>
+      </div>
+    </div>
+    {showFilters && (
+      <div id="employee-filter-panel" className="grid gap-3 border border-[#d0e3ef] bg-[#f4f9fd] p-4 md:grid-cols-2 xl:grid-cols-4">
+        <label className="block">
+          <span className="field-label">Employment status</span>
+          <select value={status} onChange={(event) => setStatus(event.target.value)} className="input mt-2">
+            <option>All statuses</option>
+            {statuses.map((value) => <option key={value}>{value}</option>)}
+          </select>
+        </label>
+      </div>
+    )}
+    {showReports && (
+      <div id="employee-report-panel" className="flex flex-wrap gap-2 border border-[#d0e3ef] bg-[#f4f9fd] p-4">
+        <button type="button" onClick={onPrint} className="secondary-btn"><Printer size={15} /> Print</button>
+        <button type="button" onClick={exportData} className="secondary-btn"><Download size={15} /> Export</button>
+      </div>
+    )}
     </div>
   );
 }
@@ -1670,7 +1672,6 @@ export function EmployeeRegister({
           setPage(1);
         }}
       />
-      <div className="border-b border-[#d0e3ef] px-4 py-3 sm:px-5">
         <ActiveFilters
           filters={{ search: query, status }}
           defaults={{ search: "", status: "All statuses" }}
@@ -1679,7 +1680,7 @@ export function EmployeeRegister({
           onRemove={(key) => key === "search" ? setQuery("") : setStatus("All statuses")}
           onClear={() => { setQuery(""); setStatus("All statuses"); }}
         />
-      </div>
+      <div className="panel max-w-full overflow-hidden">
       {filtered.length ? (
         <div className="overflow-x-auto">
           <table>
@@ -1740,6 +1741,7 @@ export function EmployeeRegister({
         <Empty title="No employees found" action={onAdd} />
       )}
       <Pagination page={currentPage} pageSize={pageSize} count={filtered.length} onPageChange={setPage} />
+      </div>
     </section>
     {printSheet}
     </div>

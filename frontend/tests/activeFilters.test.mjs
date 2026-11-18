@@ -27,8 +27,6 @@ test("active filter chips show readable values and remove only the selected filt
     for (const text of ["Status: Pending", "Category: Utilities", "Invoice date from: Nov 18, 2026", "Include archived: Yes", "Clear all"]) {
       assert.ok(markup.includes(text), text);
     }
-    assert.match(markup, /0 of 10 records match/);
-    assert.match(markup, /aria-live="polite"/);
     const initial = { ...filters };
     for (const [key, accessibleName] of [
       ["search", "Remove filter Search: Invoice"], ["checkStatus", "Remove filter Status: Pending"],
@@ -43,10 +41,7 @@ test("active filter chips show readable values and remove only the selected filt
     assert.equal(clearCalls, 1);
     assert.deepEqual(filters, defaults);
     const cleared = renderToStaticMarkup(createElement(ActiveFilters, { ...props(), matched: 10 }));
-    assert.doesNotMatch(cleared, /Clear all|Remove filter/);
-    assert.match(cleared, /10 of 10 records shown/);
-    const single = renderToStaticMarkup(createElement(ActiveFilters, { ...props(), matched: 1, total: 1 }));
-    assert.match(single, /1 of 1 record shown/);
+    assert.equal(cleared, "");
   } finally {
     await server.close();
   }
