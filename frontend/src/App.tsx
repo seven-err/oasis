@@ -2031,6 +2031,7 @@ function EmployeeDetails({
   onDelete: () => void;
   close: () => void;
 }) {
+  const { printReport, printSheet } = usePrintReport();
   const fields = [
     ["ID No.", record.number],
     ["Full Name", record.name],
@@ -2103,11 +2104,32 @@ function EmployeeDetails({
           Delete record
         </button>
         <div className="flex gap-2">
-          <button onClick={() => window.print()} className="secondary-btn">
+          <button
+            onClick={() => {
+              const rows = fields.map(([Field, value]) => ({ Field, Value: value || "—" }));
+              for (const [title, items, checked] of [
+                ["Requirement", employeeRequirements, record.requirements ?? []],
+                ["Laboratory requirement", laboratoryRequirements, record.laboratoryRequirements ?? []],
+              ] as const) {
+                for (const item of items) {
+                  const attachment = record.requirementAttachments?.[item];
+                  rows.push({
+                    Field: `${title}: ${item}`,
+                    Value: checked.includes(item)
+                      ? `Checked${attachment ? ` · ${attachment.name}` : " · No attachment"}`
+                      : "Not checked",
+                  });
+                }
+              }
+              void printReport("Employee record", rows, 1, record.name);
+            }}
+            className="secondary-btn"
+          >
             <Printer size={15} /> Print
           </button>
         </div>
       </div>
+      {printSheet}
     </div>
   );
 }
