@@ -1,6 +1,24 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
+@layer base {
+  @media screen {
+    html,
+    body,
+    .oasis-content,
+    main.page-view-enter {
+      scrollbar-width: none;
+    }
+
+    html::-webkit-scrollbar,
+    body::-webkit-scrollbar,
+    .oasis-content::-webkit-scrollbar,
+    main.page-view-enter::-webkit-scrollbar {
+      display: none;
+    }
+  }
+}
+
 @page {
   size: portrait;
   margin: 15mm;

@@ -779,7 +779,7 @@ function App() {
           </div>
         </header>
 
-        <main key={page} className="page-view-enter mx-auto w-full max-w-[1600px] overflow-x-hidden px-4 py-6 sm:px-5 sm:py-8 md:px-8 lg:px-10 lg:py-10">
+        <main key={page} className="page-view-enter mx-auto w-full max-w-[1600px] overflow-x-clip px-4 py-6 sm:px-5 sm:py-8 md:px-8 lg:px-10 lg:py-10">
           <PageHeading page={page} onAdd={requestAdd} />
           {page === "dashboard" && (
             <Dashboard
@@ -1558,9 +1558,6 @@ function RegisterTools({
         <button type="button" className="secondary-btn w-full sm:w-auto" aria-expanded={showFilters} aria-controls="employee-filter-panel" onClick={() => setShowFilters((visible) => !visible)}>
           <SlidersHorizontal size={15} /> {showFilters ? "Hide filters" : "More filters"}
         </button>
-        <button type="button" className="secondary-btn w-full sm:w-auto" aria-expanded={showReports} aria-controls="employee-report-panel" onClick={() => setShowReports((visible) => !visible)}>
-          <FileCheck2 size={15} /> Reports
-        </button>
       <button
         type="button"
         onClick={onToggleSort}
@@ -1569,6 +1566,9 @@ function RegisterTools({
       >
         <ArrowUpDown size={15} /> {sortDirection === "asc" ? "A-Z" : "Z-A"}
       </button>
+        <button type="button" className="secondary-btn w-full sm:w-auto" aria-expanded={showReports} aria-controls="employee-report-panel" onClick={() => setShowReports((visible) => !visible)}>
+          <FileCheck2 size={15} /> Reports
+        </button>
       </div>
     </div>
     {showFilters && (
@@ -1627,7 +1627,7 @@ export function EmployeeRegister({
     { label: "Contractual", icon: Users },
   ] as const;
   return (
-    <div className="w-full max-w-full space-y-5 overflow-x-hidden">
+    <div className="w-full max-w-full space-y-5 overflow-x-clip">
       <SummaryStatCards
         items={[
           {

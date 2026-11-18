@@ -239,7 +239,7 @@ export function PayableRegister({
     ) : null;
 
   return (
-    <div className="w-full max-w-full space-y-5 overflow-x-hidden">
+    <div className="w-full max-w-full space-y-5 overflow-x-clip">
       {deleting && (
         <DeleteConfirmationDialog
           recordLabel={`Payable ${deleting.invoiceNumber}`}
@@ -402,9 +402,6 @@ export function PayableRegister({
                 <SlidersHorizontal size={15} />
                 {showFilters ? "Hide filters" : "More filters"}
               </button>
-              <button type="button" onClick={onOpenReports} className="secondary-btn w-full sm:w-auto">
-                <FileText size={15} /> Reports
-              </button>
               {user.permissions.manageCategories && (
                 <button type="button" onClick={() => setShowCategories((visible) => !visible)} className="secondary-btn w-full sm:w-auto">
                   Categories
@@ -421,6 +418,9 @@ export function PayableRegister({
               >
                 <ArrowUpDown size={15} />
                 {sort.key === "payeeName" && sort.direction === "desc" ? "Z-A" : "A-Z"}
+              </button>
+              <button type="button" onClick={onOpenReports} className="secondary-btn w-full sm:w-auto">
+                <FileText size={15} /> Reports
               </button>
             </div>
           </div>
