@@ -22,6 +22,7 @@ export type AuditAction =
   | "attachment_replaced"
   | "attachment_deleted"
   | "archived"
+  | "deleted"
   | "restored"
   | "account_revealed";
 

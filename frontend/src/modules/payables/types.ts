@@ -12,6 +12,7 @@ export type PayableAuditAction =
   | "payment_recorded"
   | "payment_reversed"
   | "archived"
+  | "deleted"
   | "restored"
   | "category_managed";
 

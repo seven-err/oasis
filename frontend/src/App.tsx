@@ -44,6 +44,8 @@ import {
 import { todayIsoDate } from "@/modules/payables/utils";
 import { CURRENT_USER } from "@/modules/checks/constants";
 import { SummaryStatCards } from "@/components/SummaryStatCards";
+import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
+import { deletionDaysLeft, isDeletionExpired } from "@/components/deletedRecordRetention";
 import { usePrintReport } from "@/components/usePrintReport";
 import { HeaderBackButton, HeaderBackProvider, useHeaderBack } from "@/components/HeaderBack";
 import { useViewHistory } from "@/hooks/useViewHistory";
@@ -147,6 +149,7 @@ type Employee = {
   email: string;
   status: "Active" | "On Leave" | "Inactive";
   archived?: boolean;
+  deletedAt?: string | null;
   employmentStatus?: (typeof employmentStatuses)[number] | "Cash Advances";
   hasCashAdvances?: boolean;
   cashAdvanceAmount?: number;
@@ -278,6 +281,27 @@ const initialEmployees: Employee[] = [
   },
 ];
 
+const EMPLOYEE_STORAGE_KEY = "oasis.employees.v1";
+
+export function loadEmployeeRecords(): { employees: Employee[]; deletedEmployees: Employee[] } {
+  try {
+    const saved = JSON.parse(localStorage.getItem(EMPLOYEE_STORAGE_KEY) ?? "null");
+    if (saved && Array.isArray(saved.employees) && Array.isArray(saved.deletedEmployees)) {
+      return {
+        employees: saved.employees,
+        deletedEmployees: saved.deletedEmployees.map((record: Employee) => ({
+          ...record,
+          deletedAt: record.deletedAt && Number.isFinite(Date.parse(record.deletedAt))
+            ? record.deletedAt : new Date().toISOString(),
+        })),
+      };
+    }
+  } catch {
+    // Use the initial directory when storage is unavailable or invalid.
+  }
+  return { employees: initialEmployees, deletedEmployees: [] };
+}
+
 const peso = new Intl.NumberFormat("en-PH", {
   style: "currency",
   currency: "PHP",
@@ -399,8 +423,10 @@ function App() {
   const [receivables, setReceivables] = useState<ReceivableViewModel[]>(() =>
     getReceivableRecords(),
   );
-  const [employees, setEmployees] = useState(initialEmployees);
-  const [deletedEmployees, setDeletedEmployees] = useState<Employee[]>([]);
+  const [employees, setEmployees] = useState(() => loadEmployeeRecords().employees);
+  const [deletedEmployees, setDeletedEmployees] = useState(() => loadEmployeeRecords().deletedEmployees);
+  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
+  const [, setRetentionVersion] = useState(0);
   const [checkCreateSignal, setCheckCreateSignal] = useState(0);
   const [payableCreateSignal, setPayableCreateSignal] = useState(0);
   const [receivableCreateSignal, setReceivableCreateSignal] = useState(0);
@@ -412,8 +438,40 @@ function App() {
     reset: resetEmployeeView,
   } = useViewHistory<EmployeeView | null>(() => null, null);
   const [toast, setToast] = useState("");
+  useEffect(() => {
+    try {
+      localStorage.setItem(EMPLOYEE_STORAGE_KEY, JSON.stringify({ employees, deletedEmployees }));
+    } catch {
+      setToast("Employee changes could not be saved in this browser. Do not refresh before retrying.");
+    }
+  }, [employees, deletedEmployees]);
   const [pendingDeletion, setPendingDeletion] = useState<{ module: ArchiveModule; id: number } | null>(null);
   const deletionDialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const cleanUp = () => {
+      const now = Date.now();
+      try {
+        checkService.purgeExpiredDeleted(now);
+        payableService.purgeExpiredDeleted(now);
+        receivableService.purgeExpiredDeleted(now);
+        setRetentionVersion((version) => version + 1);
+        setDeletedEmployees((records) => {
+          const retained = records.filter((record) => !isDeletionExpired(record.deletedAt, now));
+          return retained.length === records.length ? records : retained;
+        });
+      } catch {
+        setToast("Automatic cleanup could not be saved. Please retry by reopening the app.");
+      }
+    };
+    cleanUp();
+    const timer = window.setInterval(cleanUp, 60_000);
+    window.addEventListener("focus", cleanUp);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", cleanUp);
+    };
+  }, []);
 
   useEffect(() => {
     if (pendingDeletion) deletionDialogRef.current?.showModal();
@@ -512,9 +570,22 @@ function App() {
   };
 
   const deleteEmployee = (id: number) => {
-    if (!window.confirm("Delete this employee record? This action cannot be undone.")) return;
-    setEmployees((list) => list.filter((employee) => employee.id !== id));
-    notify("Employee record deleted.");
+    const record = employees.find((employee) => employee.id === id);
+    if (record) setEmployeeToDelete(record);
+  };
+
+  const confirmEmployeeDeletion = () => {
+    if (!employeeToDelete) return;
+    const record = employees.find((employee) => employee.id === employeeToDelete.id);
+    if (!record) {
+      setEmployeeToDelete(null);
+      notify("Employee record not found.");
+      return;
+    }
+    setDeletedEmployees((list) => [...list.filter((employee) => employee.id !== record.id), { ...record, deletedAt: new Date().toISOString() }]);
+    setEmployees((list) => list.filter((employee) => employee.id !== record.id));
+    setEmployeeToDelete(null);
+    notify("Employee moved to Deleted Records.");
     openEmployeeView(null);
   };
 
@@ -827,7 +898,7 @@ function App() {
                   if (module === "Employees") {
                     const employee = employees.find((record) => record.id === id && record.archived);
                     if (!employee) return;
-                    setDeletedEmployees((list) => [...list, employee]);
+                    setDeletedEmployees((list) => [...list, { ...employee, deletedAt: new Date().toISOString() }]);
                     setEmployees((list) => list.filter((record) => record.id !== id));
                   } else {
                     const services = { Checks: checkService, Payables: payableService, Receivables: receivableService };
@@ -877,8 +948,8 @@ function App() {
               receivables={[]}
               employees={deletedEmployees}
               deletedFinancialRecords={[
-                ...payableService.listDeleted().map((record) => ({ key: `payable-${record.id}`, id: record.id, module: "Payables" as const, reference: record.invoiceNumber, name: record.payeeName })),
-                ...receivableService.listDeleted().map((record) => ({ key: `receivable-${record.id}`, id: record.id, module: "Receivables" as const, reference: record.invoiceNumber, name: record.customerName })),
+                ...payableService.listDeleted().map((record) => ({ key: `payable-${record.id}`, id: record.id, module: "Payables" as const, reference: record.invoiceNumber, name: record.payeeName, deletedAt: record.deletedAt })),
+                ...receivableService.listDeleted().map((record) => ({ key: `receivable-${record.id}`, id: record.id, module: "Receivables" as const, reference: record.invoiceNumber, name: record.customerName, deletedAt: record.deletedAt })),
               ]}
               deleted
               onRestore={(module, id) => {
@@ -886,7 +957,7 @@ function App() {
                   if (module === "Employees") {
                     const record = deletedEmployees.find((employee) => employee.id === id);
                     if (!record) return false;
-                    setEmployees((list) => [...list, record]);
+                    setEmployees((list) => [...list, { ...record, deletedAt: null }]);
                     setDeletedEmployees((list) => list.filter((employee) => employee.id !== id));
                   } else {
                     const services = { Checks: checkService, Payables: payableService, Receivables: receivableService };
@@ -899,7 +970,7 @@ function App() {
                     setPayables(getPayableRecords());
                     setReceivables(getReceivableRecords());
                   }
-                  notify("Record restored to Archive Records.");
+                  notify("Record restored.");
                   return true;
                 } catch {
                   notify("Unable to restore record. Please try again.");
@@ -914,6 +985,13 @@ function App() {
         </main>
       </div>
 
+      {employeeToDelete && (
+        <DeleteConfirmationDialog
+          recordLabel={`Employee ${employeeToDelete.number} — ${employeeToDelete.name}`}
+          onCancel={() => setEmployeeToDelete(null)}
+          onConfirm={confirmEmployeeDeletion}
+        />
+      )}
       <dialog
         ref={deletionDialogRef}
         aria-labelledby="permanent-delete-title"
@@ -954,7 +1032,7 @@ const officeHour = new Intl.DateTimeFormat("en-PH", {
   hourCycle: "h23",
 });
 
-function ArchivedRecords({ checks, payables, receivables, employees, onRestore, onDelete, deleted = false, deletedFinancialRecords = [] }: {
+export function ArchivedRecords({ checks, payables, receivables, employees, onRestore, onDelete, deleted = false, deletedFinancialRecords = [] }: {
   checks: CheckRecord[];
   payables: PayableViewModel[];
   receivables: ReceivableViewModel[];
@@ -962,22 +1040,22 @@ function ArchivedRecords({ checks, payables, receivables, employees, onRestore, 
   onRestore?: (module: ArchiveModule, id: number) => boolean;
   onDelete?: (module: ArchiveModule, id: number) => void;
   deleted?: boolean;
-  deletedFinancialRecords?: { key: string; id: number; module: ArchiveModule; reference: string; name: string }[];
+  deletedFinancialRecords?: { key: string; id: number; module: ArchiveModule; reference: string; name: string; deletedAt?: string | null }[];
 }) {
   const [selected, setSelected] = useState<string[]>([]);
   const records = [
     ...deletedFinancialRecords,
-    ...checks.filter((record) => record.archivedAt).map((record) => ({
-      key: `check-${record.id}`, id: record.id, module: "Checks" as const, reference: record.checkNumber, name: record.payeeName,
+    ...checks.filter((record) => deleted ? record.deletedAt : record.archivedAt).map((record) => ({
+      key: `check-${record.id}`, id: record.id, module: "Checks" as const, reference: record.checkNumber, name: record.payeeName, deletedAt: record.deletedAt,
     })),
-    ...payables.filter((record) => record.archivedAt).map((record) => ({
-      key: `payable-${record.id}`, id: record.id, module: "Payables" as const, reference: record.invoiceNumber, name: record.payeeName,
+    ...payables.filter((record) => deleted ? record.deletedAt : record.archivedAt).map((record) => ({
+      key: `payable-${record.id}`, id: record.id, module: "Payables" as const, reference: record.invoiceNumber, name: record.payeeName, deletedAt: record.deletedAt,
     })),
-    ...receivables.filter((record) => record.archivedAt).map((record) => ({
-      key: `receivable-${record.id}`, id: record.id, module: "Receivables" as const, reference: record.invoiceNumber, name: record.customerName,
+    ...receivables.filter((record) => deleted ? record.deletedAt : record.archivedAt).map((record) => ({
+      key: `receivable-${record.id}`, id: record.id, module: "Receivables" as const, reference: record.invoiceNumber, name: record.customerName, deletedAt: record.deletedAt,
     })),
-    ...employees.filter((record) => record.archived).map((record) => ({
-      key: `employee-${record.id}`, id: record.id, module: "Employees" as const, reference: record.number, name: record.name,
+    ...employees.filter((record) => deleted || record.archived).map((record) => ({
+      key: `employee-${record.id}`, id: record.id, module: "Employees" as const, reference: record.number, name: record.name, deletedAt: record.deletedAt,
     })),
   ];
   const selectedRecords = records.filter((record) => selected.includes(record.key));
@@ -990,6 +1068,12 @@ function ArchivedRecords({ checks, payables, receivables, employees, onRestore, 
   };
   return (
     <section className="panel overflow-hidden">
+      {deleted && (
+        <p className="border-b border-[#d0e3ef] bg-[#f4f9fd] px-4 py-3 text-xs text-[#555]">
+          Records are permanently deleted after 30 days in Deleted Records and cannot be restored afterward.
+          Automatic cleanup runs while this app is open or when it is reopened.
+        </p>
+      )}
       {records.length > 0 && (
         <div className="flex flex-wrap items-center gap-4 border-b border-[#d0e3ef] p-4">
           <button type="button" className="secondary-btn" disabled={!records.length} onClick={() => setSelected(allSelected ? [] : records.map((record) => record.key))}>
@@ -1011,9 +1095,11 @@ function ArchivedRecords({ checks, payables, receivables, employees, onRestore, 
       {records.length ? (
         <div className="overflow-x-auto">
           <table>
-            <thead><tr><th>Module</th><th>Reference</th><th>Name</th><th className="w-16"><span className="sr-only">Actions</span></th></tr></thead>
+            <thead><tr><th>Module</th><th>Reference</th><th>Name</th>{deleted && <th>Days left</th>}<th className="w-16"><span className="sr-only">Actions</span></th></tr></thead>
             <tbody>
-              {records.map((record) => (
+              {records.map((record) => {
+                const daysLeft = deletionDaysLeft(record.deletedAt);
+                return (
                 <tr
                   key={record.key}
                   aria-selected={selected.includes(record.key)}
@@ -1028,6 +1114,11 @@ function ArchivedRecords({ checks, payables, receivables, employees, onRestore, 
                   }}
                 >
                   <td>{record.module}</td><td>{record.reference}</td><td>{record.name}</td>
+                  {deleted && (
+                    <td className={daysLeft !== null && daysLeft <= 7 ? "font-semibold text-red-700" : "text-[#555]"}>
+                      {daysLeft === null ? "Date unavailable" : daysLeft === 0 ? "Pending cleanup" : `${daysLeft} ${daysLeft === 1 ? "day" : "days"} left`}
+                    </td>
+                  )}
                   <td className="w-16 text-right" onClick={(event) => event.stopPropagation()}>
                     <button
                       type="button"
@@ -1058,7 +1149,8 @@ function ArchivedRecords({ checks, payables, receivables, employees, onRestore, 
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

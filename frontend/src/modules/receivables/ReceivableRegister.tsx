@@ -16,10 +16,12 @@ import {
   RotateCcw,
   Search,
   SlidersHorizontal,
+  Trash2,
   X,
 } from "lucide-react";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { SummaryStatCards } from "@/components/SummaryStatCards";
+import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 import { recordRowClick } from "@/components/recordRowClick";
 import {
   COLLECTION_STATUSES,
@@ -73,6 +75,7 @@ export function ReceivableRegister({
   notify,
 }: Props) {
   const user = receivableService.getUser();
+  const [deleting, setDeleting] = useState<ReceivableViewModel | null>(null);
   const customers = useMemo(() => receivableService.customers(false), [records]);
   const collections = useMemo(() => receivableService.allCollections(), [records]);
   const [filters, setFilters] = useState<ReceivableFilters>(EMPTY_FILTERS);
@@ -154,6 +157,18 @@ export function ReceivableRegister({
       </button>
     </th>
   );
+
+  const deleteRecord = (record: ReceivableViewModel) => {
+    const result = receivableService.deleteRecord(record.id);
+    if (!result.ok) {
+      setDeleting(null);
+      notify(result.errors.form ?? "Unable to delete receivable.");
+      return;
+    }
+    setDeleting(null);
+    notify("Receivable moved to Deleted Records.");
+    onChanged();
+  };
 
   const archiveOrRestore = (record: ReceivableViewModel) => {
     if (!user.permissions.archiveReceivables) {
@@ -299,6 +314,18 @@ export function ReceivableRegister({
             )}
           </button>
         )}
+        {user.permissions.archiveReceivables && (
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 border-t border-[#e1eef6] px-3 py-2 text-xs text-red-700 hover:bg-red-50"
+            onClick={() => {
+              setMenu(null);
+              setDeleting(row);
+            }}
+          >
+            <Trash2 size={14} /> Delete
+          </button>
+        )}
         <button
           className="flex w-full items-center gap-2 px-3 py-2 text-xs text-[#888] hover:bg-[#e7f3fb]"
           onClick={() => setMenu(null)}
@@ -326,6 +353,13 @@ export function ReceivableRegister({
 
   return (
     <div className="w-full max-w-full space-y-5 overflow-x-hidden">
+      {deleting && (
+        <DeleteConfirmationDialog
+          recordLabel={`Receivable ${deleting.invoiceNumber}`}
+          onCancel={() => setDeleting(null)}
+          onConfirm={() => deleteRecord(deleting)}
+        />
+      )}
       <SummaryStatCards
         items={[
           {

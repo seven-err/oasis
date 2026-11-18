@@ -1,3 +1,4 @@
+import { isDeletionExpired } from "@/components/deletedRecordRetention";
 import {
   CHECK_ACTIVITY_STORAGE_KEY,
   CHECK_ATTACHMENTS_STORAGE_KEY,
@@ -233,6 +234,37 @@ export const checkService = {
     });
     persist(snapshot);
     return { ok: true, data: record };
+  },
+
+  deleteRecord(id: number): CheckServiceResult<CheckRecord> {
+    const user = CURRENT_USER;
+    if (!user.permissions.archiveChecks) {
+      return { ok: false, errors: { form: "You are not authorized to delete checks." } };
+    }
+    const snapshot = load();
+    const existing = snapshot.checks.find((record) => record.id === id && !record.deletedAt);
+    if (!existing) return { ok: false, errors: { form: "Check record not found." } };
+    const stamp = nowIso();
+    const record = { ...existing, deletedAt: stamp, updatedAt: stamp, updatedById: user.id };
+    snapshot.checks = snapshot.checks.map((item) => item.id === id ? record : item);
+    logActivity(snapshot, {
+      checkId: id,
+      action: "deleted",
+      summary: "Check moved to Deleted Records",
+      performedById: user.id,
+      performedByName: user.name,
+    });
+    persist(snapshot);
+    return { ok: true, data: record };
+  },
+
+  purgeExpiredDeleted(now = Date.now()): number {
+    if (!CURRENT_USER.permissions.archiveChecks) return 0;
+    const snapshot = load();
+    const retained = snapshot.checks.filter((record) => !isDeletionExpired(record.deletedAt, now));
+    const removed = snapshot.checks.length - retained.length;
+    if (removed) writeJson(CHECKS_STORAGE_KEY, retained);
+    return removed;
   },
 
   listDeleted(): CheckRecord[] {
