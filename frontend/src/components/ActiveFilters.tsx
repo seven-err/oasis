@@ -6,7 +6,7 @@ const labels: Record<string, string> = {
   receivedIssuedFrom: "Received/issued from", receivedIssuedTo: "Received/issued to",
 };
 
-export function ActiveFilters<T extends object>({ filters, defaults, valueLabels = {}, matched, total, onRemove, onClear }: {
+export function ActiveFilters<T extends object>({ filters, defaults, valueLabels = {}, onRemove, onClear }: {
   filters: T;
   defaults: T;
   valueLabels?: Partial<Record<keyof T, Record<string, string>>>;
@@ -16,11 +16,9 @@ export function ActiveFilters<T extends object>({ filters, defaults, valueLabels
   onClear: () => void;
 }) {
   const active = (Object.keys(defaults) as (keyof T & string)[]).filter((key) => filters[key] !== defaults[key]);
+  if (active.length === 0) return null;
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs" aria-label="Active filters">
-      <p role="status" aria-live="polite" className="mr-1 text-[#555]">
-        {matched} of {total} {total === 1 ? "record" : "records"} {active.length ? "match" : "shown"}
-      </p>
       {active.map((key) => {
         const words = key.replace(/([a-z])([A-Z])/g, "$1 $2");
         const label = labels[key] ?? words.charAt(0).toUpperCase() + words.slice(1).toLowerCase();
