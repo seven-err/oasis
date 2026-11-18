@@ -269,7 +269,8 @@ const initialEmployees: Employee[] = (
   };
 });
 
-const EMPLOYEE_STORAGE_KEY = "oasis.employees.v1";
+// Bump the version whenever initialEmployees changes, or browsers keep their saved old list.
+const EMPLOYEE_STORAGE_KEY = "oasis.employees.v2";
 
 export function loadEmployeeRecords(): { employees: Employee[]; deletedEmployees: Employee[] } {
   try {

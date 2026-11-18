@@ -61,7 +61,7 @@ pnpm install
 Employee records are saved in each browser's localStorage, not the backend, so records you add are visible only to you. To load the latest list from the code, open the app, press F12 → Console, and run:
 
 ```js
-localStorage.removeItem("oasis.employees.v1"); location.reload();
+localStorage.removeItem("oasis.employees.v2"); location.reload();
 ```
 
 This deletes any employees you added in that browser.

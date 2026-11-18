@@ -66,14 +66,14 @@ test("monitoring deletion is authorized, recoverable, audited, and retains relat
       employees: initialDirectory.employees.filter((record) => record.id !== deletedEmployee.id),
       deletedEmployees: [deletedEmployee],
     };
-    values.set("oasis.employees.v1", JSON.stringify(savedDirectory));
+    values.set("oasis.employees.v2", JSON.stringify(savedDirectory));
     assert.deepEqual(loadEmployeeRecords(), savedDirectory, "deleted employees remain recoverable after reload");
-    values.set("oasis.employees.v1", JSON.stringify({ ...savedDirectory, deletedEmployees: [initialDirectory.employees[0]] }));
+    values.set("oasis.employees.v2", JSON.stringify({ ...savedDirectory, deletedEmployees: [initialDirectory.employees[0]] }));
     const migrationTime = Date.now();
     const migrated = loadEmployeeRecords().deletedEmployees[0];
     assert.ok(Date.parse(migrated.deletedAt) >= migrationTime);
     assert.equal(isDeletionExpired(migrated.deletedAt), false, "legacy employees receive a full retention period");
-    values.set("oasis.employees.v1", JSON.stringify({ employees: [], deletedEmployees: [] }));
+    values.set("oasis.employees.v2", JSON.stringify({ employees: [], deletedEmployees: [] }));
     assert.deepEqual(loadEmployeeRecords(), { employees: [], deletedEmployees: [] }, "empty saved lists must not reseed employees");
     values.clear();
     const deletedPageProps = {
