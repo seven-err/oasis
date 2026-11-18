@@ -48,6 +48,7 @@ jobs:
           HEAD_REF: HEAD
           RUN_CHECKS: "1"
         run: |
+          set +e
           node scripts/ponytail-review.mjs > ponytail-report.md
           echo "exit_code=$?" >> "$GITHUB_OUTPUT"
 

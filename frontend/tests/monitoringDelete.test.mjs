@@ -42,6 +42,13 @@ test("monitoring deletion is authorized, recoverable, audited, and retains relat
   const server = await createServer({ server: { middlewareMode: true }, appType: "custom" });
   try {
     const { ArchivedRecords, EmployeeRegister, loadEmployeeRecords } = await server.ssrLoadModule("/src/App.tsx");
+    const { HeaderBackProvider } = await server.ssrLoadModule("/src/components/HeaderBack.tsx");
+    const { CheckMonitoring } = await server.ssrLoadModule("/src/modules/checks/index.ts");
+    const checkMarkup = renderToStaticMarkup(
+      createElement(HeaderBackProvider, null, createElement(CheckMonitoring, { notify: () => {} })),
+    );
+    assert.match(checkMarkup, /Total Checks/);
+    assert.match(checkMarkup, /CHK-240118/);
     const twelveEmployees = Array.from({ length: 12 }, (_, index) => ({
       ...loadEmployeeRecords().employees[0],
       id: index + 1,
