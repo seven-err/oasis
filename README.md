@@ -28,16 +28,32 @@ pnpm install
 
 ## Running
 
+Use two terminals, run from the repo root (one command per line, so it also works in Windows PowerShell):
+
 ```bash
-cd backend && composer run dev   # http://localhost:8000
-cd frontend && pnpm dev          # http://localhost:5173
+# Terminal 1: http://localhost:8000
+cd backend
+composer run dev
+```
+
+```bash
+# Terminal 2: http://localhost:5173 (open this one)
+cd frontend
+pnpm dev
 ```
 
 ## After pulling new changes
 
+From the repo root:
+
 ```bash
-cd backend && composer install && php artisan migrate && npm install
-cd frontend && pnpm install
+git pull
+cd backend
+composer install
+php artisan migrate
+npm install
+cd ../frontend
+pnpm install
 ```
 
 ## Seeing old data (e.g. Employee Alphalist)
