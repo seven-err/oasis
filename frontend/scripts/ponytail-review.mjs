@@ -58,7 +58,7 @@ for (const rawLine of diff.split(/\r?\n/)) {
   const loc = `${currentFile}:L${currentLine}`;
   currentLine++;
 
-  if (!/\.(ts|tsx|js|mjs|css)$/.test(currentFile) || currentFile.startsWith("scripts/ponytail-review")) {
+  if (!/\.(ts|tsx|js|mjs|css)$/.test(currentFile) || currentFile.startsWith("frontend/scripts/ponytail-review")) {
     continue;
   }
 
@@ -85,7 +85,7 @@ for (const rawLine of diff.split(/\r?\n/)) {
     });
   }
 
-  if (/\bconsole\.(log|debug)\s*\(/.test(line) && !currentFile.startsWith("scripts/")) {
+  if (/\bconsole\.(log|debug)\s*\(/.test(line) && !currentFile.startsWith("frontend/scripts/")) {
     shouldFix.push({
       title: "Leftover console log in app code",
       loc,
