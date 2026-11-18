@@ -14,7 +14,6 @@ import {
   Wallet,
   Download,
   FileCheck2,
-  FileText,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -332,7 +331,6 @@ const nav = [
   {
     section: "Management",
     items: [
-      { page: "reports" as Page, label: "Reports", icon: FileText },
       { page: "users" as Page, label: "User Management", icon: ShieldCheck },
       { page: "activity" as Page, label: "Activity Logs", icon: Activity },
     ],
