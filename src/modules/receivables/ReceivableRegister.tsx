@@ -51,6 +51,7 @@ type Props = {
   onView: (id: number) => void;
   onEdit: (id: number) => void;
   onRecordCollection: (id: number) => void;
+  onCollectionHistory: (id: number) => void;
   onScheduleFollowUp: (id: number) => void;
   onViewAttachments: (id: number) => void;
   onOpenReports: () => void;
@@ -64,6 +65,7 @@ export function ReceivableRegister({
   onView,
   onEdit,
   onRecordCollection,
+  onCollectionHistory,
   onScheduleFollowUp,
   onViewAttachments,
   onOpenReports,
@@ -243,7 +245,7 @@ export function ReceivableRegister({
           className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
           onClick={() => {
             setMenu(null);
-            onRecordCollection(row.id);
+            onCollectionHistory(row.id);
           }}
         >
           <History size={14} /> Collection history

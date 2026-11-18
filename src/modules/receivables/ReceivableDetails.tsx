@@ -1,9 +1,7 @@
 import {
   Archive,
   Banknote,
-  CalendarClock,
   History,
-  Paperclip,
   Pencil,
   Printer,
   RotateCcw,
@@ -11,13 +9,14 @@ import {
   Undo2,
   Upload,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ATTACHMENT_KINDS, PAYMENT_METHODS } from "./constants";
 import { receivableService } from "./store";
 import type {
   AttachmentKind,
   CollectionFormValues,
   FollowUpFormValues,
+  ReceivableView,
   ReceivableCollection,
   ReceivableViewModel,
   ValidationResult,
@@ -43,7 +42,7 @@ import {
 
 type Props = {
   record: ReceivableViewModel;
-  focus?: "collections" | "followups" | "attachments";
+  focus?: Extract<ReceivableView, { mode: "details" }>["focus"];
   onBack: () => void;
   onEdit: () => void;
   onChanged: () => void;
@@ -76,6 +75,10 @@ export function ReceivableDetails({
   onChanged,
   notify,
 }: Props) {
+  const collectionHistoryRef = useRef<HTMLElement>(null);
+  const collectionFormRef = useRef<HTMLElement>(null);
+  const followUpFormRef = useRef<HTMLElement>(null);
+  const attachmentsRef = useRef<HTMLDivElement>(null);
   const user = receivableService.getUser();
   const [collections, setCollections] = useState(() =>
     receivableService.collectionsFor(record.id),
@@ -97,7 +100,7 @@ export function ReceivableDetails({
 
   const [showCollectionForm, setShowCollectionForm] = useState(focus === "collections");
   const [showFollowUpForm, setShowFollowUpForm] = useState(focus === "followups");
-  const [showAttachmentForm, setShowAttachmentForm] = useState(focus === "attachments");
+  const [showAttachmentForm, setShowAttachmentForm] = useState(false);
   const [collectionValues, setCollectionValues] =
     useState<CollectionFormValues>(emptyCollection);
   const [collectionErrors, setCollectionErrors] = useState<ValidationResult["errors"]>({});
@@ -110,8 +113,26 @@ export function ReceivableDetails({
   useEffect(() => {
     if (focus === "collections") setShowCollectionForm(true);
     if (focus === "followups") setShowFollowUpForm(true);
-    if (focus === "attachments") setShowAttachmentForm(true);
   }, [focus]);
+
+  useEffect(() => {
+    const target = focus === "collection-history"
+      ? collectionHistoryRef
+      : focus === "collections" && showCollectionForm
+        ? collectionFormRef
+        : focus === "followups" && showFollowUpForm
+          ? followUpFormRef
+          : focus === "attachments"
+            ? attachmentsRef
+            : null;
+    if (!target) return;
+    // Run after the view history hook resets the page scroll position.
+    const frame = requestAnimationFrame(() => {
+      target.current?.focus({ preventScroll: true });
+      target.current?.scrollIntoView({ behavior: "instant", block: "start" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focus, record.id, showCollectionForm, showFollowUpForm]);
 
   const refreshRelated = () => {
     setCollections(receivableService.collectionsFor(record.id));
@@ -293,30 +314,6 @@ export function ReceivableDetails({
             <button onClick={() => window.print()} className="secondary-btn">
               <Printer size={15} /> Print
             </button>
-            {canRecordCollection && (
-              <button
-                onClick={() => setShowCollectionForm((x) => !x)}
-                className="primary-btn"
-              >
-                <Banknote size={15} /> Record collection
-              </button>
-            )}
-            {canFollowUp && (
-              <button
-                onClick={() => setShowFollowUpForm((x) => !x)}
-                className="secondary-btn"
-              >
-                <CalendarClock size={15} /> Follow-up
-              </button>
-            )}
-            {canAttach && (
-              <button
-                onClick={() => setShowAttachmentForm((x) => !x)}
-                className="secondary-btn"
-              >
-                <Paperclip size={15} /> Attachments
-              </button>
-            )}
             {record.archivedAt ? (
               <button onClick={onRestore} className="secondary-btn">
                 <RotateCcw size={15} /> Restore
@@ -340,7 +337,14 @@ export function ReceivableDetails({
       </section>
 
       {showCollectionForm && canRecordCollection && (
-        <section className="panel">
+        <section
+          ref={collectionFormRef}
+          tabIndex={-1}
+          aria-label="Record collection"
+          className={`panel scroll-mt-24 outline-none ${
+            focus === "collections" ? "border-[#1f6ea6] bg-[#f0f8ff] ring-2 ring-[#1f6ea6] ring-inset" : ""
+          }`}
+        >
           <PanelTitle
             title="Record collection"
             subtitle={`Remaining balance ${peso.format(record.remainingBalance)}. Overcollections are not allowed.`}
@@ -461,7 +465,14 @@ export function ReceivableDetails({
       )}
 
       {showFollowUpForm && canFollowUp && (
-        <section className="panel">
+        <section
+          ref={followUpFormRef}
+          tabIndex={-1}
+          aria-label="Schedule follow-up"
+          className={`panel scroll-mt-24 outline-none ${
+            focus === "followups" ? "border-[#1f6ea6] bg-[#f0f8ff] ring-2 ring-[#1f6ea6] ring-inset" : ""
+          }`}
+        >
           <PanelTitle
             title="Record collection follow-up"
             subtitle="Previous follow-up notes are preserved as history."
@@ -526,43 +537,7 @@ export function ReceivableDetails({
         </section>
       )}
 
-      {showAttachmentForm && canAttach && (
-        <section className="panel p-5">
-          <h3 className="mb-4 text-[10px] font-bold uppercase tracking-[.14em] text-[#1f6ea6]">
-            Upload attachment
-          </h3>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FormSelect
-              label="Document type"
-              name="attachmentKind"
-              value={attachmentKind}
-              onChange={(v) => setAttachmentKind(v as AttachmentKind)}
-            >
-              {ATTACHMENT_KINDS.map((k) => (
-                <option key={k.value} value={k.value}>
-                  {k.label}
-                </option>
-              ))}
-            </FormSelect>
-            <label className="block">
-              <span className="field-label">File (PDF / image, max 5 MB)</span>
-              <input
-                type="file"
-                accept=".pdf,image/jpeg,image/png,image/webp,image/gif"
-                className="input mt-2"
-                onChange={onUploadAttachment}
-                disabled={saving}
-              />
-              {attachmentError && (
-                <p className="mt-1.5 text-[11px] text-red-700">{attachmentError}</p>
-              )}
-            </label>
-          </div>
-          <p className="mt-3 text-[11px] text-[#777]">
-            Attachments are stored privately and are only available to authorized users.
-          </p>
-        </section>
-      )}
+
 
       <SectionCard title="1. Customer information">
         <DetailGrid
@@ -683,57 +658,125 @@ export function ReceivableDetails({
         )}
       </SectionCard>
 
-      <SectionCard title="8. Attachments">
-        <p className="mb-4 text-[11px] text-[#888]">
-          Authorized preview and download only — no public URLs
-        </p>
-        {attachments.length === 0 ? (
-          <p className="bg-white p-4 text-xs text-[#888]">No attachments uploaded yet.</p>
-        ) : (
-          <div className="divide-y divide-[#e1eef6] bg-white">
-            {attachments.map((a) => (
-              <div
-                key={a.id}
-                className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div className="min-w-0">
-                  <strong className="block truncate text-xs">{a.fileName}</strong>
-                  <span className="mt-1 block text-[10px] text-[#888]">
-                    {ATTACHMENT_KINDS.find((k) => k.value === a.kind)?.label ?? a.kind} ·{" "}
-                    {(a.sizeBytes / 1024).toFixed(1)} KB · {a.uploadedByName} ·{" "}
-                    {formatDateTime(a.uploadedAt)}
-                  </span>
-                  <span className="mt-1 block truncate text-[10px] text-[#aaa]">
-                    {a.storageKey}
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  {a.previewDataUrl && (
-                    <a
-                      href={a.previewDataUrl}
-                      download={a.fileName}
-                      className="secondary-btn"
-                    >
-                      <Upload size={14} className="rotate-180" /> Download
-                    </a>
+      <div
+        ref={attachmentsRef}
+        tabIndex={-1}
+        aria-label="Attachments"
+        className={`scroll-mt-24 outline-none ${
+          focus === "attachments"
+            ? "relative after:pointer-events-none after:absolute after:inset-0 after:border-2 after:border-[#1f6ea6]"
+            : ""
+        }`}
+      >
+        <SectionCard
+          title="8. Attachments"
+          action={canAttach ? (
+            <button
+              type="button"
+              className="primary-btn"
+              aria-expanded={showAttachmentForm}
+              aria-controls="receivable-attachment-upload"
+              onClick={() => setShowAttachmentForm((open) => !open)}
+            >
+              <Upload size={15} /> Upload attachment
+            </button>
+          ) : undefined}
+        >
+          {showAttachmentForm && canAttach && (
+            <div id="receivable-attachment-upload" className="mb-5 border-b border-[#d0e3ef] pb-5">
+              <h3 className="mb-4 text-[10px] font-bold uppercase tracking-[.14em] text-[#1f6ea6]">
+                Upload attachment
+              </h3>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormSelect
+                  label="Document type"
+                  name="attachmentKind"
+                  value={attachmentKind}
+                  onChange={(v) => setAttachmentKind(v as AttachmentKind)}
+                >
+                  {ATTACHMENT_KINDS.map((k) => (
+                    <option key={k.value} value={k.value}>
+                      {k.label}
+                    </option>
+                  ))}
+                </FormSelect>
+                <label className="block">
+                  <span className="field-label">File (PDF / image, max 5 MB)</span>
+                  <input
+                    type="file"
+                    accept=".pdf,image/jpeg,image/png,image/webp,image/gif"
+                    className="input mt-2"
+                    onChange={onUploadAttachment}
+                    disabled={saving}
+                  />
+                  {attachmentError && (
+                    <p className="mt-1.5 text-[11px] text-red-700">{attachmentError}</p>
                   )}
-                  {user.permissions.manageAttachments && !record.archivedAt && (
-                    <button
-                      className="table-action text-red-700"
-                      onClick={() => onDeleteAttachment(a.id, a.fileName)}
-                      title="Delete attachment"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  )}
-                </div>
+                </label>
               </div>
-            ))}
-          </div>
-        )}
-      </SectionCard>
+              <p className="mt-3 text-[11px] text-[#777]">
+                Attachments are stored privately and are only available to authorized users.
+              </p>
+            </div>
+          )}
+          <p className="mb-4 text-[11px] text-[#888]">
+            Authorized preview and download only — no public URLs
+          </p>
+          {attachments.length === 0 ? (
+            <p className="bg-white p-4 text-xs text-[#888]">No attachments uploaded yet.</p>
+          ) : (
+            <div className="divide-y divide-[#e1eef6] bg-white">
+              {attachments.map((a) => (
+                <div
+                  key={a.id}
+                  className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="min-w-0">
+                    <strong className="block truncate text-xs">{a.fileName}</strong>
+                    <span className="mt-1 block text-[10px] text-[#888]">
+                      {ATTACHMENT_KINDS.find((k) => k.value === a.kind)?.label ?? a.kind} ·{" "}
+                      {(a.sizeBytes / 1024).toFixed(1)} KB · {a.uploadedByName} ·{" "}
+                      {formatDateTime(a.uploadedAt)}
+                    </span>
+                    <span className="mt-1 block truncate text-[10px] text-[#aaa]">
+                      {a.storageKey}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    {a.previewDataUrl && (
+                      <a
+                        href={a.previewDataUrl}
+                        download={a.fileName}
+                        className="secondary-btn"
+                      >
+                        <Upload size={14} className="rotate-180" /> Download
+                      </a>
+                    )}
+                    {user.permissions.manageAttachments && !record.archivedAt && (
+                      <button
+                        className="table-action text-red-700"
+                        onClick={() => onDeleteAttachment(a.id, a.fileName)}
+                        title="Delete attachment"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+      </div>
 
-      <section className="panel">
+      <section
+        ref={collectionHistoryRef}
+        tabIndex={-1}
+        aria-label="Collection history"
+        className={`panel scroll-mt-24 outline-none ${
+          focus === "collection-history" ? "border-[#1f6ea6] bg-[#f0f8ff] ring-2 ring-[#1f6ea6] ring-inset" : ""
+        }`}
+      >
         <PanelTitle
           title="Collection history"
           subtitle="Valid collections contribute to Amount Paid. Reversals are retained for audit."
