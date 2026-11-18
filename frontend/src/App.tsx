@@ -211,7 +211,6 @@ function getContactDigits(value: string) {
 
 function employeeDirectoryRows(employees: Employee[]) {
   return employees.map((employee) => ({
-    "ID No.": employee.number,
     "Full Name": employee.name,
     Department: employee.department,
     Position: employee.position,
@@ -1685,7 +1684,6 @@ export function EmployeeRegister({
             <thead>
               <tr>
                 <th>Full Name</th>
-                <th>ID No.</th>
                 <th>Department</th>
                 <th>Position</th>
                 <th>Date hired</th>
@@ -1715,7 +1713,6 @@ export function EmployeeRegister({
                         </span>
                       </div>
                     </td>
-                    <td className="font-medium text-[#1f6ea6]">{x.number}</td>
                     <td>{x.department}</td>
                     <td>{x.position}</td>
                     <td>{formatDate(x.dateHired)}</td>
@@ -1818,7 +1815,6 @@ function EmployeeRecordPanel({
       <section className="panel">
         <PanelTitle
           title={record.name}
-          subtitle={record.number}
           onBack={close}
         />
         <EmployeeDetails record={record} onDelete={() => onDelete(record.id)} close={close} />
@@ -1898,10 +1894,6 @@ function EmployeeRecordPanel({
         <div className="space-y-6">
           <fieldset className="grid gap-4 sm:grid-cols-2">
             <legend className="mb-4 text-[10px] font-bold uppercase tracking-[.14em] text-[#1f6ea6]">Employee information</legend>
-            <label className="block">
-              <span className="field-label">ID No.</span>
-              <input readOnly value={record?.number ?? nextEmployeeNumber(employees)} className="input mt-2 bg-gray-50" />
-            </label>
             <FormField label="Full Name (Surname, First name)" name="party" defaultValue={record?.name} required />
             <FormField label="Email Address" name="email" defaultValue={record?.email} type="email" required />
             <FormField label="Date Hired" name="date" defaultValue={record?.dateHired} type="date" required />
@@ -2103,7 +2095,6 @@ function EmployeeDetails({
 }) {
   const { printReport, printSheet } = usePrintReport();
   const fields = [
-    ["ID No.", record.number],
     ["Full Name", record.name],
     ["Department", record.department],
     ["Position", record.position],
@@ -2485,7 +2476,7 @@ function PanelTitle({
   onBack,
 }: {
   title: string;
-  subtitle: string;
+  subtitle?: string;
   action?: React.ReactNode;
   onBack?: () => void;
 }) {
@@ -2494,7 +2485,7 @@ function PanelTitle({
     <div className="flex min-h-[76px] flex-col gap-3 border-b border-[#d0e3ef] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
         <h2 className="text-sm font-bold tracking-[-.01em]">{title}</h2>
-        <p className="mt-1 text-[11px] text-[#888]">{subtitle}</p>
+        {subtitle && <p className="mt-1 text-[11px] text-[#888]">{subtitle}</p>}
       </div>
       {action && (
         <div className="flex items-start justify-end gap-2">
