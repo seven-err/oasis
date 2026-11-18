@@ -12,8 +12,8 @@ import {
   MoreHorizontal,
   Paperclip,
   Pencil,
-  RotateCcw,
   Plus,
+  RotateCcw,
   Search,
   SlidersHorizontal,
   X,
@@ -308,7 +308,7 @@ export function ReceivableRegister({
   );
 
   const rowActions = (row: ReceivableViewModel) => (
-    <div className="relative flex shrink-0 items-center justify-end gap-1">
+    <div className="relative flex shrink-0 items-center justify-end gap-1" onClick={(event) => event.stopPropagation()}>
       <button
         type="button"
         className="table-action"
@@ -657,7 +657,11 @@ export function ReceivableRegister({
                       <button
                         type="button"
                         className="truncate text-left text-sm font-semibold text-[#1f6ea6]"
-                        onClick={() => onView(row.id)}
+                        onClick={() => {
+                          setMenu(null);
+                          onView(row.id);
+                        }}
+                        aria-label={`Open receivable ${row.invoiceNumber}`}
                       >
                         {row.invoiceNumber}
                       </button>
@@ -750,7 +754,7 @@ export function ReceivableRegister({
                           "0"
                         )}
                       </td>
-                      <td>{rowActions(row)}</td>
+                      <td onClick={(event) => event.stopPropagation()}>{rowActions(row)}</td>
                     </tr>
                   ))}
                 </tbody>

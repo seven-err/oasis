@@ -205,5 +205,5 @@ export type PayableView =
   | { mode: "register" }
   | { mode: "create" }
   | { mode: "edit"; id: number }
-  | { mode: "details"; id: number; focus?: "payments" | "approve" }
+  | { mode: "details"; id: number; focus?: "payments" | "approve" | "payment-history" }
   | { mode: "reports" };
