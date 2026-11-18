@@ -26,6 +26,7 @@ import {
   Settings,
   ShieldCheck,
   SlidersHorizontal,
+  Trash2,
   Users,
   UserRound,
   UserCheck,
@@ -701,6 +702,7 @@ function App() {
                   onAdd={() => openEmployeeView({ mode: "create" })}
                   onView={(id) => openEmployeeView({ mode: "details", id })}
                   onEdit={(id) => openEmployeeView({ mode: "edit", id })}
+                  onDelete={deleteEmployee}
                 />
               </div>
               {employeeView && (
@@ -1171,11 +1173,13 @@ function EmployeeRegister({
   onAdd,
   onView,
   onEdit,
+  onDelete,
 }: {
   data: Employee[];
   onAdd: () => void;
   onView: (id: number) => void;
   onEdit: (id: number) => void;
+  onDelete: (id: number) => void;
 }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("All statuses");
@@ -1274,7 +1278,7 @@ function EmployeeRegister({
                       <Status value={x.requirementStatus ?? "Incomplete"} />
                     </td>
                     <td onClick={(event) => event.stopPropagation()}>
-                      <EmployeeActions employee={x} onEdit={() => onEdit(x.id)} />
+                      <EmployeeActions employee={x} onEdit={() => onEdit(x.id)} onDelete={() => onDelete(x.id)} />
                     </td>
                   </tr>
                 );
@@ -1291,7 +1295,7 @@ function EmployeeRegister({
   );
 }
 
-function EmployeeActions({ employee, onEdit }: { employee: Employee; onEdit: () => void }) {
+function EmployeeActions({ employee, onEdit, onDelete }: { employee: Employee; onEdit: () => void; onDelete: () => void }) {
   const menuId = `employee-actions-${employee.id}`;
 
   return (
@@ -1305,7 +1309,7 @@ function EmployeeActions({ employee, onEdit }: { employee: Employee; onEdit: () 
           const menu = document.getElementById(menuId);
           if (!menu) return;
           const { top, bottom, right } = event.currentTarget.getBoundingClientRect();
-          const fitsBelow = bottom + 52 <= window.innerHeight;
+          const fitsBelow = bottom + 96 <= window.innerHeight;
           menu.style.right = `${Math.max(8, window.innerWidth - right)}px`;
           menu.style.top = fitsBelow ? `${bottom + 4}px` : "auto";
           menu.style.bottom = fitsBelow ? "auto" : `${window.innerHeight - top + 4}px`;
@@ -1314,8 +1318,18 @@ function EmployeeActions({ employee, onEdit }: { employee: Employee; onEdit: () 
         <MoreHorizontal size={17} aria-hidden="true" />
       </button>
       <div id={menuId} popover="auto" className="fixed inset-auto m-0 w-36 border border-[#d0e3ef] bg-white p-1 shadow-xl">
-        <button type="button" onClick={onEdit} className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]">
+        <button type="button" onClick={() => { document.getElementById(menuId)?.hidePopover(); onEdit(); }} className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]">
           <Pencil size={14} aria-hidden="true" /> Edit
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            document.getElementById(menuId)?.hidePopover();
+            onDelete();
+          }}
+          className="flex w-full items-center gap-2 border-t border-[#e1eef6] px-3 py-2 text-xs text-red-700 hover:bg-red-50"
+        >
+          <Trash2 size={14} aria-hidden="true" /> Delete
         </button>
       </div>
     </>
