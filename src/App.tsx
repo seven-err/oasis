@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Activity,
   AlertCircle,
-  ArrowLeft,
   ArrowUpDown,
   CalendarDays,
   Check,
@@ -43,6 +42,7 @@ import {
 import { todayIsoDate } from "@/modules/payables/utils";
 import { CURRENT_USER } from "@/modules/checks/constants";
 import { SummaryStatCards } from "@/components/SummaryStatCards";
+import { HeaderBackButton, HeaderBackProvider, useHeaderBack } from "@/components/HeaderBack";
 import { useViewHistory } from "@/hooks/useViewHistory";
 import {
   CheckMonitoring,
@@ -449,6 +449,7 @@ function App() {
   };
 
   return (
+    <HeaderBackProvider>
     <div className="min-h-screen bg-[#f3f8fc] text-[#111]">
       {sidebarOpen && (
         <button
@@ -566,10 +567,14 @@ function App() {
           >
             <Menu size={22} />
           </button>
-          <div className="hidden items-center gap-2 text-xs text-[#808080] sm:flex">
-            <ChevronRight aria-hidden="true" size={13} />
-            <span className="font-medium text-black">{pageMeta[page].title}</span>
-          </div>
+          {page === "dashboard" ? (
+            <div className="hidden items-center gap-2 text-xs text-[#808080] sm:flex">
+              <ChevronRight aria-hidden="true" size={13} />
+              <span className="font-medium text-black">{pageMeta[page].title}</span>
+            </div>
+          ) : (
+            <HeaderBackButton fallback={() => go("dashboard")} />
+          )}
           <div className="ml-auto flex items-center gap-1">
             <NotificationInbox
               key={CURRENT_USER.id}
@@ -744,6 +749,7 @@ function App() {
         </div>
       )}
     </div>
+    </HeaderBackProvider>
   );
 }
 
@@ -1387,7 +1393,7 @@ function EmployeeRecordPanel({
   };
   return (
     <section className="panel">
-      <PanelTitle title={record ? "Edit employee" : "Add employee"} subtitle="Employee information and requirements" />
+      <PanelTitle title={record ? "Edit employee" : "Add employee"} subtitle="Employee information and requirements" onBack={close} />
       <form onSubmit={onSubmit} className="p-5 md:p-6">
         <div className="space-y-6">
           <fieldset className="grid gap-4 sm:grid-cols-2">
@@ -1505,9 +1511,6 @@ function EmployeeRecordPanel({
           </div>
         </div>
         <div className="mt-7 flex justify-end gap-2 border-t border-[#e1eef6] pt-5">
-          <button type="button" onClick={close} className="secondary-btn">
-            Cancel
-          </button>
           <button className="primary-btn">{record ? "Save changes" : "Save record"}</button>
         </div>
       </form>
@@ -1939,16 +1942,16 @@ function PanelTitle({
   action?: React.ReactNode;
   onBack?: () => void;
 }) {
+  useHeaderBack(onBack);
   return (
-    <div className={`min-h-[76px] gap-3 border-b border-[#d0e3ef] px-5 py-4 ${onBack ? "grid grid-cols-[minmax(0,1fr)_auto] items-start" : "flex flex-col sm:flex-row sm:items-center sm:justify-between"}`}>
+    <div className="flex min-h-[76px] flex-col gap-3 border-b border-[#d0e3ef] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
         <h2 className="text-sm font-bold tracking-[-.01em]">{title}</h2>
         <p className="mt-1 text-[11px] text-[#888]">{subtitle}</p>
       </div>
-      {(action || onBack) && (
+      {action && (
         <div className="flex items-start justify-end gap-2">
           {action}
-          {onBack && <button type="button" onClick={onBack} className="secondary-btn shrink-0"><ArrowLeft size={15} aria-hidden="true" /> Back</button>}
         </div>
       )}
     </div>
