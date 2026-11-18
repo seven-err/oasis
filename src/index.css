@@ -1,6 +1,81 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
+@page {
+  size: portrait;
+  margin: 15mm;
+}
+
+.report-print-sheet {
+  display: none;
+}
+
+@page report-records {
+  size: portrait;
+  margin: 15mm;
+}
+
+@media print {
+  body:has(> .report-print-sheet) > :not(.report-print-sheet) {
+    display: none !important;
+  }
+
+  .report-print-sheet {
+    display: block !important;
+    page: report-records;
+    color: #111;
+    font-size: 9pt;
+  }
+
+  .report-print-heading {
+    margin-bottom: 5mm;
+    break-after: avoid;
+  }
+
+  .report-print-heading h1 {
+    margin: 2mm 0;
+    font-size: 18pt;
+    font-weight: 700;
+  }
+
+  .report-print-heading p {
+    font-size: 9pt;
+  }
+
+  .report-print-sheet table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .report-print-sheet thead {
+    display: table-header-group;
+  }
+
+  .report-print-sheet tr {
+    break-inside: avoid;
+  }
+
+  .report-print-sheet th,
+  .report-print-sheet td {
+    height: auto !important;
+    padding: 2mm !important;
+    border: 1px solid #cbd5e1;
+    font-size: 8pt;
+    line-height: 1.4;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    vertical-align: top;
+  }
+
+  .report-print-sheet th {
+    background: #edf3f8;
+    color: #111;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+}
+
 .oasis-sidebar {
   transition: width var(--motion-layout) var(--motion-ease), translate var(--motion-normal) var(--motion-ease);
 }
@@ -236,6 +311,11 @@
   }
 
   @media print {
+    .oasis-content {
+      padding: 0 !important;
+      min-height: auto !important;
+    }
+
     aside,
     header,
     footer,
