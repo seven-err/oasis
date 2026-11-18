@@ -568,9 +568,9 @@ function App() {
             <Menu size={22} />
           </button>
           {page === "dashboard" ? (
-            <div className="hidden items-center gap-2 text-xs text-[#808080] sm:flex">
-              <ChevronRight aria-hidden="true" size={13} />
-              <span className="font-medium text-black">{pageMeta[page].title}</span>
+            <div className="inline-flex min-h-10 items-center gap-2 text-sm font-medium text-[#16344d]">
+              <ChevronRight aria-hidden="true" size={16} />
+              <span>{pageMeta[page].title}</span>
             </div>
           ) : (
             <HeaderBackButton fallback={() => go("dashboard")} />
@@ -629,7 +629,7 @@ function App() {
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-[1600px] overflow-x-hidden px-4 py-6 sm:px-5 sm:py-8 md:px-8 lg:px-10 lg:py-10">
+        <main key={page} className="page-view-enter mx-auto w-full max-w-[1600px] overflow-x-hidden px-4 py-6 sm:px-5 sm:py-8 md:px-8 lg:px-10 lg:py-10">
           <PageHeading page={page} onAdd={requestAdd} />
           {page === "dashboard" && (
             <Dashboard

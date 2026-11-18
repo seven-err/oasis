@@ -195,7 +195,7 @@ export function NotificationInbox({
       <button
         ref={bell}
         type="button"
-        className="relative grid size-10 place-items-center hover:bg-[#e7f3fb] aria-expanded:bg-[#e7f3fb]"
+        className="relative grid size-10 place-items-center border-0 bg-transparent shadow-none transition-colors duration-300 ease-out hover:text-[#1f6ea6] aria-expanded:text-[#1f6ea6] motion-reduce:transition-none"
         aria-label={`Notifications${unread ? `, ${unread} unread` : ""}${urgent ? `, ${urgent} due today or overdue` : ""}`}
         aria-controls={open ? panelId : undefined}
         aria-expanded={open}
@@ -204,7 +204,7 @@ export function NotificationInbox({
           onOpenChange(!open);
         }}
       >
-        <Bell size={18} aria-hidden="true" />
+        <Bell size={18} fill={open ? "currentColor" : "none"} className="transition-[fill] duration-300 ease-out motion-reduce:transition-none" aria-hidden="true" />
         {(unread > 0 || urgent > 0) && (
           <span
             aria-hidden="true"

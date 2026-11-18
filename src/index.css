@@ -2,13 +2,13 @@
 @import "tailwindcss";
 
 .oasis-sidebar {
-  transition: width 560ms cubic-bezier(0.4, 0, 0.2, 1), translate 300ms ease;
+  transition: width var(--motion-layout) var(--motion-ease), translate var(--motion-normal) var(--motion-ease);
 }
 
 .oasis-content,
 .sidebar-brand {
-  transition-duration: 560ms;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: var(--motion-layout);
+  transition-timing-function: var(--motion-ease);
 }
 
 .oasis-content {
@@ -26,25 +26,25 @@
 
 @media (width < 64rem) {
   .sidebar-brand {
-    transition-duration: 300ms;
-    transition-timing-function: ease;
+    transition-duration: var(--motion-normal);
+    transition-timing-function: var(--motion-ease);
   }
 }
 
 .sidebar-nav-item {
-  transition: background-color 560ms cubic-bezier(0.25, 0.1, 0.25, 1),
-    color 420ms cubic-bezier(0.25, 0.1, 0.25, 1),
-    border-color 560ms cubic-bezier(0.25, 0.1, 0.25, 1);
+  transition: background-color var(--motion-normal) var(--motion-ease),
+    color var(--motion-normal) var(--motion-ease),
+    border-color var(--motion-normal) var(--motion-ease);
 }
 
 .sidebar-selection {
-  transition: transform 560ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform var(--motion-layout) var(--motion-ease);
 }
 
 .sidebar-copy {
   opacity: 1;
   transform: translateX(0);
-  transition: opacity 260ms ease 160ms, transform 400ms cubic-bezier(0.4, 0, 0.2, 1) 100ms;
+  transition: opacity var(--motion-normal) ease 100ms, transform var(--motion-layout) var(--motion-ease) 60ms;
 }
 
 .oasis-sidebar[data-compact="true"] .sidebar-copy {
@@ -55,11 +55,20 @@
 }
 
 .sorted-records {
-  animation: records-sort-in 240ms cubic-bezier(0.2, 0, 0.2, 1);
+  animation: records-sort-in var(--motion-normal) var(--motion-ease);
 }
 
 .record-view-enter {
-  animation: record-view-in 520ms cubic-bezier(0.25, 0.1, 0.25, 1);
+  animation: record-view-in var(--motion-layout) var(--motion-ease);
+}
+
+.page-view-enter {
+  animation: page-view-in var(--motion-normal) var(--motion-ease);
+}
+
+@keyframes page-view-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes record-view-in {
@@ -75,8 +84,8 @@
 
 @keyframes records-sort-in {
   from {
-    opacity: 0.45;
-    transform: translateY(4px);
+    opacity: 0.65;
+    transform: translateY(2px);
   }
   to {
     opacity: 1;
@@ -86,24 +95,39 @@
 
 @media (prefers-reduced-motion: reduce) {
   .sorted-records,
-  .record-view-enter {
+  .record-view-enter,
+  .page-view-enter {
     animation: none;
   }
 
   .oasis-sidebar,
   .oasis-content,
   .sidebar-brand,
-  .sidebar-copy {
+  .sidebar-copy,
+  .sidebar-nav-item,
+  .sidebar-selection {
     transition: none;
   }
 }
 
 @layer base {
   :root {
+    --motion-fast: 240ms;
+    --motion-normal: 380ms;
+    --motion-layout: 560ms;
+    --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
     font-family: "Inter", Arial, sans-serif;
     color: #111;
     background: #f3f8fc;
     font-synthesis: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root {
+      --motion-fast: 0ms;
+      --motion-normal: 0ms;
+      --motion-layout: 0ms;
+    }
   }
 
   html,
@@ -159,7 +183,7 @@
   }
 
   tbody tr {
-    transition: background 0.15s ease;
+    transition: background-color var(--motion-fast) var(--motion-ease);
   }
 
   tbody tr:hover {
@@ -200,6 +224,11 @@
 }
 
 @layer components {
+  .summary-stat-card {
+    transition: background-color var(--motion-normal) var(--motion-ease),
+      box-shadow var(--motion-normal) var(--motion-ease);
+  }
+
   .panel {
     border: 1px solid #d0e3ef;
     background: #fff;
@@ -217,8 +246,8 @@
     font-size: 11px;
     font-weight: 600;
     transition:
-      background 0.15s ease,
-      transform 0.15s ease;
+      background-color var(--motion-fast) var(--motion-ease),
+      transform var(--motion-fast) var(--motion-ease);
     white-space: nowrap;
   }
 
@@ -254,7 +283,8 @@
     font-size: 11px;
     font-weight: 600;
     white-space: nowrap;
-    transition: background 0.15s ease;
+    transition: background-color var(--motion-fast) var(--motion-ease),
+      border-color var(--motion-fast) var(--motion-ease);
   }
 
   .secondary-btn:hover {
@@ -280,8 +310,8 @@
     color: #111;
     font-size: 11px;
     transition:
-      border-color 0.15s ease,
-      box-shadow 0.15s ease;
+      border-color var(--motion-fast) var(--motion-ease),
+      box-shadow var(--motion-fast) var(--motion-ease);
   }
 
   .input::placeholder {
@@ -320,8 +350,8 @@
     place-items: center;
     color: #555;
     transition:
-      background 0.15s ease,
-      color 0.15s ease;
+      background-color var(--motion-fast) var(--motion-ease),
+      color var(--motion-fast) var(--motion-ease);
   }
 
   .table-action:hover {
