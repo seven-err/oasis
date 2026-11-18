@@ -120,11 +120,11 @@ if (process.env.RUN_CHECKS === "1") {
     const out = ((err.stdout || "") + (err.stderr || "")).trim().split(/\r?\n/).slice(0, 6).join("; ");
     mustFix.push({
       title: "Unit test failure",
-      loc: "tests/viewHistory.test.mjs",
-      what: "The view-history test suite ran against the current code.",
+      loc: "frontend/tests/*.test.mjs",
+      what: "The frontend unit test suite ran against the current code.",
       problem: `Tests failed: ${out}`,
       fix: "Fix the broken behavior or update the affected caller.",
-      skip: "Navigation and back-button history break in the UI.",
+      skip: "Regressions in the tested UI or store behavior ship to main.",
     });
   }
 }

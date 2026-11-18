@@ -3,6 +3,10 @@ name: Ponytail Review & Auto-Merge
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches-ignore:
+      - main
+      - gh-pages
 
 permissions:
   contents: write
@@ -10,41 +14,83 @@ permissions:
   checks: read
 
 concurrency:
-  group: pr-review-${{ github.event.pull_request.number }}
+  group: pr-review-${{ github.event.pull_request.number || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
   review-and-merge:
-    if: github.event.pull_request.draft == false
+    if: github.event_name == 'push' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: frontend
     steps:
-      - name: Checkout PR branch
+      - name: Checkout branch
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           lfs: true
 
+      - name: Resolve or create Pull Request for pushed branch
+        id: pr
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
+          BRANCH: ${{ github.ref_name }}
+          PR_NUMBER_EVENT: ${{ github.event.pull_request.number }}
+          BASE_REF_EVENT: ${{ github.event.pull_request.base.ref }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            echo "pr_number=$PR_NUMBER_EVENT" >> "$GITHUB_OUTPUT"
+            echo "base_ref=$BASE_REF_EVENT" >> "$GITHUB_OUTPUT"
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          AHEAD=$(git rev-list --count origin/main..HEAD || echo "0")
+          if [ "$AHEAD" -eq 0 ]; then
+            echo "Branch $BRANCH has no commits ahead of origin/main; skipping."
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          EXISTING_PR=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING_PR" ]; then
+            echo "Open PR #$EXISTING_PR already exists for $BRANCH; pull_request workflow will handle it."
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          PR_URL=$(gh pr create --base main --head "$BRANCH" --fill)
+          NEW_PR=$(gh pr view "$PR_URL" --json number --jq '.number')
+          echo "Created PR #$NEW_PR for branch $BRANCH"
+          echo "pr_number=$NEW_PR" >> "$GITHUB_OUTPUT"
+          echo "base_ref=main" >> "$GITHUB_OUTPUT"
+          echo "should_run=true" >> "$GITHUB_OUTPUT"
+
       - uses: pnpm/action-setup@v4
+        if: steps.pr.outputs.should_run == 'true'
         with:
           version: 9
 
       - uses: actions/setup-node@v4
+        if: steps.pr.outputs.should_run == 'true'
         with:
           node-version: 22
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
 
       - name: Install dependencies
+        if: steps.pr.outputs.should_run == 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Run Ponytail review and checks
         id: review
+        if: steps.pr.outputs.should_run == 'true'
         continue-on-error: true
         env:
-          BASE_REF: origin/${{ github.event.pull_request.base.ref }}
+          BASE_REF: origin/${{ steps.pr.outputs.base_ref }}
           HEAD_REF: HEAD
           RUN_CHECKS: "1"
         run: |
@@ -54,14 +100,17 @@ jobs:
 
       - name: Build production bundle
         id: build
-        if: steps.review.outputs.exit_code == '0'
+        if: steps.pr.outputs.should_run == 'true' && steps.review.outputs.exit_code == '0'
         run: pnpm build
 
       - uses: shivammathur/setup-php@v2
+        if: steps.pr.outputs.should_run == 'true'
         with:
           php-version: "8.3"
 
       - name: Backend tests
+        id: backend
+        if: steps.pr.outputs.should_run == 'true'
         working-directory: backend
         run: |
           composer install --no-interaction --prefer-dist
@@ -70,25 +119,25 @@ jobs:
           php artisan test
 
       - name: Post Ponytail review comment
-        if: always()
+        if: always() && steps.pr.outputs.should_run == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_NUMBER: ${{ steps.pr.outputs.pr_number }}
         run: |
-          if [ -f ponytail-report.md ]; then
+          if [ -f ponytail-report.md ] && [ -n "$PR_NUMBER" ]; then
             gh pr comment "$PR_NUMBER" --body-file ponytail-report.md
           fi
 
       - name: Fail if Ponytail review found Must Fix issues
-        if: steps.review.outputs.exit_code != '0'
+        if: steps.pr.outputs.should_run == 'true' && steps.review.outputs.exit_code != '0'
         run: |
           cat ponytail-report.md
           exit 1
 
       - name: Auto-merge Pull Request
-        if: steps.review.outputs.exit_code == '0' && steps.build.outcome == 'success'
+        if: steps.pr.outputs.should_run == 'true' && steps.review.outputs.exit_code == '0' && steps.build.outcome == 'success' && steps.backend.outcome == 'success'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_NUMBER: ${{ steps.pr.outputs.pr_number }}
         run: |
           gh pr merge "$PR_NUMBER" --merge --delete-branch || gh pr merge "$PR_NUMBER" --auto --merge --delete-branch

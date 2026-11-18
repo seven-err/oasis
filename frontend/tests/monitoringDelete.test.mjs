@@ -39,7 +39,7 @@ test("monitoring deletion is authorized, recoverable, audited, and retains relat
     getItem: (key) => values.get(key) ?? null,
     setItem: (key, value) => values.set(key, value),
   };
-  const server = await createServer({ server: { middlewareMode: true }, appType: "custom" });
+  const server = await createServer({ server: { middlewareMode: true, hmr: false }, appType: "custom" });
   try {
     const { ArchivedRecords, EmployeeRegister, loadEmployeeRecords } = await server.ssrLoadModule("/src/App.tsx");
     const { HeaderBackProvider } = await server.ssrLoadModule("/src/components/HeaderBack.tsx");
