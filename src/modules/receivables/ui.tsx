@@ -247,16 +247,19 @@ export function PaginationBar({
 export function SectionCard({
   title,
   children,
+  action,
 }: {
   title: string;
   children: ReactNode;
+  action?: ReactNode;
 }) {
   return (
     <section className="border border-[#d0e3ef]">
-      <div className="border-b border-[#d0e3ef] bg-[#e7f3fb] px-5 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#d0e3ef] bg-[#e7f3fb] px-5 py-3">
         <h3 className="text-[10px] font-bold uppercase tracking-[.14em] text-[#555]">
           {title}
         </h3>
+        {action}
       </div>
       <div className="p-5">{children}</div>
     </section>

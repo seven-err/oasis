@@ -52,6 +52,7 @@ export function ReceivableMonitoring({
           onView={(id) => setView({ mode: "details", id })}
           onEdit={(id) => setView({ mode: "edit", id })}
           onRecordCollection={(id) => setView({ mode: "details", id, focus: "collections" })}
+          onCollectionHistory={(id) => setView({ mode: "details", id, focus: "collection-history" })}
           onScheduleFollowUp={(id) => setView({ mode: "details", id, focus: "followups" })}
           onViewAttachments={(id) => setView({ mode: "details", id, focus: "attachments" })}
           onOpenReports={() => setView({ mode: "reports" })}

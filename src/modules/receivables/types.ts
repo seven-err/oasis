@@ -302,6 +302,6 @@ export type ReceivableView =
   | {
       mode: "details";
       id: number;
-      focus?: "collections" | "followups" | "attachments";
+      focus?: "collections" | "collection-history" | "followups" | "attachments";
     }
   | { mode: "reports" };
