@@ -1546,7 +1546,7 @@ function RegisterTools({
   );
 }
 
-function EmployeeRegister({
+export function EmployeeRegister({
   data,
   onAdd,
   onView,
@@ -1563,6 +1563,8 @@ function EmployeeRegister({
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("All statuses");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
   const filtered = data.filter(
     (x) =>
       `${x.number} ${x.name} ${x.department}`.toLowerCase().includes(query.toLowerCase()) &&
@@ -1570,6 +1572,9 @@ function EmployeeRegister({
   ).sort((a, b) =>
     sortDirection === "asc" ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name),
   );
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const pageRows = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const summaryStatuses = [
     { label: "Regular", icon: UserCheck },
     { label: "Probationary", icon: Clock3 },
@@ -1583,13 +1588,19 @@ function EmployeeRegister({
             label: "Total Employees",
             value: data.length,
             icon: Wallet,
-            onClick: () => setStatus("All statuses"),
+            onClick: () => {
+              setStatus("All statuses");
+              setPage(1);
+            },
           },
           ...summaryStatuses.map(({ label, icon }) => ({
             label,
             value: data.filter((employee) => getEmploymentStatus(employee) === label).length,
             icon,
-            onClick: () => setStatus(label),
+            onClick: () => {
+              setStatus(label);
+              setPage(1);
+            },
           })),
         ]}
       />
@@ -1600,15 +1611,24 @@ function EmployeeRegister({
       />
       <RegisterTools
         query={query}
-        setQuery={setQuery}
+        setQuery={(value) => {
+          setQuery(value);
+          setPage(1);
+        }}
         status={status}
-        setStatus={setStatus}
+        setStatus={(value) => {
+          setStatus(value);
+          setPage(1);
+        }}
         statuses={[...employmentStatuses]}
         placeholder="Search employee no., name, or department…"
         exportData={() => exportCsv("employee-alphalist.csv", employeeDirectoryRows(filtered))}
         onPrint={() => { void printReport("Employee alphalist", employeeDirectoryRows(filtered)); }}
         sortDirection={sortDirection}
-        onToggleSort={() => setSortDirection((direction) => direction === "asc" ? "desc" : "asc")}
+        onToggleSort={() => {
+          setSortDirection((direction) => direction === "asc" ? "desc" : "asc");
+          setPage(1);
+        }}
       />
       {filtered.length ? (
         <div className="overflow-x-auto">
@@ -1629,7 +1649,7 @@ function EmployeeRegister({
               </tr>
             </thead>
             <tbody>
-              {filtered.map((x) => {
+              {pageRows.map((x) => {
                 const employmentStatus = getEmploymentStatus(x);
                 return (
                   <tr key={x.id} className="cursor-pointer" onClick={() => onView(x.id)}>
@@ -1669,7 +1689,7 @@ function EmployeeRegister({
       ) : (
         <Empty title="No employees found" action={onAdd} />
       )}
-      <Pagination count={filtered.length} />
+      <Pagination page={currentPage} pageSize={pageSize} count={filtered.length} onPageChange={setPage} />
     </section>
     {printSheet}
     </div>
@@ -2511,18 +2531,43 @@ function Empty({ title, action }: { title: string; action: () => void }) {
   );
 }
 
-function Pagination({ count }: { count: number }) {
+function Pagination({
+  page,
+  pageSize,
+  count,
+  onPageChange,
+}: {
+  page: number;
+  pageSize: number;
+  count: number;
+  onPageChange: (page: number) => void;
+}) {
+  const pages = Math.max(1, Math.ceil(count / pageSize));
+  const start = count === 0 ? 0 : (page - 1) * pageSize + 1;
+  const end = Math.min(page * pageSize, count);
   return (
     <div className="flex items-center justify-between border-t border-[#d0e3ef] px-5 py-4 text-[11px] text-[#777]">
       <span>
-        Showing {count ? 1 : 0}–{count} of {count}
+        Showing {start}–{end} of {count}
       </span>
       <div className="flex gap-1">
-        <button disabled className="table-action disabled:opacity-30">
+        <button
+          type="button"
+          disabled={page <= 1}
+          className="table-action disabled:opacity-30"
+          onClick={() => onPageChange(page - 1)}
+          aria-label="Previous page"
+        >
           <ChevronLeft size={15} />
         </button>
-        <button className="grid size-8 place-items-center bg-[#1f6ea6] text-white">1</button>
-        <button disabled className="table-action disabled:opacity-30">
+        <span className="grid size-8 place-items-center bg-[#1f6ea6] text-white">{page}</span>
+        <button
+          type="button"
+          disabled={page >= pages}
+          className="table-action disabled:opacity-30"
+          onClick={() => onPageChange(page + 1)}
+          aria-label="Next page"
+        >
           <ChevronRight size={15} />
         </button>
       </div>

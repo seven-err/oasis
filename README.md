@@ -39,3 +39,13 @@ cd frontend && pnpm dev          # http://localhost:5173
 cd backend && composer install && php artisan migrate && npm install
 cd frontend && pnpm install
 ```
+
+## Seeing old data (e.g. Employee Alphalist)
+
+Employee records are saved in each browser's localStorage, not the backend, so records you add are visible only to you. To load the latest list from the code, open the app, press F12 → Console, and run:
+
+```js
+localStorage.removeItem("oasis.employees.v1"); location.reload();
+```
+
+This deletes any employees you added in that browser.

@@ -41,7 +41,23 @@ test("monitoring deletion is authorized, recoverable, audited, and retains relat
   };
   const server = await createServer({ server: { middlewareMode: true }, appType: "custom" });
   try {
-    const { ArchivedRecords, loadEmployeeRecords } = await server.ssrLoadModule("/src/App.tsx");
+    const { ArchivedRecords, EmployeeRegister, loadEmployeeRecords } = await server.ssrLoadModule("/src/App.tsx");
+    const twelveEmployees = Array.from({ length: 12 }, (_, index) => ({
+      ...loadEmployeeRecords().employees[0],
+      id: index + 1,
+      number: `EMP-${String(index + 1).padStart(5, "0")}`,
+      name: `Employee ${String(index + 1).padStart(2, "0")}`,
+    }));
+    const alphalistMarkup = renderToStaticMarkup(createElement(EmployeeRegister, {
+      data: twelveEmployees,
+      onAdd: () => {},
+      onView: () => {},
+      onEdit: () => {},
+      onDelete: () => {},
+    }));
+    assert.match(alphalistMarkup, /Showing 1–10 of 12/);
+    assert.match(alphalistMarkup, /EMP-00010/);
+    assert.doesNotMatch(alphalistMarkup, /EMP-00011/);
     const initialDirectory = loadEmployeeRecords();
     assert.ok(initialDirectory.employees.length > 0);
     assert.deepEqual(initialDirectory.deletedEmployees, []);
