@@ -311,7 +311,7 @@ export function ReceivableRegister({
         </button>
         {user.permissions.archiveReceivables && (
           <button
-            className="flex w-full items-center gap-2 border-t border-[#e1eef6] px-3 py-2 text-xs text-red-700 hover:bg-red-50"
+            className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-700 hover:bg-red-50"
             onClick={() => {
               setMenu(null);
               archiveOrRestore(row);
@@ -331,7 +331,7 @@ export function ReceivableRegister({
         {user.permissions.archiveReceivables && (
           <button
             type="button"
-            className="flex w-full items-center gap-2 border-t border-[#e1eef6] px-3 py-2 text-xs text-red-700 hover:bg-red-50"
+            className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-700 hover:bg-red-50"
             onClick={() => {
               setMenu(null);
               setDeleting(row);

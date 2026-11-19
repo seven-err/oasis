@@ -169,7 +169,7 @@ export function CheckRegister({
         </button>
         {user.permissions.archiveChecks && (
           <button
-            className="flex w-full items-center gap-2 border-t border-[#e1eef6] px-3 py-2 text-xs text-red-700 hover:bg-red-50"
+            className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-700 hover:bg-red-50"
             onClick={() => {
               setMenuId(null);
               archiveOrRestore(row);
@@ -189,7 +189,7 @@ export function CheckRegister({
         {user.permissions.archiveChecks && (
           <button
             type="button"
-            className="flex w-full items-center gap-2 border-t border-[#e1eef6] px-3 py-2 text-xs text-red-700 hover:bg-red-50"
+            className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-700 hover:bg-red-50"
             onClick={() => {
               setMenuId(null);
               setDeleting(row);
