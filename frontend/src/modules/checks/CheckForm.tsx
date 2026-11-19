@@ -351,7 +351,7 @@ export function CheckForm({ mode, record, onCancel, onSaved }: Props) {
             <legend className="mb-4 text-[10px] font-bold uppercase tracking-[.14em] text-[#1f6ea6]">
               Preparation and audit
             </legend>
-            <div className="grid gap-px bg-[#d0e3ef] sm:grid-cols-2">
+            <div className="grid gap-px overflow-hidden rounded-lg bg-[#d0e3ef] sm:grid-cols-2">
               <div className="bg-[#e7f3fb] p-4">
                 <span className="field-label">Prepared by</span>
                 <strong className="mt-1 block text-sm">

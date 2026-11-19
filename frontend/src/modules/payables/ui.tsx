@@ -227,7 +227,7 @@ export function PaginationBar({
         >
           <ChevronLeft size={15} />
         </button>
-        <span className="grid size-8 place-items-center bg-[#1f6ea6] text-white">{page}</span>
+        <span className="grid size-8 place-items-center rounded-lg bg-[#1f6ea6] text-white">{page}</span>
         <button
           disabled={page >= pages}
           className="table-action disabled:opacity-30"

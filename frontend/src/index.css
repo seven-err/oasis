@@ -395,6 +395,10 @@
     border-radius: 0.5rem;
   }
 
+  input[type="file"]::file-selector-button {
+    border-radius: 0.5rem;
+  }
+
   button:focus-visible,
   a:focus-visible,
   input:focus-visible,
@@ -478,6 +482,41 @@
 }
 
 @layer components {
+  .requirement-checkbox {
+    appearance: none;
+    display: inline-grid;
+    place-content: center;
+    border: 1px solid #6a8aa0;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+  }
+
+  .requirement-checkbox:checked {
+    border-color: #1f6ea6;
+    background: #1f6ea6;
+  }
+
+  .requirement-checkbox:checked::after {
+    content: "";
+    width: 4px;
+    height: 8px;
+    margin-top: -2px;
+    border-right: 2px solid #fff;
+    border-bottom: 2px solid #fff;
+    transform: rotate(45deg);
+  }
+
+  @media (forced-colors: active) {
+    .requirement-checkbox {
+      appearance: auto;
+    }
+
+    .requirement-checkbox:checked::after {
+      content: none;
+    }
+  }
+
   .section-highlight {
     position: relative;
     border-radius: 0;
