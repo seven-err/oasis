@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/FormPopovers";
 import {
   AlertCircle,
   Archive,
@@ -486,7 +487,7 @@ export function ReceivableRegister({
             onClear={() => { setFilters({ ...EMPTY_FILTERS }); setPage(1); }}
           />
           {showFilters && (
-            <div className="grid gap-3 border border-[#d0e3ef] bg-[#f4f9fd] p-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-3 rounded-lg border border-[#d0e3ef] bg-[#f4f9fd] p-4 md:grid-cols-2 xl:grid-cols-4">
               <label className="block">
                 <span className="field-label">Customer</span>
                 <select
@@ -632,13 +633,13 @@ export function ReceivableRegister({
               <div className="md:col-span-2">
                 <span className="field-label">Invoice date range</span>
                 <div className="mt-2 grid grid-cols-2 gap-2">
-                  <input
+                  <DateInput
                     type="date"
                     className="input"
                     value={filters.invoiceDateFrom}
                     onChange={(e) => setFilter("invoiceDateFrom", e.target.value)}
                   />
-                  <input
+                  <DateInput
                     type="date"
                     className="input"
                     value={filters.invoiceDateTo}
@@ -649,13 +650,13 @@ export function ReceivableRegister({
               <div className="md:col-span-2">
                 <span className="field-label">Transaction date range</span>
                 <div className="mt-2 grid grid-cols-2 gap-2">
-                  <input
+                  <DateInput
                     type="date"
                     className="input"
                     value={filters.transactionDateFrom}
                     onChange={(e) => setFilter("transactionDateFrom", e.target.value)}
                   />
-                  <input
+                  <DateInput
                     type="date"
                     className="input"
                     value={filters.transactionDateTo}
@@ -666,13 +667,13 @@ export function ReceivableRegister({
               <div className="md:col-span-2">
                 <span className="field-label">Due date range</span>
                 <div className="mt-2 grid grid-cols-2 gap-2">
-                  <input
+                  <DateInput
                     type="date"
                     className="input"
                     value={filters.dueDateFrom}
                     onChange={(e) => setFilter("dueDateFrom", e.target.value)}
                   />
-                  <input
+                  <DateInput
                     type="date"
                     className="input"
                     value={filters.dueDateTo}
@@ -683,13 +684,13 @@ export function ReceivableRegister({
               <div className="md:col-span-2">
                 <span className="field-label">Follow-up date range</span>
                 <div className="mt-2 grid grid-cols-2 gap-2">
-                  <input
+                  <DateInput
                     type="date"
                     className="input"
                     value={filters.followUpDateFrom}
                     onChange={(e) => setFilter("followUpDateFrom", e.target.value)}
                   />
-                  <input
+                  <DateInput
                     type="date"
                     className="input"
                     value={filters.followUpDateTo}
