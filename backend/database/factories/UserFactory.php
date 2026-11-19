@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -41,5 +42,19 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
         ]);
+    }
+
+    public function withRole(string $slug): static
+    {
+        return $this->state(fn () => [
+            'role_id' => Role::where('slug', $slug)->firstOrFail()->id,
+            'is_active' => true,
+            'must_change_password' => false,
+        ]);
+    }
+
+    public function temporaryPassword(): static
+    {
+        return $this->state(fn () => ['must_change_password' => true]);
     }
 }

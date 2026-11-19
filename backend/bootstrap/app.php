@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Middleware\EnsureAccountAccess;
+use App\Http\Middleware\PreventPageCaching;
+use Illuminate\Auth\Middleware\Authorize;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -12,9 +15,17 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->alias([
+            'account.access' => EnsureAccountAccess::class,
+            'private.pages' => PreventPageCaching::class,
+        ]);
+        $middleware->prependToPriorityList(
+            Authorize::class,
+            EnsureAccountAccess::class,
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->dontFlash(['current_password', 'password', 'password_confirmation', 'temporary_password']);
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );

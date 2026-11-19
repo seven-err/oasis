@@ -1,0 +1,179 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Permission;
+use App\Models\Role;
+use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
+use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\Gate;
+use PHPUnit\Framework\Attributes\TestWith;
+use Tests\TestCase;
+
+class AccessControlTest extends TestCase
+{
+    use LazilyRefreshDatabase;
+
+    protected $seed = true;
+
+    protected $seeder = RolePermissionSeeder::class;
+
+    #[TestWith(['super-admin', ['dashboard', 'hr', 'checks', 'payables', 'receivables', 'users', 'activity', 'settings', 'account']])]
+    #[TestWith(['hr', ['dashboard', 'hr', 'account']])]
+    #[TestWith(['finance', ['dashboard', 'checks', 'payables', 'receivables', 'account']])]
+    public function test_gate_enforces_the_complete_role_matrix(string $role, array $allowed): void
+    {
+        $user = User::factory()->withRole($role)->create();
+
+        foreach (array_keys(Role::PERMISSIONS) as $permission) {
+            $this->assertSame(in_array($permission, $allowed, true), Gate::forUser($user)->allows($permission), $role.' / '.$permission);
+        }
+    }
+
+    #[TestWith(['hr', '/checks'])]
+    #[TestWith(['hr', '/payables'])]
+    #[TestWith(['hr', '/receivables'])]
+    #[TestWith(['hr', '/users'])]
+    #[TestWith(['hr', '/users/create'])]
+    #[TestWith(['hr', '/activity-logs'])]
+    #[TestWith(['hr', '/settings'])]
+    #[TestWith(['finance', '/hr/alphalist'])]
+    #[TestWith(['finance', '/users'])]
+    #[TestWith(['finance', '/activity-logs'])]
+    #[TestWith(['finance', '/settings'])]
+    public function test_manual_unauthorized_urls_return_403(string $role, string $url): void
+    {
+        $this->signIn(User::factory()->withRole($role)->create());
+
+        $this->get($url)->assertForbidden();
+    }
+
+    #[TestWith(['super-admin', '/hr/alphalist'])]
+    #[TestWith(['super-admin', '/checks'])]
+    #[TestWith(['super-admin', '/payables'])]
+    #[TestWith(['super-admin', '/receivables'])]
+    #[TestWith(['hr', '/hr/alphalist'])]
+    #[TestWith(['finance', '/checks'])]
+    #[TestWith(['finance', '/payables'])]
+    #[TestWith(['finance', '/receivables'])]
+    public function test_authorized_module_routes_explain_that_the_port_is_pending(string $role, string $url): void
+    {
+        $this->signIn(User::factory()->withRole($role)->create());
+
+        $this->get($url)->assertStatus(501)->assertSee('This module has not been ported yet');
+    }
+
+    #[TestWith(['/dashboard'])]
+    #[TestWith(['/account'])]
+    #[TestWith(['/users'])]
+    #[TestWith(['/checks'])]
+    public function test_guests_are_redirected_to_login(string $url): void
+    {
+        $this->get($url)->assertRedirect(route('login'));
+    }
+
+    public function test_super_admin_can_access_administration_screens(): void
+    {
+        $this->signIn(User::factory()->withRole('super-admin')->create());
+
+        $this->get('/dashboard')->assertOk();
+        $this->get('/users')->assertOk();
+        $this->get('/users/create')->assertOk();
+        $this->get('/activity-logs')->assertOk();
+        $this->get('/settings')->assertOk();
+    }
+
+    public function test_hr_navigation_hides_finance_and_administration(): void
+    {
+        $this->signIn(User::factory()->withRole('hr')->create());
+
+        $this->get('/dashboard')->assertOk()->assertSee('HR Alphalist')->assertSee('My Account')
+            ->assertDontSee('Check Monitoring')->assertDontSee('User Management')->assertDontSee('System Settings');
+    }
+
+    public function test_finance_navigation_hides_hr_and_administration(): void
+    {
+        $this->signIn(User::factory()->withRole('finance')->create());
+
+        $this->get('/dashboard')->assertOk()->assertSee('Check Monitoring')->assertSee('My Account')
+            ->assertDontSee('HR Alphalist')->assertDontSee('User Management');
+    }
+
+    public function test_permission_edits_cannot_cross_role_boundaries_even_if_database_is_modified(): void
+    {
+        $user = User::factory()->withRole('hr')->create();
+        $user->role->permissions()->attach(Permission::where('slug', 'users')->firstOrFail()->id);
+
+        $this->assertFalse(Gate::forUser($user)->allows('users'));
+    }
+
+    public function test_admin_can_restrict_permissions_and_reseeding_preserves_them(): void
+    {
+        $this->signIn(User::factory()->withRole('super-admin')->create());
+        $role = Role::where('slug', 'finance')->firstOrFail();
+
+        $this->put(route('settings.permissions', $role), ['current_password' => 'password', 'permissions' => ['checks']])
+            ->assertSessionHasNoErrors()->assertRedirect();
+
+        $finance = User::factory()->withRole('finance')->create();
+        $this->assertTrue(Gate::forUser($finance)->allows('checks'));
+        $this->assertFalse(Gate::forUser($finance)->allows('payables'));
+        $this->assertTrue(Gate::forUser($finance)->allows('account'));
+        $this->seed(RolePermissionSeeder::class);
+        $this->assertFalse(Gate::forUser($finance)->allows('payables'));
+        $this->assertDatabaseHas('activity_logs', ['action' => 'permissions.updated']);
+    }
+
+    public function test_permission_settings_reject_cross_department_and_super_admin_changes(): void
+    {
+        $this->signIn(User::factory()->withRole('super-admin')->create());
+        $hr = Role::where('slug', 'hr')->firstOrFail();
+        $admin = Role::where('slug', 'super-admin')->firstOrFail();
+
+        $this->put(route('settings.permissions', $hr), ['current_password' => 'password', 'permissions' => ['checks']])
+            ->assertSessionHasErrors('permissions.0');
+        $this->put(route('settings.permissions', $admin), ['current_password' => 'password'])->assertForbidden();
+        $this->assertDatabaseMissing('activity_logs', ['action' => 'permissions.updated']);
+    }
+
+    public function test_users_cannot_modify_roles_through_personal_settings(): void
+    {
+        $user = User::factory()->withRole('hr')->create();
+        $this->signIn($user);
+
+        $this->put('/account', [
+            'name' => $user->name, 'email' => $user->email, 'current_password' => 'password',
+            'role_id' => Role::where('slug', 'super-admin')->firstOrFail()->id,
+        ])->assertSessionHasErrors('role_id');
+
+        $this->assertSame('hr', $user->fresh()->role->slug);
+    }
+
+    public function test_personal_settings_update_only_validated_fields(): void
+    {
+        $user = User::factory()->withRole('hr')->create();
+        $this->signIn($user);
+
+        $this->put('/account', [
+            'name' => 'Updated Name', 'email' => $user->email, 'current_password' => 'password', 'auth_version' => 99,
+        ])->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('users', ['id' => $user->id, 'name' => 'Updated Name', 'email' => $user->email, 'auth_version' => 0]);
+    }
+
+    public function test_personal_email_change_revokes_other_sessions_but_keeps_current_session(): void
+    {
+        $user = User::factory()->withRole('hr')->create();
+        $this->signIn($user);
+        $oldRememberToken = $user->remember_token;
+
+        $this->put('/account', [
+            'name' => $user->name, 'email' => 'NEW@example.com', 'current_password' => 'password',
+        ])->assertSessionHasNoErrors()->assertSessionHas('auth_version', 1);
+
+        $this->assertDatabaseHas('users', ['id' => $user->id, 'email' => 'new@example.com', 'auth_version' => 1, 'email_verified_at' => null]);
+        $this->assertNotSame($oldRememberToken, $user->fresh()->remember_token);
+        $this->get('/dashboard')->assertOk();
+    }
+}
