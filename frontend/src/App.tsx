@@ -2046,7 +2046,7 @@ function EmployeeRequirementChecklist({
     <fieldset className="grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
       <legend className="mb-4 text-[10px] font-bold uppercase tracking-[.14em] text-[#1f6ea6]">{title}</legend>
       {items.map((item) => (
-        <div key={item} className="min-w-0 border border-[#d0e3ef] p-3">
+        <div key={item} className="min-w-0 rounded-lg border border-[#d0e3ef] p-3">
           <label className="flex items-center gap-2 text-[11px]">
             <input
               type="checkbox"
@@ -2057,7 +2057,7 @@ function EmployeeRequirementChecklist({
                 const isChecked = event.currentTarget.checked;
                 onChange(isChecked ? [...checked, item] : checked.filter((entry) => entry !== item));
               }}
-              className="size-4 shrink-0 accent-[#1f6ea6]"
+              className="requirement-checkbox size-4 shrink-0"
             />
             {item}
           </label>
@@ -2588,7 +2588,7 @@ function Pagination({
         >
           <ChevronLeft size={15} />
         </button>
-        <span className="grid size-8 place-items-center bg-[#1f6ea6] text-white">{page}</span>
+        <span className="grid size-8 place-items-center rounded-lg bg-[#1f6ea6] text-white">{page}</span>
         <button
           type="button"
           disabled={page >= pages}
