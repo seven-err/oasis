@@ -42,7 +42,7 @@ export function ReceivableCancellationDialog({ record, onBack, onConfirm }: Prop
     <dialog
       ref={dialogRef}
       aria-labelledby={titleId}
-      className="m-auto w-[calc(100%-2rem)] max-w-lg border border-[#d0e3ef] bg-white p-5 shadow-2xl backdrop:bg-black/45 sm:p-6"
+      className="m-auto w-[calc(100%-2rem)] max-w-lg rounded-xl border border-[#d0e3ef] bg-white p-5 shadow-2xl backdrop:bg-black/45 sm:p-6"
       onCancel={(event) => {
         event.preventDefault();
         onBack();
@@ -93,11 +93,11 @@ export function ReceivableCancellationDialog({ record, onBack, onConfirm }: Prop
             {formError}
           </p>
         )}
-        <div className="mt-5 flex flex-wrap justify-end gap-2">
-          <button type="button" className="secondary-btn" onClick={onBack}>
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          <button type="button" className="secondary-btn rounded-lg" onClick={onBack}>
             <ArrowLeft size={15} aria-hidden="true" /> Back
           </button>
-          <button type="submit" className="primary-btn bg-red-700 hover:bg-red-800">
+          <button type="submit" className="primary-btn rounded-lg bg-red-700 hover:bg-red-800">
             Confirm Cancellation
           </button>
         </div>

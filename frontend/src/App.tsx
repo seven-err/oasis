@@ -652,7 +652,7 @@ function App() {
           {selectionTop !== null && (
             <div
               aria-hidden="true"
-              className="sidebar-selection pointer-events-none absolute inset-x-3 top-0 h-11 border-l-2 border-[#1f6ea6] bg-[#4da3d9]"
+              className="sidebar-selection pointer-events-none absolute inset-x-3 top-0 h-11 rounded-lg border-l-2 border-[#1f6ea6] bg-[#4da3d9]"
               style={{ transform: `translateY(${selectionTop}px)` }}
             />
           )}
@@ -992,9 +992,9 @@ function App() {
           Are you sure you want to permanently delete {pendingDeletion?.length === 1 ? "this record" : `these ${pendingDeletion?.length ?? 0} records`}? This action cannot be undone.
         </p>
         <div className="mt-6 flex justify-center gap-3">
-          <button type="button" autoFocus className="secondary-btn" onClick={() => setPendingDeletion(null)}>Cancel</button>
-          <button type="button" className="flex items-center gap-2 rounded bg-red-700 px-4 py-2 text-xs font-medium text-white hover:bg-red-800" onClick={confirmPermanentDeletion}>
-            <Trash2 size={14} aria-hidden="true" /> Delete permanently
+          <button type="button" autoFocus className="secondary-btn rounded-lg" onClick={() => setPendingDeletion(null)}>Cancel</button>
+          <button type="button" className="flex items-center gap-2 rounded-lg bg-red-700 px-4 py-2 text-xs font-medium text-white hover:bg-red-800" onClick={confirmPermanentDeletion}>
+            Confirm
           </button>
         </div>
       </dialog>

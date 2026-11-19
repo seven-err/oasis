@@ -23,6 +23,7 @@ import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { SummaryStatCards } from "@/components/SummaryStatCards";
 import { ActiveFilters } from "@/components/ActiveFilters";
 import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
+import { ArchiveConfirmationDialog } from "@/components/ArchiveConfirmationDialog";
 import { recordRowClick } from "@/components/recordRowClick";
 import {
   COLLECTION_STATUSES,
@@ -79,6 +80,7 @@ export function ReceivableRegister({
 }: Props) {
   const user = receivableService.getUser();
   const [deleting, setDeleting] = useState<ReceivableViewModel | null>(null);
+  const [archiving, setArchiving] = useState<ReceivableViewModel | null>(null);
   const customers = useMemo(() => receivableService.customers(false), [records]);
   const collections = useMemo(() => receivableService.allCollections(), [records]);
   const [filters, setFilters] = useState<ReceivableFilters>(EMPTY_FILTERS);
@@ -186,12 +188,22 @@ export function ReceivableRegister({
       }
       return;
     }
-    if (!window.confirm("Archive this receivable? Historical information will be retained."))
-      return;
-    const result = receivableService.archive(record.id);
-    if (result.ok) {
+    setArchiving(record);
+  };
+
+  const confirmArchive = () => {
+    if (!archiving) return;
+    try {
+      const result = receivableService.archive(archiving.id);
+      if (!result.ok) {
+        notify(result.errors.form ?? "Unable to archive receivable.");
+        return;
+      }
+      setArchiving(null);
       notify("Receivable archived.");
       onChanged();
+    } catch {
+      notify("Unable to save the archive. Please try again.");
     }
   };
 
@@ -355,6 +367,13 @@ export function ReceivableRegister({
 
   return (
     <div className="w-full max-w-full space-y-5 overflow-x-clip">
+      {archiving && (
+        <ArchiveConfirmationDialog
+          recordLabel={`${archiving.invoiceNumber} — ${archiving.customerName}`}
+          onCancel={() => setArchiving(null)}
+          onConfirm={confirmArchive}
+        />
+      )}
       {deleting && (
         <DeleteConfirmationDialog
           recordLabel={`Receivable ${deleting.invoiceNumber}`}

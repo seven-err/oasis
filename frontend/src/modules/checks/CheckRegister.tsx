@@ -1,3 +1,4 @@
+import { ArchiveConfirmationDialog } from "@/components/ArchiveConfirmationDialog";
 import {
   AlertCircle,
   Archive,
@@ -58,6 +59,7 @@ export function CheckRegister({
 }: Props) {
   const user = checkService.getUser();
   const [deleting, setDeleting] = useState<CheckRecord | null>(null);
+  const [archiving, setArchiving] = useState<CheckRecord | null>(null);
   const [filters, setFilters] = useState<CheckFilters>(EMPTY_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
   const [sort, setSort] = useState<CheckSort>({ key: "checkDate", direction: "desc" });
@@ -122,11 +124,22 @@ export function CheckRegister({
       }
       return;
     }
-    if (!window.confirm("Archive this check? Historical information will be retained.")) return;
-    const result = checkService.archive(record.id);
-    if (result.ok) {
+    setArchiving(record);
+  };
+
+  const confirmArchive = () => {
+    if (!archiving) return;
+    try {
+      const result = checkService.archive(archiving.id);
+      if (!result.ok) {
+        notify(result.errors.form ?? "Unable to archive.");
+        return;
+      }
+      setArchiving(null);
       notify("Check archived.");
       onChanged();
+    } catch {
+      notify("Unable to save the archive. Please try again.");
     }
   };
 
@@ -195,6 +208,13 @@ export function CheckRegister({
 
   return (
     <div className="w-full max-w-full space-y-5 overflow-x-clip">
+      {archiving && (
+        <ArchiveConfirmationDialog
+          recordLabel={`Check ${archiving.checkNumber} - ${archiving.payeeName}`}
+          onCancel={() => setArchiving(null)}
+          onConfirm={confirmArchive}
+        />
+      )}
       {deleting && (
         <DeleteConfirmationDialog
           recordLabel={`Check ${deleting.checkNumber}`}

@@ -1,3 +1,4 @@
+import { ArchiveConfirmationDialog } from "@/components/ArchiveConfirmationDialog";
 import {
   Archive,
   Download,
@@ -33,6 +34,7 @@ type Props = {
 export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Props) {
   const { printReport, printSheet } = usePrintReport();
   const user = checkService.getUser();
+  const [archiving, setArchiving] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const [attachments, setAttachments] = useState(() => checkService.attachmentsFor(record.id));
   const activity = useMemo(() => checkService.activityFor(record.id), [record]);
@@ -50,14 +52,18 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
       notify("You are not authorized to archive checks.");
       return;
     }
-    if (!window.confirm("Archive this check? Historical information will be retained.")) return;
-    const result = checkService.archive(record.id);
-    if (!result.ok) {
-      notify(result.errors.form ?? "Unable to archive.");
-      return;
+    try {
+      const result = checkService.archive(record.id);
+      if (!result.ok) {
+        notify(result.errors.form ?? "Unable to archive.");
+        return;
+      }
+      setArchiving(false);
+      notify("Check archived.");
+      onChanged();
+    } catch {
+      notify("Unable to save the archive. Please try again.");
     }
-    notify("Check archived.");
-    onChanged();
   };
 
   const onRestore = () => {
@@ -148,6 +154,13 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
 
   return (
     <div className="space-y-5">
+      {archiving && (
+        <ArchiveConfirmationDialog
+          recordLabel={`Check ${record.checkNumber} - ${record.payeeName}`}
+          onCancel={() => setArchiving(false)}
+          onConfirm={onArchive}
+        />
+      )}
       <section className="panel">
         <PanelTitle
           onBack={onBack}
@@ -185,7 +198,7 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
               </button>
             ) : (
               user.permissions.archiveChecks && (
-                <button onClick={onArchive} className="secondary-btn text-red-700">
+                <button onClick={() => setArchiving(true)} className="secondary-btn text-red-700">
                   <Archive size={15} /> Archive
                 </button>
               )

@@ -1,3 +1,4 @@
+import { ArchiveConfirmationDialog } from "@/components/ArchiveConfirmationDialog";
 import {
   AlertCircle,
   Archive,
@@ -71,6 +72,7 @@ export function PayableRegister({
 }: Props) {
   const user = payableService.getUser();
   const [deleting, setDeleting] = useState<PayableViewModel | null>(null);
+  const [archiving, setArchiving] = useState<PayableViewModel | null>(null);
   const categories = useMemo(() => payableService.categories(false), [records]);
   const [filters, setFilters] = useState<PayableFilters>(EMPTY_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
@@ -137,11 +139,22 @@ export function PayableRegister({
       }
       return;
     }
-    if (!window.confirm("Archive this payable? Historical information will be retained.")) return;
-    const result = payableService.archive(record.id);
-    if (result.ok) {
+    setArchiving(record);
+  };
+
+  const confirmArchive = () => {
+    if (!archiving) return;
+    try {
+      const result = payableService.archive(archiving.id);
+      if (!result.ok) {
+        notify(result.errors.form ?? "Unable to archive.");
+        return;
+      }
+      setArchiving(null);
       notify("Payable archived.");
       onChanged();
+    } catch {
+      notify("Unable to save the archive. Please try again.");
     }
   };
 
@@ -240,6 +253,13 @@ export function PayableRegister({
 
   return (
     <div className="w-full max-w-full space-y-5 overflow-x-clip">
+      {archiving && (
+        <ArchiveConfirmationDialog
+          recordLabel={`Payable ${archiving.invoiceNumber} - ${archiving.payeeName}`}
+          onCancel={() => setArchiving(null)}
+          onConfirm={confirmArchive}
+        />
+      )}
       {deleting && (
         <DeleteConfirmationDialog
           recordLabel={`Payable ${deleting.invoiceNumber}`}
