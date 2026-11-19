@@ -117,10 +117,60 @@ git pull
 cd backend
 composer install
 php artisan migrate
+php artisan db:seed --class=RolePermissionSeeder
 npm install
+npm run build
 cd ../frontend
 pnpm install
+pnpm build
 ```
+
+## Shared access from the office PC
+
+The shared instance runs Laravel through Caddy and PHP FastCGI, with ngrok
+providing the public HTTPS address. MySQL and the office PC must stay running.
+Teammates use the shared browser URL; they do not need to install the project
+or copy the office PC's `.env` file.
+
+On the host PC, build both apps using the commands above. Place the official
+[Caddy Windows executable](https://caddyserver.com/download) and
+[ngrok Windows executable](https://ngrok.com/download/windows) in
+`%LOCALAPPDATA%\OASIS\office-server`, named `caddy.exe` and `ngrok.exe`.
+Sign in to a free ngrok account and find its assigned development domain.
+From the repository root, run this with that domain:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\backend\start-office-server.ps1 -PublicUrl https://YOUR-DOMAIN.ngrok-free.dev
+```
+
+The first run prompts for the ngrok authtoken or its copied setup command.
+Input is hidden. Agent credentials and runtime logs are stored privately under
+`%LOCALAPPDATA%\OASIS\office-server`, outside Git. If PHP is not found, pass
+`-PhpCgiPath` with the full path to PHP 8.3+ `php-cgi.exe`.
+If ngrok rejects a token, rerun with `-ResetToken` to enter its current value.
+
+The launcher checks both the local login page and the connected public tunnel.
+It uses production mode, secure cookies, encrypted sessions, and disabled
+request-body inspection. Only loopback ports are opened; no inbound router
+port forwarding is required. Share the printed HTTPS login URL, then create
+individual teammate accounts in User Management.
+
+Set the GitHub repository Actions variable `OASIS_TEAM_URL` to the shared
+HTTPS origin, then run the Pages deployment. The existing GitHub Pages link
+will send teammates to the shared login instead of trying to run PHP on Pages.
+
+Stop before rebuilding or updating the shared server, then run the launcher
+again after pulling and building:
+
+```powershell
+.\backend\start-office-server.ps1 -Stop
+```
+
+The free ngrok plan currently includes an assigned stable domain, 1 GB/month
+of outbound transfer and 20,000 requests/month, with a first-visit browser
+notice. Check [ngrok's current free-plan limits](https://ngrok.com/docs/pricing-limits).
+This provides shared login/accounts; existing HR and Finance records still
+live in each browser's storage and are not synchronized between teammates.
 
 ## Making changes
 

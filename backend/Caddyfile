@@ -1,0 +1,25 @@
+{
+	admin off
+	auto_https off
+	servers {
+		trusted_proxies static 127.0.0.1 ::1
+	}
+}
+
+:8081 {
+	bind 127.0.0.1
+	root * {$OASIS_PUBLIC_ROOT}
+	encode gzip
+
+	@private path /.env* /.git/* /vendor/* /storage/logs/*
+	respond @private 404
+
+	php_fastcgi 127.0.0.1:9001 {
+		env APP_ENV production
+		env APP_DEBUG false
+		env APP_URL {$OASIS_PUBLIC_URL}
+		env SESSION_SECURE_COOKIE true
+		env SESSION_ENCRYPT true
+	}
+	file_server
+}
