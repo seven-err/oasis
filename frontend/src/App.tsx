@@ -2317,7 +2317,7 @@ function UserManagement({ notify }: { notify: (s: string) => void }) {
             onClick={() => notify("User invitation workflow opened in prototype mode.")}
             className="primary-btn"
           >
-            <Plus size={15} /> Invite user
+            <Plus size={15} /> Add user
           </button>
       </div>
       <div className="panel overflow-x-auto">
