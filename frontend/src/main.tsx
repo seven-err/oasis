@@ -14,7 +14,16 @@ const root = ReactDOM.createRoot(document.getElementById("root")!);
 
 async function start() {
   try {
-    const session = window.__OASIS_SESSION__ ?? await readSession();
+    if (import.meta.env.VITE_TEAM_URL) {
+      const teamLogin = new URL("/login", import.meta.env.VITE_TEAM_URL);
+      if (teamLogin.protocol !== "https:")
+        throw new Error("The shared OASIS address must use HTTPS.");
+      if (teamLogin.origin !== window.location.origin) {
+        window.location.replace(teamLogin.href);
+        return;
+      }
+    }
+    const session = window.__OASIS_SESSION__ ?? (await readSession());
     if (!session) {
       window.location.replace("/login");
       return;
@@ -25,7 +34,11 @@ async function start() {
     }
     setSession(session);
     const { default: App } = await import("./App");
-    root.render(<React.StrictMode><App /></React.StrictMode>);
+    root.render(
+      <React.StrictMode>
+        <App />
+      </React.StrictMode>,
+    );
 
     let checking = false;
     const checkSession = async () => {
@@ -48,8 +61,12 @@ async function start() {
     root.render(
       <main className="mx-auto mt-24 max-w-md rounded-xl border border-[#d0e3ef] bg-white p-8 text-[#16344d]">
         <h1 className="text-xl font-semibold">OASIS</h1>
-        <p role="alert" className="my-4">{error instanceof Error ? error.message : "Unable to load your account."}</p>
-        <button className="primary-btn" onClick={() => window.location.reload()}>Try again</button>
+        <p role="alert" className="my-4">
+          {error instanceof Error ? error.message : "Unable to load your account."}
+        </p>
+        <button className="primary-btn" onClick={() => window.location.reload()}>
+          Try again
+        </button>
       </main>,
     );
   }

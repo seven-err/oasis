@@ -41,6 +41,7 @@ jobs:
       - run: pnpm build
         env:
           GITHUB_PAGES: "true"
+          VITE_TEAM_URL: ${{ vars.OASIS_TEAM_URL }}
       - name: Prepare Pages artifact
         run: |
           printf '* -filter -diff -merge\n' > dist/.gitattributes

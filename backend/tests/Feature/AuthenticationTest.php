@@ -205,6 +205,24 @@ class AuthenticationTest extends TestCase
         $this->get('https://localhost/login')->assertOk();
     }
 
+    public function test_office_tunnel_preserves_https_and_the_public_hostname(): void
+    {
+        $this->app->instance('env', 'production');
+
+        $this->withServerVariables(['REMOTE_ADDR' => '127.0.0.1'])->withHeaders([
+            'X-Forwarded-Proto' => 'https', 'X-Forwarded-Host' => 'office.example.test',
+        ])->get('/login')->assertOk()->assertSee('https://office.example.test/login', false);
+    }
+
+    public function test_remote_clients_cannot_spoof_trusted_https_headers(): void
+    {
+        $this->app->instance('env', 'production');
+
+        $this->withServerVariables(['REMOTE_ADDR' => '198.51.100.20'])->withHeaders([
+            'X-Forwarded-Proto' => 'https', 'X-Forwarded-Host' => 'office.example.test',
+        ])->get('/login')->assertForbidden();
+    }
+
     public function test_password_change_stops_if_session_is_revoked_after_initial_validation(): void
     {
         $user = User::factory()->withRole('hr')->temporaryPassword()->create();
