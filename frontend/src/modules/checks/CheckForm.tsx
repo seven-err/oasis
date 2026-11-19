@@ -1,3 +1,4 @@
+import { checkStatusLabel } from "./utils";
 import { ATTACHMENT_ACCEPT, ATTACHMENT_FORMATS } from "@/components/attachmentFileTypes";
 import { useEffect, useMemo, useState } from "react";
 import { CHECK_TYPES } from "./constants";
@@ -155,7 +156,7 @@ export function CheckForm({ mode, record, onCancel, onSaved }: Props) {
                 <option value="">Select status</option>
                 {statuses.map((s) => (
                   <option key={s} value={s}>
-                    {s}
+                    {checkStatusLabel(s)}
                   </option>
                 ))}
               </FormSelect>

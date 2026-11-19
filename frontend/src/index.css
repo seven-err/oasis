@@ -500,7 +500,12 @@
 
   .panel {
     border: 1px solid #d0e3ef;
+    border-radius: 0.5rem;
     background: #fff;
+  }
+
+  .panel > .overflow-x-auto {
+    border-radius: inherit;
   }
 
   .primary-btn {

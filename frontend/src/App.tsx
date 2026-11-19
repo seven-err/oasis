@@ -2541,7 +2541,7 @@ function Status({ value }: { value: string }) {
           )
         ? "status-partial"
         : "status-neutral";
-  return <span className={`status ${tone}`}>{value}</span>;
+  return <span className={`status ${tone}`}>{value === "Bounced" ? "Returned" : value}</span>;
 }
 
 function Empty({ title, action }: { title: string; action: () => void }) {

@@ -1,3 +1,4 @@
+import { checkStatusLabel } from "./utils";
 import {
   ChevronDown,
   ChevronLeft,
@@ -181,7 +182,7 @@ export function StatusBadge({ value }: { value: string }) {
         : value === "For Deposit" || value === "For Clearing"
           ? "status-partial"
           : "status-neutral";
-  return <span className={`status ${tone}`}>{value}</span>;
+  return <span className={`status ${tone}`}>{checkStatusLabel(value)}</span>;
 }
 
 export function AccountNumberDisplay({

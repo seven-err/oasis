@@ -1,3 +1,4 @@
+import { checkStatusLabel } from "./utils";
 import { ATTACHMENT_ACCEPT, ATTACHMENT_FORMATS } from "@/components/attachmentFileTypes";
 import { ArchiveConfirmationDialog } from "@/components/ArchiveConfirmationDialog";
 import {
@@ -134,7 +135,7 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
       "Due date": formatDate(record.dueDate),
       "Deposit date": formatDate(record.depositDate),
       "Clearing date": formatDate(record.clearingDate),
-      "Check status": record.checkStatus,
+      "Check status": checkStatusLabel(record.checkStatus),
       Remarks: record.remarks,
       "Prepared by": record.preparedByName,
       Created: formatDateTime(record.createdAt),
