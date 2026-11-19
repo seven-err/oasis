@@ -24,7 +24,6 @@ import {
   Printer,
   RotateCcw,
   Search,
-  Settings,
   ShieldCheck,
   SlidersHorizontal,
   Trash2,
@@ -687,12 +686,6 @@ function App() {
                 className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-xs hover:bg-[#e7f3fb]"
               >
                 <UserRound size={15} /> My profile
-              </button>
-              <button
-                onClick={() => go("users")}
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-xs hover:bg-[#e7f3fb]"
-              >
-                <Settings size={15} /> Administration
               </button>
               <button
                 onClick={() => {
