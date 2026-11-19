@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -48,13 +49,13 @@ class AuthController extends Controller
         return redirect()->route($user->must_change_password ? 'password.edit' : 'dashboard');
     }
 
-    public function destroy(Request $request): RedirectResponse
+    public function destroy(Request $request): RedirectResponse|JsonResponse
     {
         ActivityLog::record($request->user(), 'auth.logout', 'Signed out.');
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('login');
+        return $request->expectsJson() ? response()->json(['redirect' => route('login')]) : redirect()->route('login');
     }
 }

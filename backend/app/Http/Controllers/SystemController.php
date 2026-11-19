@@ -6,37 +6,22 @@ use App\Models\ActivityLog;
 use App\Models\Permission;
 use App\Models\Role;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
 class SystemController extends Controller
 {
-    public function dashboard(): View
-    {
-        Gate::authorize('dashboard');
-
-        return view('dashboard');
-    }
-
-    public function module(Request $request): Response
-    {
-        $permission = $request->route()->defaults['permission'];
-        Gate::authorize($permission);
-
-        return response()->view('module-unavailable', ['title' => Role::PERMISSIONS[$permission]], 501);
-    }
-
-    public function activity(Request $request): View
+    public function activity(Request $request): View|JsonResponse
     {
         Gate::authorize('activity');
 
-        return view('system.activity', [
-            'logs' => ActivityLog::with('user')->orderByDesc('id')->paginate(30),
-        ]);
+        $logs = ActivityLog::with('user')->orderByDesc('id')->paginate(30);
+
+        return $request->expectsJson() ? response()->json($logs) : view('system.activity', compact('logs'));
     }
 
     public function settings(): View

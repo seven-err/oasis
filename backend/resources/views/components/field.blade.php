@@ -1,4 +1,4 @@
-@props(['name', 'label', 'type' => 'text', 'value' => '', 'hint' => null])
+@props(['name', 'label', 'type' => 'text', 'value' => '', 'hint' => null, 'showError' => true])
 <div class="field">
     <label for="{{ $name }}">{{ $label }}</label>
     <div class="input-group">
@@ -12,5 +12,5 @@
         @endif
     </div>
     <small id="{{ $name }}-help">{{ $hint }}</small>
-    <small class="field-error" id="{{ $name }}-error">@error($name){{ $message }}@enderror</small>
+    <small class="field-error" id="{{ $name }}-error">@if($showError) @error($name){{ $message }}@enderror @endif</small>
 </div>

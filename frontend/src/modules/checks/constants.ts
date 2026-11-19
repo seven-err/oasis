@@ -1,3 +1,4 @@
+import { moduleUser } from "../../auth";
 import type { CheckFilters, CheckStatus, CheckType, OasisUser } from "./types";
 
 export const CHECK_TYPES: CheckType[] = ["Received Check", "Issued Check"];
@@ -45,19 +46,7 @@ export const CHECKS_STORAGE_KEY = "oasis.checks.v1";
 export const CHECK_ATTACHMENTS_STORAGE_KEY = "oasis.check-attachments.v1";
 export const CHECK_ACTIVITY_STORAGE_KEY = "oasis.check-activity.v1";
 
-export const CURRENT_USER: OasisUser = {
-  id: 1,
-  name: "Miguel Alvarina",
-  email: "m.alvarina@oasis.org",
-  role: "Administrator",
-  permissions: {
-    viewAccountNumber: true,
-    manageAttachments: true,
-    archiveChecks: true,
-    exportReports: true,
-    editChecks: true,
-  },
-};
+export const CURRENT_USER: OasisUser = moduleUser("checks", ["viewAccountNumber","manageAttachments","archiveChecks","exportReports","editChecks"]);
 
 export const EMPTY_FILTERS: CheckFilters = {
   search: "",

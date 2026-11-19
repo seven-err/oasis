@@ -57,11 +57,11 @@ class AccessControlTest extends TestCase
     #[TestWith(['finance', '/checks'])]
     #[TestWith(['finance', '/payables'])]
     #[TestWith(['finance', '/receivables'])]
-    public function test_authorized_module_routes_explain_that_the_port_is_pending(string $role, string $url): void
+    public function test_authorized_module_routes_open_the_existing_interface(string $role, string $url): void
     {
         $this->signIn(User::factory()->withRole($role)->create());
 
-        $this->get($url)->assertStatus(501)->assertSee('This module has not been ported yet');
+        $this->get($url)->assertOk()->assertViewIs('application')->assertSee('id="root"', false);
     }
 
     #[TestWith(['/dashboard'])]
@@ -88,16 +88,16 @@ class AccessControlTest extends TestCase
     {
         $this->signIn(User::factory()->withRole('hr')->create());
 
-        $this->get('/dashboard')->assertOk()->assertSee('HR Alphalist')->assertSee('My Account')
-            ->assertDontSee('Check Monitoring')->assertDontSee('User Management')->assertDontSee('System Settings');
+        $response = $this->get('/dashboard')->assertOk()->assertViewIs('application');
+        $this->assertSame(['dashboard', 'hr', 'account'], $response->viewData('session')['user']['permissions']);
     }
 
     public function test_finance_navigation_hides_hr_and_administration(): void
     {
         $this->signIn(User::factory()->withRole('finance')->create());
 
-        $this->get('/dashboard')->assertOk()->assertSee('Check Monitoring')->assertSee('My Account')
-            ->assertDontSee('HR Alphalist')->assertDontSee('User Management');
+        $response = $this->get('/dashboard')->assertOk()->assertViewIs('application');
+        $this->assertSame(['dashboard', 'checks', 'payables', 'receivables', 'account'], $response->viewData('session')['user']['permissions']);
     }
 
     public function test_permission_edits_cannot_cross_role_boundaries_even_if_database_is_modified(): void

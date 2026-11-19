@@ -30,9 +30,11 @@ pnpm install
 
 The Laravel app includes email/password login, Super Admin / HR / Finance access,
 personal password changes, user administration, permission settings and activity
-logs. The HR and Finance business screens still run in the separate React
-prototype. Their Laravel routes enforce permissions and return an explicit
-"not yet ported" response; they do not access browser-local records.
+logs. Successful sign-in opens the existing React OASIS interface, including
+its HR Alphalist, Check, Payable and Receivable screens. Laravel checks access
+on direct module URLs; the React sidebar and dashboard use the same permissions.
+Business records keep their existing browser storage keys and are not migrated
+into MySQL by this authentication integration.
 
 After configuring `backend/.env` and the database, initialize access control:
 
@@ -56,13 +58,22 @@ does not reset an existing administrator's password; an email collision with a
 non-admin account stops setup without promoting that account. Default seeding
 no longer creates `test@example.com` with a known password.
 
-Open the Laravel app at `http://localhost:8000/login`. The initial administrator
+Build the existing interface with `pnpm build` in `frontend/`, then open
+`http://localhost:8000/login`. The initial administrator
 must change their password before accessing the dashboard. Create further
 accounts in User Management. Temporary passwords appear once in the creation
 or reset response; deliver them using an approved private channel. They are not
 emailed, logged or stored in session flash data. Password resets and security
 changes revoke existing sessions and remembered sign-ins. With no public
 registration or self-service recovery, users contact a Super Admin for resets.
+
+During development, the existing `http://localhost:5173` app proxies sign-in
+and account requests to Laravel on port 8000. Use the same hostname and port
+where you previously worked to retain that browser's saved business records;
+browser storage is separate for `localhost:5173` and `localhost:8000`.
+After changing a temporary password, subsequent sign-ins require the new
+password. GitHub Pages serves static files only; authenticated use requires
+the Laravel server as well.
 
 Existing accounts remain in place but receive no role or active access
 automatically. Assign their roles and activate them through User Management.
