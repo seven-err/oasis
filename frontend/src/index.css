@@ -6,6 +6,10 @@
   color: #000;
 }
 
+.sidebar-nav-item .lucide {
+  color: inherit;
+}
+
 .primary-btn .lucide-plus,
 .primary-btn .lucide-pencil,
 .primary-btn .lucide-download,
