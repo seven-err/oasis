@@ -13,6 +13,7 @@ import {
   RotateCcw,
   Search,
   SlidersHorizontal,
+  LayoutGrid,
   Trash2,
   X,
 } from "lucide-react";
@@ -404,7 +405,7 @@ export function PayableRegister({
               </button>
               {user.permissions.manageCategories && (
                 <button type="button" onClick={() => setShowCategories((visible) => !visible)} className="secondary-btn w-full sm:w-auto">
-                  Categories
+                  <LayoutGrid size={15} aria-hidden="true" /> Categories
                 </button>
               )}
               <button
