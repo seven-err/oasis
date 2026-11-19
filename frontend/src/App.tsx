@@ -669,7 +669,7 @@ function App() {
                     title={compactMenu ? label : undefined}
                     aria-label={label}
                     aria-current={page === itemPage ? "page" : undefined}
-                    className={`sidebar-nav-item relative group flex h-11 w-full items-center gap-3 border-l-2 border-transparent px-3 text-left text-[13px] font-medium text-black ${page === itemPage ? "" : "hover:bg-white/70"}`}
+                    className={`sidebar-nav-item relative group flex h-11 w-full items-center gap-3 border-l-2 border-transparent px-3 text-left text-[13px] font-medium ${page === itemPage ? "text-white" : "text-black hover:bg-white/70"}`}
                   >
                     <Icon className="shrink-0" size={18} strokeWidth={1.8} />
                     <span aria-hidden={compactMenu} className="sidebar-copy shrink-0 whitespace-nowrap">{label}</span>
@@ -1739,19 +1739,22 @@ export function EmployeeRegister({
 
 function EmployeeActions({ employee, onEdit, onDelete }: { employee: Employee; onEdit: () => void; onDelete: () => void }) {
   const menuId = `employee-actions-${employee.id}`;
+  const menuRef = useRef<HTMLDialogElement>(null);
 
   return (
     <>
       <button
         type="button"
         aria-label={`Actions for ${employee.name}`}
-        popoverTarget={menuId}
+        aria-haspopup="dialog"
+        aria-controls={menuId}
         className="table-action"
         onClick={(event) => {
-          const menu = document.getElementById(menuId);
+          const menu = menuRef.current;
           if (!menu) return;
+          menu.showPopover();
           const { top, bottom, right } = event.currentTarget.getBoundingClientRect();
-          const fitsBelow = bottom + 96 <= window.innerHeight;
+          const fitsBelow = bottom + menu.offsetHeight + 4 <= window.innerHeight;
           menu.style.right = `${Math.max(8, window.innerWidth - right)}px`;
           menu.style.top = fitsBelow ? `${bottom + 4}px` : "auto";
           menu.style.bottom = fitsBelow ? "auto" : `${window.innerHeight - top + 4}px`;
@@ -1759,21 +1762,24 @@ function EmployeeActions({ employee, onEdit, onDelete }: { employee: Employee; o
       >
         <MoreHorizontal size={17} aria-hidden="true" />
       </button>
-      <div id={menuId} popover="auto" className="fixed inset-auto m-0 w-36 border border-[#d0e3ef] bg-white p-1 shadow-xl">
-        <button type="button" onClick={() => { document.getElementById(menuId)?.hidePopover(); onEdit(); }} className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]">
+      <dialog ref={menuRef} id={menuId} popover="manual" aria-label={`Actions for ${employee.name}`} onCancel={(event) => event.preventDefault()} className="fixed inset-auto m-0 w-36 max-h-[calc(100dvh-1rem)] overflow-y-auto border border-[#d0e3ef] bg-white p-1 shadow-xl backdrop:bg-transparent backdrop:touch-none">
+        <button type="button" onClick={() => { menuRef.current?.hidePopover(); onEdit(); }} className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]">
           <Pencil size={14} aria-hidden="true" /> Edit
         </button>
         <button
           type="button"
           onClick={() => {
-            document.getElementById(menuId)?.hidePopover();
+            menuRef.current?.hidePopover();
             onDelete();
           }}
-          className="flex w-full items-center gap-2 border-t border-[#e1eef6] px-3 py-2 text-xs text-red-700 hover:bg-red-50"
+          className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-700 hover:bg-red-50"
         >
           <Trash2 size={14} aria-hidden="true" /> Delete
         </button>
-      </div>
+        <button type="button" onClick={() => menuRef.current?.hidePopover()} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-[#888] hover:bg-[#e7f3fb]">
+          <X size={14} aria-hidden="true" /> Close
+        </button>
+      </dialog>
     </>
   );
 }

@@ -1,7 +1,6 @@
 import { DateInput } from "@/components/FormPopovers";
 import { checkStatusLabel } from "./utils";
 import {
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Eye,
@@ -130,14 +129,10 @@ export function FormSelect({
         name={name}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`input mt-2 appearance-none pr-9 ${error ? "border-red-400" : ""}`}
+        className={`input mt-2 ${error ? "border-red-400" : ""}`}
       >
         {children}
       </select>
-      <ChevronDown
-        size={14}
-        className="pointer-events-none absolute right-3 bottom-[13px] text-[#777]"
-      />
       <FieldError message={error} />
     </label>
   );

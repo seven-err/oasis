@@ -110,8 +110,6 @@ export function ReceivableRegister({
     if (!menu || menuRowId === undefined || !dialog) return;
 
     const root = document.documentElement;
-    const previousOverflow = root.style.overflow;
-    root.style.overflow = "hidden";
 
     const positionMenu = () => {
       const trigger = menu.trigger.getBoundingClientRect();
@@ -133,13 +131,14 @@ export function ReceivableRegister({
 
     menu.trigger.focus({ preventScroll: true });
     positionMenu();
-    dialog.showModal();
+    dialog.showPopover();
     positionMenu();
     window.addEventListener("resize", positionMenu);
+    window.addEventListener("scroll", positionMenu, true);
     return () => {
       window.removeEventListener("resize", positionMenu);
-      root.style.overflow = previousOverflow;
-      dialog.close();
+      window.removeEventListener("scroll", positionMenu, true);
+      dialog.hidePopover();
     };
   }, [menu, menuRowId]);
 
@@ -217,24 +216,11 @@ export function ReceivableRegister({
   const actionMenu = (row: ReceivableViewModel) => (
     <dialog
       ref={menuRef}
+      popover="manual"
       aria-label={`Actions for ${row.invoiceNumber}`}
       className="fixed inset-auto m-0 w-56 max-w-[calc(100%-1rem)] overflow-y-auto overscroll-contain border border-[#d0e3ef] bg-white shadow-xl backdrop:bg-transparent backdrop:touch-none"
       onCancel={(event) => {
         event.preventDefault();
-        setMenu(null);
-      }}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) {
-          const bounds = event.currentTarget.getBoundingClientRect();
-          if (
-            event.clientX < bounds.left ||
-            event.clientX > bounds.right ||
-            event.clientY < bounds.top ||
-            event.clientY > bounds.bottom
-          ) {
-            setMenu(null);
-          }
-        }
       }}
     >
       <div className="p-1">

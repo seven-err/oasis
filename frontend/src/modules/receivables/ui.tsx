@@ -1,6 +1,5 @@
 import { DateInput } from "@/components/FormPopovers";
 import {
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Plus,
@@ -129,14 +128,10 @@ export function FormSelect({
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
-        className={`input mt-2 appearance-none pr-9 ${error ? "border-red-400" : ""}`}
+        className={`input mt-2 ${error ? "border-red-400" : ""}`}
       >
         {children}
       </select>
-      <ChevronDown
-        size={14}
-        className="pointer-events-none absolute right-3 bottom-[13px] text-[#777]"
-      />
       <FieldError message={error} />
     </label>
   );
