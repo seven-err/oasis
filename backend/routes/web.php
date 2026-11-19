@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\ApplicationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\SystemController;
 use App\Http\Controllers\UserController;
@@ -16,12 +17,21 @@ Route::middleware('private.pages')->group(function () {
         Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
         Route::get('/change-password', [AccountController::class, 'editPassword'])->name('password.edit');
         Route::put('/change-password', [AccountController::class, 'updatePassword'])->middleware('throttle:6,1')->name('password.update');
-        Route::get('/dashboard', [SystemController::class, 'dashboard'])->middleware('can:dashboard')->name('dashboard');
+        Route::get('/auth/session', [ApplicationController::class, 'session'])->name('auth.session');
+        Route::get('/dashboard', [ApplicationController::class, 'show'])->middleware('can:dashboard')->name('dashboard');
+        Route::get('/oasis/{file}', [ApplicationController::class, 'asset'])
+            ->where('file', '(assets/[A-Za-z0-9._/-]+|favicon\.png)')->name('application.asset');
+        foreach (['profile' => 'account', 'team' => 'users', 'activity' => 'activity', 'archives' => 'users', 'deleted' => 'users', 'reports' => 'users'] as $page => $permission) {
+            Route::get('/'.$page, [ApplicationController::class, 'show'])
+                ->defaults('page', $page === 'team' ? 'users' : $page)
+                ->defaults('permission', $permission)->middleware('can:'.$permission);
+        }
         Route::get('/account', [AccountController::class, 'edit'])->middleware('can:account')->name('account.edit');
         Route::put('/account', [AccountController::class, 'update'])->middleware(['can:account', 'throttle:6,1'])->name('account.update');
 
         foreach (['hr' => '/hr/alphalist', 'checks' => '/checks', 'payables' => '/payables', 'receivables' => '/receivables'] as $permission => $uri) {
-            Route::get($uri, [SystemController::class, 'module'])
+            Route::get($uri, [ApplicationController::class, 'show'])
+                ->defaults('page', $permission === 'hr' ? 'employees' : $permission)
                 ->defaults('permission', $permission)->middleware('can:'.$permission)->name('modules.'.$permission);
         }
 

@@ -1,3 +1,4 @@
+import { moduleUser } from "../../auth";
 import type {
   AttachmentKind,
   CollectionStatus,
@@ -42,22 +43,7 @@ export const RECEIVABLE_FOLLOWUPS_STORAGE_KEY = "oasis.receivable-followups.v1";
 export const RECEIVABLE_ATTACHMENTS_STORAGE_KEY = "oasis.receivable-attachments.v1";
 export const RECEIVABLE_ACTIVITY_STORAGE_KEY = "oasis.receivable-activity.v1";
 
-export const CURRENT_USER: OasisReceivableUser = {
-  id: 1,
-  name: "Miguel Alvarina",
-  email: "m.alvarina@oasis.org",
-  role: "Administrator",
-  permissions: {
-    editReceivables: true,
-    manageCustomers: true,
-    recordCollections: true,
-    reverseCollections: true,
-    manageFollowUps: true,
-    manageAttachments: true,
-    archiveReceivables: true,
-    exportReports: true,
-  },
-};
+export const CURRENT_USER: OasisReceivableUser = moduleUser("receivables", ["editReceivables","manageCustomers","recordCollections","reverseCollections","manageFollowUps","manageAttachments","archiveReceivables","exportReports"]);
 
 export const EMPTY_FILTERS: ReceivableFilters = {
   search: "",

@@ -1,3 +1,4 @@
+import { apiRequest, canAccessPage, getSession, initialPage, logout, pagePaths } from "./auth";
 import { DateInput, RequirementStatusSelect } from "@/components/FormPopovers";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
@@ -385,7 +386,20 @@ const nav = [
 ];
 
 function App() {
-  const [page, setPage] = useState<Page>("dashboard");
+  const [page, setPage] = useState<Page>(() => {
+    const requested = (window.__OASIS_PAGE__ ?? initialPage(window.location.pathname)) as Page;
+    return canAccessPage(requested) ? requested : "dashboard";
+  });
+  const initials = CURRENT_USER.name.split(" ").filter(Boolean).map((name) => name[0]).slice(0, 2).join("");
+  const visibleNav = nav.map((group) => ({ ...group, items: group.items.filter((item) => canAccessPage(item.page)) })).filter((group) => group.items.length);
+  useEffect(() => {
+    const onPopState = () => {
+      const requested = initialPage(window.location.pathname) as Page;
+      setPage(canAccessPage(requested) ? requested : "dashboard");
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarHovered, setSidebarHovered] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -407,13 +421,13 @@ function App() {
     observer.observe(navigation);
     return () => observer.disconnect();
   }, [page]);
-  const [checks, setChecks] = useState<CheckRecord[]>(() => getCheckRecords());
-  const [payables, setPayables] = useState<PayableViewModel[]>(() => getPayableRecords());
+  const [checks, setChecks] = useState<CheckRecord[]>(() => canAccessPage("checks") ? getCheckRecords() : []);
+  const [payables, setPayables] = useState<PayableViewModel[]>(() => canAccessPage("payables") ? getPayableRecords() : []);
   const [receivables, setReceivables] = useState<ReceivableViewModel[]>(() =>
-    getReceivableRecords(),
+    canAccessPage("receivables") ? getReceivableRecords() : [],
   );
-  const [employees, setEmployees] = useState(() => loadEmployeeRecords().employees);
-  const [deletedEmployees, setDeletedEmployees] = useState(() => loadEmployeeRecords().deletedEmployees);
+  const [employees, setEmployees] = useState(() => canAccessPage("employees") ? loadEmployeeRecords().employees : []);
+  const [deletedEmployees, setDeletedEmployees] = useState(() => canAccessPage("employees") ? loadEmployeeRecords().deletedEmployees : []);
   const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
   const [, setRetentionVersion] = useState(0);
   const [checkCreateSignal, setCheckCreateSignal] = useState(0);
@@ -428,6 +442,7 @@ function App() {
   } = useViewHistory<EmployeeView | null>(() => null, null);
   const [toast, setToast] = useState("");
   useEffect(() => {
+    if (!canAccessPage("employees")) return;
     try {
       localStorage.setItem(EMPLOYEE_STORAGE_KEY, JSON.stringify({ employees, deletedEmployees }));
     } catch {
@@ -441,11 +456,11 @@ function App() {
     const cleanUp = () => {
       const now = Date.now();
       try {
-        checkService.purgeExpiredDeleted(now);
-        payableService.purgeExpiredDeleted(now);
-        receivableService.purgeExpiredDeleted(now);
+        if (canAccessPage("checks")) checkService.purgeExpiredDeleted(now);
+        if (canAccessPage("payables")) payableService.purgeExpiredDeleted(now);
+        if (canAccessPage("receivables")) receivableService.purgeExpiredDeleted(now);
         setRetentionVersion((version) => version + 1);
-        setDeletedEmployees((records) => {
+        if (canAccessPage("employees")) setDeletedEmployees((records) => {
           const retained = records.filter((record) => !isDeletionExpired(record.deletedAt, now));
           return retained.length === records.length ? records : retained;
         });
@@ -504,6 +519,11 @@ function App() {
   }, []);
 
   const go = (next: Page, notification?: OfficeNotification) => {
+    if (!canAccessPage(next)) {
+      setToast("You do not have access to this area.");
+      return;
+    }
+    if (next !== page) window.history.pushState({ ...window.history.state, oasisPage: next }, "", pagePaths[next]);
     setPage(next);
     setNotificationTarget((previous) =>
       notification ? { item: notification, visit: (previous?.visit ?? 0) + 1 } : null,
@@ -656,7 +676,7 @@ function App() {
               style={{ transform: `translateY(${selectionTop}px)` }}
             />
           )}
-          {nav.map((group) => (
+          {visibleNav.map((group) => (
             <div key={group.section} className="mb-5 last:mb-0">
                 <p aria-hidden={compactMenu} className="sidebar-copy mb-2 whitespace-nowrap px-3 text-[10px] font-semibold uppercase tracking-[.18em] text-black">
                   {group.section}
@@ -691,7 +711,7 @@ function App() {
               <button
                 onClick={() => {
                   setProfileOpen(false);
-                  notify("Prototype session remains active.");
+                  void logout().catch((error) => notify(error.message));
                 }}
                 className="flex w-full items-center gap-2 border-t border-[#e1eef6] px-3 py-2.5 text-xs text-red-700 hover:bg-red-50"
               >
@@ -705,17 +725,17 @@ function App() {
               setNotificationsOpen(false);
               setProfileOpen((open) => !open);
             }}
-            aria-label="Account options for Miguel Alvarina"
+            aria-label={`Account options for ${CURRENT_USER.name}`}
             aria-expanded={profileOpen}
             aria-controls="sidebar-account-menu"
             className="flex w-full items-center gap-3 py-2 pl-[5px] pr-2 text-left hover:bg-white/70"
           >
             <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#1f6ea6] text-xs font-bold text-white">
-              MA
+              {initials}
             </span>
               <span aria-hidden={compactMenu} className="sidebar-copy min-w-0 flex-1 whitespace-nowrap">
-                <strong className="block truncate text-xs">Miguel Alvarina</strong>
-                <span className="text-[10px] text-[#5c7890]">Administrator</span>
+                <strong className="block truncate text-xs">{CURRENT_USER.name}</strong>
+                <span className="text-[10px] text-[#5c7890]">{CURRENT_USER.role}</span>
               </span>
           </button>
         </div>
@@ -747,7 +767,7 @@ function App() {
             <NotificationInbox
               key={CURRENT_USER.id}
               userId={CURRENT_USER.id}
-              items={getOfficeNotifications(checks, payables, receivables, employees, notificationDate)}
+              items={getOfficeNotifications(checks, payables, receivables, employees, notificationDate).filter((item) => canAccessPage(item.page))}
               open={notificationsOpen && !profileOpen}
               onOpenChange={(open) => {
                 if (open) {
@@ -765,7 +785,7 @@ function App() {
                 onClick={() => go("profile")}
               >
                 <span className="grid size-7 place-items-center rounded-full bg-[#1f6ea6] text-[10px] font-bold text-white">
-                  MA
+                  {initials}
                 </span>
               </button>
             )}
@@ -1261,7 +1281,7 @@ function PageHeading({ page, onAdd }: { page: Page; onAdd: () => void }) {
   );
 }
 
-function Dashboard({
+export function Dashboard({
   checks,
   payables,
   receivables,
@@ -1281,58 +1301,62 @@ function Dashboard({
       <SummaryStatCards
         items={[
           {
+            permission: "checks",
             label: "Total Checks",
             value: checks.filter((x) => !x.archivedAt).length,
             icon: Wallet,
             onClick: () => go("checks"),
           },
           {
+            permission: "payables",
             label: "Outstanding Payables",
             value: peso.format(payableSummary.totalRemainingBalance),
             icon: WalletCards,
             onClick: () => go("payables"),
           },
           {
+            permission: "receivables",
             label: "Outstanding Receivables",
             value: peso.format(receivableSummary.totalOutstandingBalance),
             icon: CircleDollarSign,
             onClick: () => go("receivables"),
           },
           {
+            permission: "employees",
             label: "Active Employees",
             value: employees.filter((x) => x.status === "Active").length,
             icon: Users,
             onClick: () => go("employees"),
           },
-        ]}
+        ].filter((item) => canAccessPage(item.permission))}
       />
 
       <div className="mt-7 grid gap-7 xl:grid-cols-[1.55fr_1fr]">
-        <section className="panel">
+        {(canAccessPage("payables") || canAccessPage("receivables")) && <section className="panel">
           <PanelTitle
             title="Recent payables and receivables"
             subtitle="Three most recently added records in each list"
           />
           <div className="grid gap-px bg-[#d7e8f3] md:grid-cols-2">
-            <PayableDueList
+            {canAccessPage("payables") && <PayableDueList
               title="Payables"
               records={payables
                 .filter((x) => !x.archivedAt)
                 .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || b.id - a.id)
                 .slice(0, 3)}
               onOpen={() => go("payables")}
-            />
-            <ReceivableDueList
+            />}
+            {canAccessPage("receivables") && <ReceivableDueList
               title="Receivables"
               records={receivables
                 .filter((x) => !x.archivedAt)
                 .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || b.id - a.id)
                 .slice(0, 3)}
               onOpen={() => go("receivables")}
-            />
+            />}
           </div>
-        </section>
-        <section className="panel">
+        </section>}
+        {canAccessPage("activity") && <section className="panel">
           <PanelTitle
             title="Recent activity"
             subtitle="Across authorized modules"
@@ -1361,10 +1385,10 @@ function Dashboard({
               </div>
             ))}
           </div>
-        </section>
+        </section>}
       </div>
 
-      <section className="panel mt-7">
+      {canAccessPage("checks") && <section className="panel mt-7">
         <PanelTitle
           title="Recent check records"
           subtitle="Latest official check activity"
@@ -1406,7 +1430,7 @@ function Dashboard({
             </tbody>
           </table>
         </div>
-      </section>
+      </section>}
     </>
   );
 }
@@ -2301,158 +2325,76 @@ function Reports({ checks, payables, receivables, employees, notify }: any) {
 }
 
 function UserManagement({ notify }: { notify: (s: string) => void }) {
-  const users = [
-    ["Miguel Alvarina", "m.alvarina@oasis.org", "Administrator", "Active"],
-    ["Leon Bautista", "l.bautista@oasis.org", "Staff · Operations", "Active"],
-    ["Angela Cruz", "a.cruz@oasis.org", "Staff · HR", "Active"],
-    ["Nathaniel Dela Rosa", "n.delarosa@oasis.org", "Viewer", "Active"],
-  ];
+  const [users, setUsers] = useState<{ id: number; name: string; email: string; role: { name: string } | null; is_active: boolean; last_login_at: string | null }[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    void apiRequest<{ data: typeof users }>("/users")
+      .then((result) => setUsers(result.data))
+      .catch((error) => notify(error.message))
+      .finally(() => setLoading(false));
+  }, []);
   return (
     <section className="space-y-4">
-      <div className="flex justify-end">
-          <button
-            onClick={() => notify("User invitation workflow opened in prototype mode.")}
-            className="primary-btn"
-          >
-            <Plus size={15} /> Add user
-          </button>
-      </div>
+      <div className="flex justify-end"><a className="primary-btn" href="/users/create"><Plus size={15} /> Add user</a></div>
       <div className="panel overflow-x-auto">
-        <table>
-          <thead>
-            <tr>
-              <th>User</th>
-              <th>Email</th>
-              <th>Role</th>
-              <th>Status</th>
-              <th>Last active</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((x, i) => (
-              <tr key={x[1]}>
-                <td className="font-semibold">{x[0]}</td>
-                <td>{x[1]}</td>
-                <td>{x[2]}</td>
-                <td>
-                  <Status value={x[3]} />
-                </td>
-                <td className="text-[#777]">{i === 0 ? "Now" : `${i + 1} hours ago`}</td>
-              </tr>
-            ))}
-          </tbody>
+        <table><thead><tr><th>User</th><th>Email</th><th>Role</th><th>Status</th><th>Last login</th><th>Actions</th></tr></thead>
+          <tbody>{users.map((user) => (
+            <tr key={user.id}><td className="font-semibold">{user.name}</td><td>{user.email}</td><td>{user.role?.name ?? "Unassigned"}</td>
+              <td><Status value={user.is_active ? "Active" : "Inactive"} /></td><td>{user.last_login_at ? new Date(user.last_login_at).toLocaleString() : "Never"}</td>
+              <td><a className="text-link" href={"/users/" + user.id}>Manage</a></td></tr>
+          ))}{loading && <tr><td colSpan={6}>Loading accounts…</td></tr>}</tbody>
         </table>
       </div>
+      <a className="text-link" href="/users">Search and filter all accounts</a>
     </section>
   );
 }
 
 function ActivityLogs() {
-  const logs = [
-    [
-      "Payment recorded",
-      "Payable Monitoring",
-      "AP-2025-0318",
-      "Miguel Alvarina",
-      "Mar 21, 2025 · 9:48 AM",
-    ],
-    [
-      "Status changed to Cleared",
-      "Check Monitoring",
-      "CHK-240117",
-      "Miguel Alvarina",
-      "Mar 21, 2025 · 8:35 AM",
-    ],
-    [
-      "Employee profile updated",
-      "Alpha List",
-      "EMP-00167",
-      "Angela Cruz",
-      "Mar 20, 2025 · 4:12 PM",
-    ],
-    [
-      "Collection recorded",
-      "Receivable Monitoring",
-      "AR-2025-0186",
-      "Leon Bautista",
-      "Mar 20, 2025 · 2:05 PM",
-    ],
-    [
-      "Payable created",
-      "Payable Monitoring",
-      "AP-2025-0318",
-      "Miguel Alvarina",
-      "Mar 20, 2025 · 10:22 AM",
-    ],
-  ];
+  const [logs, setLogs] = useState<{ id: number; action: string; description: string; user: { name: string } | null; created_at: string }[]>([]);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    void apiRequest<{ data: typeof logs }>("/activity-logs").then((result) => setLogs(result.data)).catch((error) => setError(error.message));
+  }, []);
   return (
     <section className="panel">
-      <div className="overflow-x-auto">
-        <table>
-          <thead>
-            <tr>
-              <th>Action</th>
-              <th>Module</th>
-              <th>Record</th>
-              <th>Performed by</th>
-              <th>Date & time</th>
-            </tr>
-          </thead>
-          <tbody>
-            {logs.map((x) => (
-              <tr key={`${x[0]}${x[2]}`}>
-                <td className="font-semibold">{x[0]}</td>
-                <td>{x[1]}</td>
-                <td className="text-[#1f6ea6]">{x[2]}</td>
-                <td>{x[3]}</td>
-                <td className="text-[#777]">{x[4]}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {error && <p role="alert" className="p-5 text-red-700">{error}</p>}
+      <div className="overflow-x-auto"><table><thead><tr><th>Action</th><th>Description</th><th>Performed by</th><th>Date &amp; time</th></tr></thead>
+        <tbody>{logs.map((log) => <tr key={log.id}><td className="font-semibold">{log.action}</td><td>{log.description}</td><td>{log.user?.name ?? "System"}</td><td>{new Date(log.created_at).toLocaleString()}</td></tr>)}</tbody>
+      </table></div>
+      <a className="text-link m-5" href="/activity-logs">View all activity</a>
     </section>
   );
 }
 
 function Profile({ notify }: { notify: (s: string) => void }) {
+  const user = getSession()!.user;
   return (
     <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
       <section className="panel p-7 text-center">
         <span className="mx-auto grid size-20 place-items-center rounded-full bg-[#1f6ea6] text-xl font-bold text-white">
-          MA
+          {user.name.split(" ").filter(Boolean).map((name) => name[0]).slice(0, 2).join("")}
         </span>
-        <h2 className="mt-4 font-bold">Miguel Alvarina</h2>
-        <p className="mt-1 text-xs text-[#777]">Finance Administrator</p>
-        <Status value="Administrator" />
-        <div className="mt-6 border-t border-[#e1eef6] pt-5 text-left">
-          <span className="field-label">Account access</span>
-          <p className="mt-2 text-xs leading-5 text-[#666]">
-            Full authorized access to all four modules, reports, and administrative settings.
-          </p>
-        </div>
+        <h2 className="mt-4 font-bold">{user.name}</h2><p className="mt-1 text-xs text-[#777]">{user.roleName}</p>
+        <div className="mt-6 border-t border-[#e1eef6] pt-5 text-left"><a className="text-link" href="/change-password">Change password</a></div>
+        {canAccessPage("settings") && <a className="text-link mt-4" href="/settings">System settings</a>}
       </section>
       <section className="panel">
         <PanelTitle title="Profile information" subtitle="Your account and contact details" />
-        <form
-          className="grid gap-4 p-6 sm:grid-cols-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            notify("Profile changes saved.");
-          }}
-        >
-          <FormField label="First name" name="first" defaultValue="Miguel" />
-          <FormField label="Last name" name="last" defaultValue="Alvarina" />
-          <FormField
-            label="Email address"
-            name="email"
-            type="email"
-            defaultValue="m.alvarina@oasis.org"
-          />
-          <FormField label="Contact number" name="phone" defaultValue="+63 917 555 0142" />
-          <div className="sm:col-span-2 flex justify-end border-t border-[#e1eef6] pt-5">
-            <button className="primary-btn">Save changes</button>
-          </div>
+        <form className="grid gap-4 p-6 sm:grid-cols-2" onSubmit={async (event) => {
+          event.preventDefault();
+          const fields = new FormData(event.currentTarget);
+          try {
+            await apiRequest("/account", { method: "PUT", body: JSON.stringify(Object.fromEntries(fields)) });
+            window.location.reload();
+          } catch (error) {
+            notify(error instanceof Error ? error.message : "Unable to save your account.");
+          }
+        }}>
+          <FormField label="Full name" name="name" defaultValue={user.name} required />
+          <FormField label="Email address" name="email" type="email" defaultValue={user.email} required />
+          <FormField label="Confirm your password" name="current_password" type="password" required />
+          <div className="sm:col-span-2 flex justify-end border-t border-[#e1eef6] pt-5"><button className="primary-btn">Save changes</button></div>
         </form>
       </section>
     </div>

@@ -41,6 +41,8 @@ test("monitoring deletion is authorized, recoverable, audited, and retains relat
   };
   const server = await createServer({ server: { middlewareMode: true, hmr: false }, appType: "custom" });
   try {
+    const { setSession } = await server.ssrLoadModule("/src/auth.ts");
+    setSession({ csrfToken: "test", user: { id: 1, name: "Test Admin", email: "admin@example.test", role: "super-admin", roleName: "Super Admin", mustChangePassword: false, permissions: ["dashboard", "hr", "checks", "payables", "receivables", "users", "activity", "settings", "account"] } });
     const { ArchivedRecords, EmployeeRegister, loadEmployeeRecords } = await server.ssrLoadModule("/src/App.tsx");
     const { HeaderBackProvider } = await server.ssrLoadModule("/src/components/HeaderBack.tsx");
     const { CheckMonitoring } = await server.ssrLoadModule("/src/modules/checks/index.ts");

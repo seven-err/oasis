@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ActivityLog;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -23,7 +24,7 @@ class AccountController extends Controller
         return view('account.edit');
     }
 
-    public function update(Request $request): RedirectResponse
+    public function update(Request $request): RedirectResponse|JsonResponse
     {
         Gate::authorize('account');
         $request->merge(['email' => mb_strtolower(trim((string) $request->input('email')))]);
@@ -54,7 +55,8 @@ class AccountController extends Controller
         $request->session()->regenerate(true);
         $request->session()->put('auth_version', $user->auth_version);
 
-        return back()->with('status', 'Account updated.');
+        return $request->expectsJson() ? response()->json(['message' => 'Account updated.'])
+            : back()->with('status', 'Account updated.');
     }
 
     public function editPassword(): View

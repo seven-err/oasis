@@ -7,6 +7,7 @@ use App\Models\ActivityLog;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -18,7 +19,7 @@ use Illuminate\Validation\ValidationException;
 
 class UserController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): View|JsonResponse
     {
         Gate::authorize('users');
         $filters = $request->validate([
@@ -33,7 +34,8 @@ class UserController extends Controller
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('is_active', $status === 'active'))
             ->orderByDesc('id')->paginate(20)->withQueryString();
 
-        return view('users.index', ['users' => $users, 'roles' => Role::orderBy('id')->get()]);
+        return $request->expectsJson() ? response()->json($users)
+            : view('users.index', ['users' => $users, 'roles' => Role::orderBy('id')->get()]);
     }
 
     public function create(): View

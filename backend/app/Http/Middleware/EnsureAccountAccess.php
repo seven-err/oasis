@@ -25,6 +25,10 @@ class EnsureAccountAccess
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Your session has expired or your account is unavailable.'], 401);
+            }
+
             return redirect()->route('login')->withErrors(['email' => 'Your session has expired or your account is unavailable.']);
         }
         if ($restoredSession) {
@@ -33,7 +37,7 @@ class EnsureAccountAccess
                 ActivityLog::record($user, 'auth.login', 'Signed in using a remembered device.');
             });
         }
-        if ($user->must_change_password && ! $request->routeIs('password.edit', 'password.update', 'logout')) {
+        if ($user->must_change_password && ! $request->routeIs('password.edit', 'password.update', 'logout', 'auth.session')) {
             return redirect()->route('password.edit');
         }
 

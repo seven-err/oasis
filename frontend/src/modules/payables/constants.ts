@@ -1,3 +1,4 @@
+import { moduleUser } from "../../auth";
 import type {
   ApprovalStatus,
   OasisPayableUser,
@@ -34,21 +35,7 @@ export const PAYABLE_PAYMENTS_STORAGE_KEY = "oasis.payable-payments.v1";
 export const PAYABLE_CATEGORIES_STORAGE_KEY = "oasis.payable-categories.v1";
 export const PAYABLE_ACTIVITY_STORAGE_KEY = "oasis.payable-activity.v1";
 
-export const CURRENT_USER: OasisPayableUser = {
-  id: 1,
-  name: "Miguel Alvarina",
-  email: "m.alvarina@oasis.org",
-  role: "Administrator",
-  permissions: {
-    editPayables: true,
-    approvePayables: true,
-    recordPayments: true,
-    reversePayments: true,
-    archivePayables: true,
-    manageCategories: true,
-    exportReports: true,
-  },
-};
+export const CURRENT_USER: OasisPayableUser = moduleUser("payables", ["editPayables","approvePayables","recordPayments","reversePayments","archivePayables","manageCategories","exportReports"]);
 
 export const EMPTY_FILTERS: PayableFilters = {
   search: "",
