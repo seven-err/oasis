@@ -14,7 +14,7 @@ import {
   Wallet,
   Download,
   FileCheck2,
-  LayoutDashboard,
+  House,
   LogOut,
   Menu,
   MoreHorizontal,
@@ -366,7 +366,7 @@ const nav = [
   {
     section: "Workspace",
     items: [
-      { page: "dashboard" as Page, label: "Home", icon: LayoutDashboard },
+      { page: "dashboard" as Page, label: "Home", icon: House },
       { page: "employees" as Page, label: "Employee Alphalist", icon: Users },
       { page: "checks" as Page, label: "Check Monitoring", icon: FileCheck2 },
       { page: "payables" as Page, label: "Payable Monitoring", icon: WalletCards },

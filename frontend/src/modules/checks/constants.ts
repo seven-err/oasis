@@ -34,14 +34,9 @@ export const ISSUED_STATUS_FLOW: CheckStatus[] = [
 
 export const TERMINAL_STATUSES: CheckStatus[] = ["Bounced", "Cancelled", "Voided"];
 
-export const ALLOWED_ATTACHMENT_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "application/pdf",
-] as const;
+export { ATTACHMENT_TYPES as ALLOWED_ATTACHMENT_TYPES } from "@/components/attachmentFileTypes";
 
-export const ALLOWED_ATTACHMENT_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".pdf"] as const;
+export { ATTACHMENT_EXTENSIONS as ALLOWED_ATTACHMENT_EXTENSIONS } from "@/components/attachmentFileTypes";
 
 /** 5 MB max per file */
 export const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;

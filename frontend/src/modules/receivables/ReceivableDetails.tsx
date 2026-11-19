@@ -1,3 +1,4 @@
+import { ATTACHMENT_ACCEPT, ATTACHMENT_FORMATS } from "@/components/attachmentFileTypes";
 import {
   Archive,
   Banknote,
@@ -783,7 +784,7 @@ export function ReceivableDetails({
                   <span className="field-label">File (PDF / image, max 5 MB)</span>
                   <input
                     type="file"
-                    accept=".pdf,image/jpeg,image/png,image/webp,image/gif"
+                    accept={ATTACHMENT_ACCEPT}
                     className="input mt-2"
                     onChange={onUploadAttachment}
                     disabled={saving}
@@ -794,7 +795,7 @@ export function ReceivableDetails({
                 </label>
               </div>
               <p className="mt-3 text-[11px] text-[#777]">
-                Attachments are stored privately and are only available to authorized users.
+                {ATTACHMENT_FORMATS} · Max 5 MB each. Attachments are stored privately and are only available to authorized users.
               </p>
             </div>
           )}
