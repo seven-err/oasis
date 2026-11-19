@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/FormPopovers";
 import {
   ChevronDown,
   ChevronLeft,
@@ -80,10 +81,11 @@ export function FormInput({
   disabled?: boolean;
   max?: number | string;
 }) {
+  const Input = type === "date" ? DateInput : "input";
   return (
     <label className="block">
       <FieldLabel required={required}>{label}</FieldLabel>
-      <input
+      <Input
         name={name}
         type={type}
         value={value}

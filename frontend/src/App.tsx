@@ -1,3 +1,4 @@
+import { DateInput, RequirementStatusSelect } from "@/components/FormPopovers";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Activity,
@@ -2000,15 +2001,11 @@ function EmployeeRecordPanel({
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block">
               <span className="field-label">Requirement Status</span>
-              <select
-                name="requirementStatus"
-                className={`input select-input mt-2 ${requirementStatus === "Complete" ? "text-green-700" : "text-red-700"}`}
+              <RequirementStatusSelect
                 value={allRequirementsChecked ? requirementStatus : "Incomplete"}
-                onChange={(event) => setRequirementStatus(event.target.value === "Complete" && allRequirementsChecked ? "Complete" : "Incomplete")}
-              >
-                <option>Incomplete</option>
-                <option disabled={!allRequirementsChecked}>Complete</option>
-              </select>
+                allowComplete={allRequirementsChecked}
+                onChange={(value) => setRequirementStatus(value === "Complete" && allRequirementsChecked ? "Complete" : "Incomplete")}
+              />
               {!allRequirementsChecked && (
                 <p className="mt-2 text-[11px] text-[#777]">Check every requirement and laboratory requirement before selecting Complete.</p>
               )}
@@ -2500,13 +2497,14 @@ function FormField({
   max,
   defaultValue,
 }: any) {
+  const Input = type === "date" ? DateInput : "input";
   return (
     <label className="block">
       <span className="field-label">
         {label}
         {required && <span className="text-red-700"> *</span>}
       </span>
-      <input
+      <Input
         name={name}
         type={type}
         required={required}

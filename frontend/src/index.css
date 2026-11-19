@@ -482,6 +482,10 @@
 }
 
 @layer components {
+  .styled-date::-webkit-calendar-picker-indicator {
+    display: none;
+  }
+
   .requirement-checkbox {
     appearance: none;
     display: inline-grid;

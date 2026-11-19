@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/FormPopovers";
 import { checkStatusLabel } from "./utils";
 import {
   ChevronDown,
@@ -84,10 +85,11 @@ export function FormInput({
   disabled?: boolean;
   autoComplete?: string;
 }) {
+  const Input = type === "date" ? DateInput : "input";
   return (
     <label className="block">
       <FieldLabel required={required}>{label}</FieldLabel>
-      <input
+      <Input
         name={name}
         type={type}
         value={value}
