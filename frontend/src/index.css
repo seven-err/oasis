@@ -523,7 +523,7 @@
 
   .section-highlight {
     position: relative;
-    border-radius: 0;
+    border-radius: 0.5rem;
   }
 
   .section-highlight::after {
@@ -532,7 +532,7 @@
     inset: 0;
     z-index: 1;
     border: 2px solid #1f6ea6;
-    border-radius: 0;
+    border-radius: inherit;
     pointer-events: none;
   }
 
@@ -637,6 +637,7 @@
   }
 
   @media (forced-colors: none) {
+    select.input,
     .select-input {
       appearance: none;
       padding-right: 36px;

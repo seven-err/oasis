@@ -1563,7 +1563,7 @@ function RegisterTools({
       </div>
     </div>
     {showFilters && (
-      <div id="employee-filter-panel" className="grid gap-3 border border-[#d0e3ef] bg-[#f4f9fd] p-4 md:grid-cols-2 xl:grid-cols-4">
+      <div id="employee-filter-panel" className="grid gap-3 rounded-lg border border-[#d0e3ef] bg-[#f4f9fd] p-4 md:grid-cols-2 xl:grid-cols-4">
         <label className="block">
           <span className="field-label">Employment status</span>
           <select value={status} onChange={(event) => setStatus(event.target.value)} className="input mt-2">
@@ -1574,7 +1574,7 @@ function RegisterTools({
       </div>
     )}
     {showReports && (
-      <div id="employee-report-panel" className="flex flex-wrap gap-2 border border-[#d0e3ef] bg-[#f4f9fd] p-4">
+      <div id="employee-report-panel" className="flex flex-wrap gap-2 rounded-lg border border-[#d0e3ef] bg-[#f4f9fd] p-4">
         <button type="button" onClick={onPrint} className="secondary-btn"><Printer size={15} /> Print</button>
         <button type="button" onClick={exportData} className="secondary-btn"><Download size={15} /> Export</button>
       </div>

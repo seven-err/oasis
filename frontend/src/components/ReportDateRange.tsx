@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/FormPopovers";
 import { useState } from "react";
 
 type Props = {
@@ -34,7 +35,7 @@ export function ReportDateRange({ compact = false, dateLabel, dateFrom, dateTo, 
           <>
             <label className="block">
               <span className="field-label">{dateLabel} from</span>
-              <input
+              <DateInput
                 type="date"
                 className="input mt-2"
                 value={dateFrom}
@@ -44,7 +45,7 @@ export function ReportDateRange({ compact = false, dateLabel, dateFrom, dateTo, 
             </label>
             <label className="block">
               <span className="field-label">{dateLabel} to</span>
-              <input
+              <DateInput
                 type="date"
                 className="input mt-2"
                 value={dateTo}

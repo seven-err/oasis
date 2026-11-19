@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/FormPopovers";
 import { checkStatusLabel } from "./utils";
 import { ArchiveConfirmationDialog } from "@/components/ArchiveConfirmationDialog";
 import {
@@ -317,7 +318,7 @@ export function CheckRegister({
             onClear={() => { setFilters({ ...EMPTY_FILTERS }); setPage(1); }}
           />
           {showFilters && (
-            <div className="grid gap-3 border border-[#d0e3ef] bg-[#f4f9fd] p-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-3 rounded-lg border border-[#d0e3ef] bg-[#f4f9fd] p-4 md:grid-cols-2 xl:grid-cols-4">
               <label className="block">
                 <span className="field-label">Check type</span>
                 <select
@@ -385,13 +386,13 @@ export function CheckRegister({
                 <div key={label} className="md:col-span-2 xl:col-span-2">
                   <span className="field-label">{label} range</span>
                   <div className="mt-2 grid grid-cols-2 gap-2">
-                    <input
+                    <DateInput
                       type="date"
                       className="input"
                       value={filters[fromKey]}
                       onChange={(e) => setFilter(fromKey, e.target.value)}
                     />
-                    <input
+                    <DateInput
                       type="date"
                       className="input"
                       value={filters[toKey]}

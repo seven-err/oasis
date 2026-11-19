@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/FormPopovers";
 import { ArchiveConfirmationDialog } from "@/components/ArchiveConfirmationDialog";
 import {
   AlertCircle,
@@ -327,7 +328,7 @@ export function PayableRegister({
 
 
         {showCategories && user.permissions.manageCategories && (
-          <div className="border-b border-[#d0e3ef] bg-[#f4f9fd] p-4">
+          <div className="rounded-lg border border-[#d0e3ef] bg-[#f4f9fd] p-4">
             <p className="mb-3 text-[10px] font-bold uppercase tracking-[.14em] text-[#1f6ea6]">
               Manage categories
             </p>
@@ -355,7 +356,7 @@ export function PayableRegister({
                 <Plus size={15} /> Add
               </button>
             </div>
-            <ul className="divide-y divide-[#e1eef6] border border-[#d0e3ef] bg-white">
+            <ul className="overflow-hidden rounded-lg divide-y divide-[#e1eef6] border border-[#d0e3ef] bg-white">
               {categories.map((c) => (
                 <li
                   key={c.id}
@@ -456,7 +457,7 @@ export function PayableRegister({
             onClear={() => { setFilters({ ...EMPTY_FILTERS }); setPage(1); }}
           />
           {showFilters && (
-            <div className="grid gap-3 border border-[#d0e3ef] bg-[#f4f9fd] p-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-3 rounded-lg border border-[#d0e3ef] bg-[#f4f9fd] p-4 md:grid-cols-2 xl:grid-cols-4">
               <label className="block">
                 <span className="field-label">Payee name</span>
                 <input
@@ -581,13 +582,13 @@ export function PayableRegister({
               <div className="md:col-span-2">
                 <span className="field-label">Invoice date range</span>
                 <div className="mt-2 grid grid-cols-2 gap-2">
-                  <input
+                  <DateInput
                     type="date"
                     className="input"
                     value={filters.invoiceDateFrom}
                     onChange={(e) => setFilter("invoiceDateFrom", e.target.value)}
                   />
-                  <input
+                  <DateInput
                     type="date"
                     className="input"
                     value={filters.invoiceDateTo}
@@ -598,13 +599,13 @@ export function PayableRegister({
               <div className="md:col-span-2">
                 <span className="field-label">Due date range</span>
                 <div className="mt-2 grid grid-cols-2 gap-2">
-                  <input
+                  <DateInput
                     type="date"
                     className="input"
                     value={filters.dueDateFrom}
                     onChange={(e) => setFilter("dueDateFrom", e.target.value)}
                   />
-                  <input
+                  <DateInput
                     type="date"
                     className="input"
                     value={filters.dueDateTo}
