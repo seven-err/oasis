@@ -94,3 +94,85 @@
         .table-wrap { padding: .3rem; }
     }
 }
+
+
+@layer components {
+    .login-page {
+        background: #f3f8fc;
+        color: #111;
+        font-family: 'Inter', Arial, sans-serif;
+    }
+
+    .login-shell {
+        display: flex;
+        min-height: 100svh;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 32px 20px;
+    }
+
+    .login-card {
+        width: 100%;
+        max-width: 432px;
+        overflow: hidden;
+        border: 1px solid #c5dced;
+        border-radius: 8px;
+        background: #fff;
+        box-shadow: 0 8px 32px rgb(22 52 77 / 4%);
+    }
+
+    .login-brand {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 24px 32px;
+        border-bottom: 1px solid #c5dced;
+        background: #d7eef9;
+    }
+
+    .login-logo {
+        width: 64px;
+        height: 64px;
+        flex-shrink: 0;
+        background: url('../../../frontend/Oasis-Logo.png') center / contain no-repeat;
+    }
+
+    .login-brand-copy { display: grid; gap: 9px; }
+    .login-brand-copy svg { width: 112px; height: auto; color: #ed0000; }
+    .login-brand-copy span { color: #5c7890; font-size: 10px; letter-spacing: .04em; }
+    .login-content { padding: 30px 32px 28px; }
+    .login-eyebrow { margin-bottom: 9px; color: #5c7890; font-size: 9px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+    .login-content h1 { margin-bottom: 9px; color: #111; font-size: 27px; font-weight: 600; letter-spacing: -.035em; }
+    .login-description { margin-bottom: 26px; color: #777; font-size: 12px; }
+    .login-form { display: grid; gap: 20px; }
+    .login-form .field { gap: 8px; }
+    .login-form .field-error { display: none; }
+    .login-form .field label { color: #777; font-size: 9px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+    .login-form input:not([type='checkbox']) { min-height: 44px; padding: 11px 12px; border-color: #c5dced; border-radius: 8px; color: #111; font-size: 12px; }
+    .login-form input::placeholder { color: #999; }
+    .login-form input:focus { border-color: #1f6ea6; outline: none; box-shadow: 0 0 0 2px rgb(31 110 166 / 16%); }
+    .login-form .input-group:has(.password-toggle) input { padding-right: 58px; }
+    .login-form .password-toggle { top: 7px; color: #111; font-size: 10px; }
+    .login-remember { gap: 8px; color: #5c7890; font-size: 11px; font-weight: 400; }
+    .login-remember input { width: 14px; height: 14px; accent-color: #1f6ea6; }
+    .login-submit { min-height: 44px; border-radius: 8px; background: #1f6ea6; font-size: 12px; font-weight: 600; transition: background-color 160ms ease; }
+    .login-submit:hover { background: #1a5f90; }
+    .login-help { padding: 17px 24px; border-top: 1px solid #e1eef6; background: #f9fcff; color: #777; text-align: center; font-size: 10px; line-height: 1.8; }
+    .login-help strong { color: #5c7890; font-weight: 500; }
+    .login-password-note { max-width: 350px; margin: 17px 10px 0; color: #6a8aa0; text-align: center; font-size: 10px; line-height: 1.7; }
+    .login-content .errors, .login-content .notice { padding: 12px; border-radius: 8px; font-size: 11px; }
+    .login-content .errors ul { padding-left: 0; list-style: none; }
+    .login-content .errors li + li { margin-top: 5px; }
+
+    @media (max-width: 480px) {
+        .login-shell { padding: 24px 16px; }
+        .login-brand { padding: 20px 24px; }
+        .login-content { padding: 26px 24px; }
+        .login-form input:not([type='checkbox']) { font-size: 16px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .login-submit { transition: none; }
+    }
+}
