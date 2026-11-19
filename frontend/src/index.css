@@ -8,7 +8,10 @@
 
 .primary-btn .lucide-plus,
 .primary-btn .lucide-pencil,
-.lucide-banknote {
+.primary-btn .lucide-download,
+.primary-btn .lucide-upload,
+.lucide-banknote,
+.lucide.text-white {
   color: #fff;
 }
 
