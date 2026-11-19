@@ -375,7 +375,7 @@ export function ReceivableDetails({
         />
         <div className="flex flex-col gap-4 border-b border-[#d0e3ef] bg-[#e7f3fb] px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <span className="grid size-12 place-items-center bg-[#1f6ea6] text-white">
+            <span className="grid size-12 place-items-center bg-[#1f6ea6] text-white rounded-lg">
               <Banknote size={20} />
             </span>
             <div className="space-y-2">

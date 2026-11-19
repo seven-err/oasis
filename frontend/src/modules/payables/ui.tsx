@@ -251,7 +251,7 @@ export function SectionCard({
   children: ReactNode;
 }) {
   return (
-    <section className="border border-[#d0e3ef]">
+    <section className="overflow-hidden rounded-lg border border-[#d0e3ef]">
       <div className="border-b border-[#d0e3ef] bg-[#e7f3fb] px-5 py-3">
         <h3 className="text-[10px] font-bold uppercase tracking-[.14em] text-[#555]">{title}</h3>
       </div>
@@ -266,7 +266,7 @@ export function DetailGrid({
   items: { label: string; value: ReactNode }[];
 }) {
   return (
-    <dl className="grid gap-px bg-[#d0e3ef] sm:grid-cols-2">
+    <dl className="grid gap-px overflow-hidden rounded-lg bg-[#d0e3ef] sm:grid-cols-2">
       {items.map((item) => (
         <div key={item.label} className="bg-white p-3 sm:p-4">
           <dt className="field-label">{item.label}</dt>
@@ -287,7 +287,7 @@ export function MoneySummaryStrip({
   remaining: string;
 }) {
   return (
-    <div className="grid gap-px bg-[#d0e3ef] sm:grid-cols-3">
+    <div className="grid gap-px overflow-hidden rounded-lg bg-[#d0e3ef] sm:grid-cols-3">
       <div className="bg-[#e7f3fb] p-4">
         <span className="field-label">Total amount</span>
         <strong className="mt-1 block text-sm">{total}</strong>

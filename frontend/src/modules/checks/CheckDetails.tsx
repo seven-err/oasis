@@ -180,7 +180,7 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
         />
         <div className="flex flex-col gap-4 border-b border-[#d0e3ef] bg-[#e7f3fb] px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <span className="grid size-12 place-items-center bg-[#1f6ea6] text-white">
+            <span className="grid size-12 place-items-center bg-[#1f6ea6] text-white rounded-lg">
               <FileText size={20} />
             </span>
             <div>
@@ -301,7 +301,7 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
           <ul className="divide-y divide-[#e1eef6] border border-[#d0e3ef]">
             {attachments.map((att) => (
               <li key={att.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
-                <span className="grid size-10 place-items-center bg-[#e7f3fb] text-[#1f6ea6]">
+                <span className="grid size-10 place-items-center bg-[#e7f3fb] text-[#1f6ea6] rounded-lg">
                   <Paperclip size={16} />
                 </span>
                 <div className="min-w-0 flex-1">

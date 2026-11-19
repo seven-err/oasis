@@ -1433,7 +1433,7 @@ function ReceivableDueList({
             key={x.id}
             className="flex w-full items-center gap-3 py-4 text-left hover:opacity-70"
           >
-            <span className="grid size-9 place-items-center bg-[#e7f3fb]">
+            <span className="grid size-9 place-items-center bg-[#e7f3fb] rounded-lg">
               <CalendarDays size={16} />
             </span>
             <span className="min-w-0 flex-1">
@@ -1475,7 +1475,7 @@ function PayableDueList({
             key={x.id}
             className="flex w-full items-center gap-3 py-4 text-left hover:opacity-70"
           >
-            <span className="grid size-9 place-items-center bg-[#e7f3fb]">
+            <span className="grid size-9 place-items-center bg-[#e7f3fb] rounded-lg">
               <CalendarDays size={16} />
             </span>
             <span className="min-w-0 flex-1">
@@ -2104,7 +2104,7 @@ function EmployeeDetails({
   ];
   return (
     <div className="p-5 md:p-6">
-      <dl className="grid gap-px bg-[#d0e3ef] sm:grid-cols-2">
+      <dl className="grid gap-px overflow-hidden rounded-lg bg-[#d0e3ef] sm:grid-cols-2">
         {fields.map(([label, value]) => (
           <div key={label} className="bg-white p-4">
             <dt className="field-label">{label}</dt>
@@ -2257,7 +2257,7 @@ function Reports({ checks, payables, receivables, employees, notify }: any) {
       {reports.map(({ title, detail, Icon, data, exportRows }) => (
         <section key={title} className="panel p-6">
           <div className="flex items-start gap-4">
-            <span className="grid size-11 place-items-center bg-[#e7f3fb] text-[#1f6ea6]">
+            <span className="grid size-11 place-items-center bg-[#e7f3fb] text-[#1f6ea6] rounded-lg">
               <Icon size={20} />
             </span>
             <div className="flex-1">
@@ -2545,7 +2545,7 @@ function Status({ value }: { value: string }) {
 function Empty({ title, action }: { title: string; action: () => void }) {
   return (
     <div className="grid place-items-center px-5 py-20 text-center">
-      <span className="grid size-12 place-items-center bg-[#e7f3fb]">
+      <span className="grid size-12 place-items-center bg-[#e7f3fb] rounded-lg">
         <Search size={20} />
       </span>
       <h3 className="mt-4 text-sm font-bold">{title}</h3>
