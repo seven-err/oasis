@@ -1,5 +1,5 @@
+import { attachmentMimeType, ATTACHMENT_FORMATS } from "@/components/attachmentFileTypes";
 import {
-  ALLOWED_ATTACHMENT_TYPES,
   MAX_ATTACHMENT_BYTES,
   PAYMENT_METHODS,
 } from "./constants";
@@ -236,8 +236,8 @@ export function validateFollowUpPayload(values: FollowUpFormValues): ValidationR
 
 export function validateAttachmentFile(file: File): ValidationResult {
   const errors: ValidationResult["errors"] = {};
-  if (!(ALLOWED_ATTACHMENT_TYPES as readonly string[]).includes(file.type)) {
-    errors.file = "Allowed file types: PDF, JPEG, PNG, WebP, GIF.";
+  if (!attachmentMimeType(file)) {
+    errors.file = `Allowed file types: ${ATTACHMENT_FORMATS}.`;
   }
   if (file.size <= 0) errors.file = "File is empty.";
   if (file.size > MAX_ATTACHMENT_BYTES) {

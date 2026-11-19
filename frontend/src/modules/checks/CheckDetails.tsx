@@ -1,3 +1,4 @@
+import { ATTACHMENT_ACCEPT, ATTACHMENT_FORMATS } from "@/components/attachmentFileTypes";
 import { ArchiveConfirmationDialog } from "@/components/ArchiveConfirmationDialog";
 import {
   Archive,
@@ -283,7 +284,7 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
             <input
               type="file"
               className="sr-only"
-              accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf"
+              accept={ATTACHMENT_ACCEPT}
               multiple
               onChange={(e) => {
                 void onUpload(e.target.files);
@@ -292,6 +293,7 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
             />
           </label>
         )}
+        <p className="mb-3 text-xs text-[#777]">{ATTACHMENT_FORMATS} · Max 5 MB each</p>
         {attachments.length === 0 ? (
           <p className="text-xs text-[#888]">No attachments on file.</p>
         ) : (

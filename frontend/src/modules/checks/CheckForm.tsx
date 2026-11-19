@@ -1,7 +1,9 @@
+import { ATTACHMENT_ACCEPT, ATTACHMENT_FORMATS } from "@/components/attachmentFileTypes";
 import { useEffect, useMemo, useState } from "react";
 import { CHECK_TYPES } from "./constants";
 import { allowedStatusesForType, defaultStatusForType } from "./statusTransitions";
 import { checkService } from "./store";
+import { validateAttachmentFile } from "./validation";
 import type { CheckFormValues, CheckRecord, ValidationResult } from "./types";
 import { FieldError, FieldLabel, FormInput, FormSelect, FormTextarea, PanelTitle } from "./ui";
 import { emptyFormValues, recordToFormValues } from "./utils";
@@ -62,6 +64,13 @@ export function CheckForm({ mode, record, onCancel, onSaved }: Props) {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (user.permissions.manageAttachments) {
+      const invalidFile = pendingFiles.find((file) => validateAttachmentFile(file));
+      if (invalidFile) {
+        setAttachmentError(`${invalidFile.name}: ${validateAttachmentFile(invalidFile)}`);
+        return;
+      }
+    }
     setSaving(true);
     setAttachmentError("");
     const result =
@@ -312,7 +321,7 @@ export function CheckForm({ mode, record, onCancel, onSaved }: Props) {
               <input
                 type="file"
                 multiple
-                accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf"
+                accept={ATTACHMENT_ACCEPT}
                 className="input mt-2 h-auto py-2 file:mr-3 file:border-0 file:bg-[#e7f3fb] file:px-3 file:py-1.5 file:text-[11px] file:font-semibold"
                 disabled={!user.permissions.manageAttachments}
                 onChange={(e) => {
@@ -322,7 +331,7 @@ export function CheckForm({ mode, record, onCancel, onSaved }: Props) {
                 }}
               />
               <p className="mt-2 text-[11px] text-[#888]">
-                JPG, PNG, WEBP, or PDF · Max 5 MB each · Stored privately (not public URLs)
+                {ATTACHMENT_FORMATS} · Max 5 MB each · Stored privately (not public URLs)
               </p>
               <FieldError message={attachmentError || errors.attachments} />
               {pendingFiles.length > 0 && (

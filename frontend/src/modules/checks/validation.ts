@@ -1,6 +1,5 @@
+import { attachmentMimeType, ATTACHMENT_FORMATS } from "@/components/attachmentFileTypes";
 import {
-  ALLOWED_ATTACHMENT_EXTENSIONS,
-  ALLOWED_ATTACHMENT_TYPES,
   CHECK_STATUSES,
   CHECK_TYPES,
   MAX_ATTACHMENT_BYTES,
@@ -17,7 +16,7 @@ import type {
   CheckType,
   ValidationResult,
 } from "./types";
-import { fileExtension, isValidIsoDate } from "./utils";
+import { isValidIsoDate } from "./utils";
 
 /**
  * Server-style validation layer.
@@ -179,12 +178,7 @@ export function validateCheckPayload(
 }
 
 export function validateAttachmentFile(file: File): string | null {
-  if (!ALLOWED_ATTACHMENT_TYPES.includes(file.type as (typeof ALLOWED_ATTACHMENT_TYPES)[number])) {
-    const ext = fileExtension(file.name);
-    if (!(ALLOWED_ATTACHMENT_EXTENSIONS as readonly string[]).includes(ext)) {
-      return "Allowed file types: JPG, PNG, WEBP, PDF.";
-    }
-  }
+  if (!attachmentMimeType(file)) return `Allowed file types: ${ATTACHMENT_FORMATS}.`;
   if (file.size <= 0) return "The selected file is empty.";
   if (file.size > MAX_ATTACHMENT_BYTES) return "Each attachment must be 5 MB or smaller.";
   return null;

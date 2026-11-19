@@ -1,3 +1,4 @@
+import { normalizeAttachmentFile } from "@/components/attachmentFileTypes";
 import { checkService } from "@/modules/checks/store";
 import { isDeletionExpired } from "@/components/deletedRecordRetention";
 import {
@@ -703,6 +704,7 @@ export const receivableService = {
     const validation = validateAttachmentFile(file);
     if (!validation.ok) return { ok: false, errors: validation.errors };
 
+    file = normalizeAttachmentFile(file);
     let previewDataUrl: string | undefined;
     try {
       previewDataUrl = await readFileAsDataUrl(file);

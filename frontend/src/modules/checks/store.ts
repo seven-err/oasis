@@ -1,3 +1,4 @@
+import { normalizeAttachmentFile } from "@/components/attachmentFileTypes";
 import { isDeletionExpired } from "@/components/deletedRecordRetention";
 import {
   CHECK_ACTIVITY_STORAGE_KEY,
@@ -351,6 +352,7 @@ export const checkService = {
     const fileError = validateAttachmentFile(file);
     if (fileError) return { ok: false, errors: { attachments: fileError } };
 
+    file = normalizeAttachmentFile(file);
     const previewDataUrl = await readFileAsDataUrl(file);
     const attachment: CheckAttachment = {
       id: uid("att"),
