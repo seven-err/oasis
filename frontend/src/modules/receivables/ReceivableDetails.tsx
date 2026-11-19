@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePrintReport } from "@/components/usePrintReport";
+import { ArchiveConfirmationDialog } from "@/components/ArchiveConfirmationDialog";
 import { ATTACHMENT_KINDS, PAYMENT_METHODS } from "./constants";
 import { receivableService } from "./store";
 import type {
@@ -83,6 +84,7 @@ export function ReceivableDetails({
   const attachmentsRef = useRef<HTMLDivElement>(null);
   const { printReport, printSheet } = usePrintReport({ emphasizeSubtitle: true });
   const user = receivableService.getUser();
+  const [archiving, setArchiving] = useState(false);
   const [collections, setCollections] = useState(() =>
     receivableService.collectionsFor(record.id),
   );
@@ -162,15 +164,18 @@ export function ReceivableDetails({
       notify("You are not authorized to archive receivables.");
       return;
     }
-    if (!window.confirm("Archive this receivable? Historical information will be retained."))
-      return;
-    const result = receivableService.archive(record.id);
-    if (!result.ok) {
-      notify(result.errors.form ?? "Unable to archive.");
-      return;
+    try {
+      const result = receivableService.archive(record.id);
+      if (!result.ok) {
+        notify(result.errors.form ?? "Unable to archive.");
+        return;
+      }
+      setArchiving(false);
+      notify("Receivable archived.");
+      onChanged();
+    } catch {
+      notify("Unable to save the archive. Please try again.");
     }
-    notify("Receivable archived.");
-    onChanged();
   };
 
   const onRestore = () => {
@@ -345,6 +350,13 @@ export function ReceivableDetails({
 
   return (
     <div className="space-y-5">
+      {archiving && (
+        <ArchiveConfirmationDialog
+          recordLabel={`${record.invoiceNumber} — ${record.customerName}`}
+          onCancel={() => setArchiving(false)}
+          onConfirm={onArchive}
+        />
+      )}
       <section className="panel">
         <PanelTitle
           onBack={onBack}
@@ -387,7 +399,7 @@ export function ReceivableDetails({
               </button>
             ) : (
               user.permissions.archiveReceivables && (
-                <button onClick={onArchive} className="secondary-btn text-red-700">
+                <button onClick={() => setArchiving(true)} className="secondary-btn text-red-700">
                   <Archive size={15} /> Archive
                 </button>
               )
