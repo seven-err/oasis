@@ -1,3 +1,4 @@
+import { ArchiveConfirmationDialog } from "@/components/ArchiveConfirmationDialog";
 import {
   Archive,
   Banknote,
@@ -62,6 +63,7 @@ export function PayableDetails({
   const paymentFormRef = useRef<HTMLElement>(null);
   const { printReport, printSheet } = usePrintReport();
   const user = payableService.getUser();
+  const [archiving, setArchiving] = useState(false);
   const [payments, setPayments] = useState(() => payableService.paymentsFor(record.id));
   const activity = useMemo(
     () => payableService.activityFor(record.id),
@@ -111,15 +113,18 @@ export function PayableDetails({
       notify("You are not authorized to archive payables.");
       return;
     }
-    if (!window.confirm("Archive this payable? Historical information will be retained."))
-      return;
-    const result = payableService.archive(record.id);
-    if (!result.ok) {
-      notify(result.errors.form ?? "Unable to archive.");
-      return;
+    try {
+      const result = payableService.archive(record.id);
+      if (!result.ok) {
+        notify(result.errors.form ?? "Unable to archive.");
+        return;
+      }
+      setArchiving(false);
+      notify("Payable archived.");
+      onChanged();
+    } catch {
+      notify("Unable to save the archive. Please try again.");
     }
-    notify("Payable archived.");
-    onChanged();
   };
 
   const onRestore = () => {
@@ -246,6 +251,13 @@ export function PayableDetails({
 
   return (
     <div className="space-y-5">
+      {archiving && (
+        <ArchiveConfirmationDialog
+          recordLabel={`Payable ${record.invoiceNumber} - ${record.payeeName}`}
+          onCancel={() => setArchiving(false)}
+          onConfirm={onArchive}
+        />
+      )}
       <section className="panel">
         <PanelTitle
           onBack={onBack}
@@ -263,7 +275,7 @@ export function PayableDetails({
         />
         <div className="flex flex-col gap-4 border-b border-[#d0e3ef] bg-[#e7f3fb] px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <span className="grid size-12 place-items-center bg-[#1f6ea6] text-white">
+            <span className="grid size-12 place-items-center bg-[#1f6ea6] text-white rounded-lg">
               <Banknote size={20} />
             </span>
             <div className="space-y-2">
@@ -294,7 +306,7 @@ export function PayableDetails({
               </button>
             ) : (
               user.permissions.archivePayables && (
-                <button onClick={onArchive} className="secondary-btn text-red-700">
+                <button onClick={() => setArchiving(true)} className="secondary-btn text-red-700">
                   <Archive size={15} /> Archive
                 </button>
               )

@@ -21,7 +21,7 @@ export function SummaryStatCards({ items }: Props) {
         const content = (
           <>
             <div className="flex items-start justify-between gap-3">
-              <span className="text-[11px] font-medium leading-snug text-[#6b6b6b]">{label}</span>
+              <span className="text-sm font-semibold leading-snug text-[#16344d]">{label}</span>
               <Icon size={18} strokeWidth={1.75} className="shrink-0 text-[#1f6ea6]" />
             </div>
             <strong

@@ -1,3 +1,5 @@
+import { DateInput } from "@/components/FormPopovers";
+import { ArchiveConfirmationDialog } from "@/components/ArchiveConfirmationDialog";
 import {
   AlertCircle,
   Archive,
@@ -72,6 +74,7 @@ export function PayableRegister({
 }: Props) {
   const user = payableService.getUser();
   const [deleting, setDeleting] = useState<PayableViewModel | null>(null);
+  const [archiving, setArchiving] = useState<PayableViewModel | null>(null);
   const categories = useMemo(() => payableService.categories(false), [records]);
   const [filters, setFilters] = useState<PayableFilters>(EMPTY_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
@@ -138,11 +141,22 @@ export function PayableRegister({
       }
       return;
     }
-    if (!window.confirm("Archive this payable? Historical information will be retained.")) return;
-    const result = payableService.archive(record.id);
-    if (result.ok) {
+    setArchiving(record);
+  };
+
+  const confirmArchive = () => {
+    if (!archiving) return;
+    try {
+      const result = payableService.archive(archiving.id);
+      if (!result.ok) {
+        notify(result.errors.form ?? "Unable to archive.");
+        return;
+      }
+      setArchiving(null);
       notify("Payable archived.");
       onChanged();
+    } catch {
+      notify("Unable to save the archive. Please try again.");
     }
   };
 
@@ -201,7 +215,7 @@ export function PayableRegister({
         </button>
         {user.permissions.archivePayables && (
           <button
-            className="flex w-full items-center gap-2 border-t border-[#e1eef6] px-3 py-2 text-xs text-red-700 hover:bg-red-50"
+            className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-700 hover:bg-red-50"
             onClick={() => {
               setMenuId(null);
               archiveOrRestore(row);
@@ -221,7 +235,7 @@ export function PayableRegister({
         {user.permissions.archivePayables && (
           <button
             type="button"
-            className="flex w-full items-center gap-2 border-t border-[#e1eef6] px-3 py-2 text-xs text-red-700 hover:bg-red-50"
+            className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-700 hover:bg-red-50"
             onClick={() => {
               setMenuId(null);
               setDeleting(row);
@@ -241,6 +255,13 @@ export function PayableRegister({
 
   return (
     <div className="w-full max-w-full space-y-5 overflow-x-clip">
+      {archiving && (
+        <ArchiveConfirmationDialog
+          recordLabel={`Payable ${archiving.invoiceNumber} - ${archiving.payeeName}`}
+          onCancel={() => setArchiving(null)}
+          onConfirm={confirmArchive}
+        />
+      )}
       {deleting && (
         <DeleteConfirmationDialog
           recordLabel={`Payable ${deleting.invoiceNumber}`}
@@ -307,7 +328,7 @@ export function PayableRegister({
 
 
         {showCategories && user.permissions.manageCategories && (
-          <div className="border-b border-[#d0e3ef] bg-[#f4f9fd] p-4">
+          <div className="rounded-lg border border-[#d0e3ef] bg-[#f4f9fd] p-4">
             <p className="mb-3 text-[10px] font-bold uppercase tracking-[.14em] text-[#1f6ea6]">
               Manage categories
             </p>
@@ -335,7 +356,7 @@ export function PayableRegister({
                 <Plus size={15} /> Add
               </button>
             </div>
-            <ul className="divide-y divide-[#e1eef6] border border-[#d0e3ef] bg-white">
+            <ul className="overflow-hidden rounded-lg divide-y divide-[#e1eef6] border border-[#d0e3ef] bg-white">
               {categories.map((c) => (
                 <li
                   key={c.id}
@@ -436,7 +457,7 @@ export function PayableRegister({
             onClear={() => { setFilters({ ...EMPTY_FILTERS }); setPage(1); }}
           />
           {showFilters && (
-            <div className="grid gap-3 border border-[#d0e3ef] bg-[#f4f9fd] p-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-3 rounded-lg border border-[#d0e3ef] bg-[#f4f9fd] p-4 md:grid-cols-2 xl:grid-cols-4">
               <label className="block">
                 <span className="field-label">Payee name</span>
                 <input
@@ -561,13 +582,13 @@ export function PayableRegister({
               <div className="md:col-span-2">
                 <span className="field-label">Invoice date range</span>
                 <div className="mt-2 grid grid-cols-2 gap-2">
-                  <input
+                  <DateInput
                     type="date"
                     className="input"
                     value={filters.invoiceDateFrom}
                     onChange={(e) => setFilter("invoiceDateFrom", e.target.value)}
                   />
-                  <input
+                  <DateInput
                     type="date"
                     className="input"
                     value={filters.invoiceDateTo}
@@ -578,13 +599,13 @@ export function PayableRegister({
               <div className="md:col-span-2">
                 <span className="field-label">Due date range</span>
                 <div className="mt-2 grid grid-cols-2 gap-2">
-                  <input
+                  <DateInput
                     type="date"
                     className="input"
                     value={filters.dueDateFrom}
                     onChange={(e) => setFilter("dueDateFrom", e.target.value)}
                   />
-                  <input
+                  <DateInput
                     type="date"
                     className="input"
                     value={filters.dueDateTo}

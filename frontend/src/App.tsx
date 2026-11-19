@@ -1,3 +1,4 @@
+import { DateInput, RequirementStatusSelect } from "@/components/FormPopovers";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Activity,
@@ -14,7 +15,7 @@ import {
   Wallet,
   Download,
   FileCheck2,
-  LayoutDashboard,
+  House,
   LogOut,
   Menu,
   MoreHorizontal,
@@ -24,7 +25,6 @@ import {
   Printer,
   RotateCcw,
   Search,
-  Settings,
   ShieldCheck,
   SlidersHorizontal,
   Trash2,
@@ -366,7 +366,7 @@ const nav = [
   {
     section: "Workspace",
     items: [
-      { page: "dashboard" as Page, label: "Home", icon: LayoutDashboard },
+      { page: "dashboard" as Page, label: "Home", icon: House },
       { page: "employees" as Page, label: "Employee Alphalist", icon: Users },
       { page: "checks" as Page, label: "Check Monitoring", icon: FileCheck2 },
       { page: "payables" as Page, label: "Payable Monitoring", icon: WalletCards },
@@ -652,7 +652,7 @@ function App() {
           {selectionTop !== null && (
             <div
               aria-hidden="true"
-              className="sidebar-selection pointer-events-none absolute inset-x-3 top-0 h-11 border-l-2 border-[#1f6ea6] bg-[#4da3d9]"
+              className="sidebar-selection pointer-events-none absolute inset-x-3 top-0 h-11 rounded-lg border-l-2 border-[#1f6ea6] bg-[#4da3d9]"
               style={{ transform: `translateY(${selectionTop}px)` }}
             />
           )}
@@ -687,12 +687,6 @@ function App() {
                 className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-xs hover:bg-[#e7f3fb]"
               >
                 <UserRound size={15} /> My profile
-              </button>
-              <button
-                onClick={() => go("users")}
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-xs hover:bg-[#e7f3fb]"
-              >
-                <Settings size={15} /> Administration
               </button>
               <button
                 onClick={() => {
@@ -992,9 +986,9 @@ function App() {
           Are you sure you want to permanently delete {pendingDeletion?.length === 1 ? "this record" : `these ${pendingDeletion?.length ?? 0} records`}? This action cannot be undone.
         </p>
         <div className="mt-6 flex justify-center gap-3">
-          <button type="button" autoFocus className="secondary-btn" onClick={() => setPendingDeletion(null)}>Cancel</button>
-          <button type="button" className="flex items-center gap-2 rounded bg-red-700 px-4 py-2 text-xs font-medium text-white hover:bg-red-800" onClick={confirmPermanentDeletion}>
-            <Trash2 size={14} aria-hidden="true" /> Delete permanently
+          <button type="button" autoFocus className="secondary-btn rounded-lg" onClick={() => setPendingDeletion(null)}>Cancel</button>
+          <button type="button" className="flex items-center gap-2 rounded-lg bg-red-700 px-4 py-2 text-xs font-medium text-white hover:bg-red-800" onClick={confirmPermanentDeletion}>
+            Confirm
           </button>
         </div>
       </dialog>
@@ -1439,7 +1433,7 @@ function ReceivableDueList({
             key={x.id}
             className="flex w-full items-center gap-3 py-4 text-left hover:opacity-70"
           >
-            <span className="grid size-9 place-items-center bg-[#e7f3fb]">
+            <span className="grid size-9 place-items-center bg-[#e7f3fb] rounded-lg">
               <CalendarDays size={16} />
             </span>
             <span className="min-w-0 flex-1">
@@ -1481,7 +1475,7 @@ function PayableDueList({
             key={x.id}
             className="flex w-full items-center gap-3 py-4 text-left hover:opacity-70"
           >
-            <span className="grid size-9 place-items-center bg-[#e7f3fb]">
+            <span className="grid size-9 place-items-center bg-[#e7f3fb] rounded-lg">
               <CalendarDays size={16} />
             </span>
             <span className="min-w-0 flex-1">
@@ -1569,7 +1563,7 @@ function RegisterTools({
       </div>
     </div>
     {showFilters && (
-      <div id="employee-filter-panel" className="grid gap-3 border border-[#d0e3ef] bg-[#f4f9fd] p-4 md:grid-cols-2 xl:grid-cols-4">
+      <div id="employee-filter-panel" className="grid gap-3 rounded-lg border border-[#d0e3ef] bg-[#f4f9fd] p-4 md:grid-cols-2 xl:grid-cols-4">
         <label className="block">
           <span className="field-label">Employment status</span>
           <select value={status} onChange={(event) => setStatus(event.target.value)} className="input mt-2">
@@ -1580,7 +1574,7 @@ function RegisterTools({
       </div>
     )}
     {showReports && (
-      <div id="employee-report-panel" className="flex flex-wrap gap-2 border border-[#d0e3ef] bg-[#f4f9fd] p-4">
+      <div id="employee-report-panel" className="flex flex-wrap gap-2 rounded-lg border border-[#d0e3ef] bg-[#f4f9fd] p-4">
         <button type="button" onClick={onPrint} className="secondary-btn"><Printer size={15} /> Print</button>
         <button type="button" onClick={exportData} className="secondary-btn"><Download size={15} /> Export</button>
       </div>
@@ -2007,15 +2001,11 @@ function EmployeeRecordPanel({
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block">
               <span className="field-label">Requirement Status</span>
-              <select
-                name="requirementStatus"
-                className={`input select-input mt-2 ${requirementStatus === "Complete" ? "text-green-700" : "text-red-700"}`}
+              <RequirementStatusSelect
                 value={allRequirementsChecked ? requirementStatus : "Incomplete"}
-                onChange={(event) => setRequirementStatus(event.target.value === "Complete" && allRequirementsChecked ? "Complete" : "Incomplete")}
-              >
-                <option>Incomplete</option>
-                <option disabled={!allRequirementsChecked}>Complete</option>
-              </select>
+                allowComplete={allRequirementsChecked}
+                onChange={(value) => setRequirementStatus(value === "Complete" && allRequirementsChecked ? "Complete" : "Incomplete")}
+              />
               {!allRequirementsChecked && (
                 <p className="mt-2 text-[11px] text-[#777]">Check every requirement and laboratory requirement before selecting Complete.</p>
               )}
@@ -2053,7 +2043,7 @@ function EmployeeRequirementChecklist({
     <fieldset className="grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
       <legend className="mb-4 text-[10px] font-bold uppercase tracking-[.14em] text-[#1f6ea6]">{title}</legend>
       {items.map((item) => (
-        <div key={item} className="min-w-0 border border-[#d0e3ef] p-3">
+        <div key={item} className="min-w-0 rounded-lg border border-[#d0e3ef] p-3">
           <label className="flex items-center gap-2 text-[11px]">
             <input
               type="checkbox"
@@ -2064,7 +2054,7 @@ function EmployeeRequirementChecklist({
                 const isChecked = event.currentTarget.checked;
                 onChange(isChecked ? [...checked, item] : checked.filter((entry) => entry !== item));
               }}
-              className="size-4 shrink-0 accent-[#1f6ea6]"
+              className="requirement-checkbox size-4 shrink-0"
             />
             {item}
           </label>
@@ -2114,7 +2104,7 @@ function EmployeeDetails({
   ];
   return (
     <div className="p-5 md:p-6">
-      <dl className="grid gap-px bg-[#d0e3ef] sm:grid-cols-2">
+      <dl className="grid gap-px overflow-hidden rounded-lg bg-[#d0e3ef] sm:grid-cols-2">
         {fields.map(([label, value]) => (
           <div key={label} className="bg-white p-4">
             <dt className="field-label">{label}</dt>
@@ -2267,7 +2257,7 @@ function Reports({ checks, payables, receivables, employees, notify }: any) {
       {reports.map(({ title, detail, Icon, data, exportRows }) => (
         <section key={title} className="panel p-6">
           <div className="flex items-start gap-4">
-            <span className="grid size-11 place-items-center bg-[#e7f3fb] text-[#1f6ea6]">
+            <span className="grid size-11 place-items-center bg-[#e7f3fb] text-[#1f6ea6] rounded-lg">
               <Icon size={20} />
             </span>
             <div className="flex-1">
@@ -2507,13 +2497,14 @@ function FormField({
   max,
   defaultValue,
 }: any) {
+  const Input = type === "date" ? DateInput : "input";
   return (
     <label className="block">
       <span className="field-label">
         {label}
         {required && <span className="text-red-700"> *</span>}
       </span>
-      <input
+      <Input
         name={name}
         type={type}
         required={required}
@@ -2548,13 +2539,13 @@ function Status({ value }: { value: string }) {
           )
         ? "status-partial"
         : "status-neutral";
-  return <span className={`status ${tone}`}>{value}</span>;
+  return <span className={`status ${tone}`}>{value === "Bounced" ? "Returned" : value}</span>;
 }
 
 function Empty({ title, action }: { title: string; action: () => void }) {
   return (
     <div className="grid place-items-center px-5 py-20 text-center">
-      <span className="grid size-12 place-items-center bg-[#e7f3fb]">
+      <span className="grid size-12 place-items-center bg-[#e7f3fb] rounded-lg">
         <Search size={20} />
       </span>
       <h3 className="mt-4 text-sm font-bold">{title}</h3>
@@ -2595,7 +2586,7 @@ function Pagination({
         >
           <ChevronLeft size={15} />
         </button>
-        <span className="grid size-8 place-items-center bg-[#1f6ea6] text-white">{page}</span>
+        <span className="grid size-8 place-items-center rounded-lg bg-[#1f6ea6] text-white">{page}</span>
         <button
           type="button"
           disabled={page >= pages}

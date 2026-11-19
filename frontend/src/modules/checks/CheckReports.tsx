@@ -1,3 +1,4 @@
+import { checkStatusLabel } from "./utils";
 import { ReportDateRange, reportDateRangeLabel, useReportDateRanges, inReportDateRange } from "@/components/ReportDateRange";
 import { Download, FileCheck2, Printer } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -50,8 +51,8 @@ const REPORTS: {
   },
   {
     kind: "bounced",
-    title: "Bounced Checks Report",
-    detail: "Returned / bounced checks retained for history",
+    title: "Returned Checks Report",
+    detail: "Returned checks retained for history",
   },
   {
     kind: "by_bank",
@@ -161,7 +162,7 @@ function exportRows(
     DueDate: r.dueDate ?? "",
     DepositDate: r.depositDate ?? "",
     ClearingDate: r.clearingDate ?? "",
-    CheckStatus: r.checkStatus,
+    CheckStatus: checkStatusLabel(r.checkStatus),
     PreparedBy: r.preparedByName,
   }));
 }
@@ -278,7 +279,7 @@ export function CheckReports({ records, onBack, notify }: Props) {
                           Payee: row.payeeName,
                           Bank: row.bankName,
                           Amount: row.checkAmount,
-                          Status: row.checkStatus,
+                          Status: checkStatusLabel(row.checkStatus),
                         }));
                     void printReport(hasDateColumn(report.kind) && (rangeFor(report.kind).from || rangeFor(report.kind).to) ? `${report.title} · ${reportDateRangeLabel(rangeFor(report.kind).from, rangeFor(report.kind).to)}` : report.title, printedRows);
                   }}

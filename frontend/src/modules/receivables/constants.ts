@@ -31,13 +31,7 @@ export const ATTACHMENT_KINDS: { value: AttachmentKind; label: string }[] = [
   { value: "other", label: "Other supporting document" },
 ];
 
-export const ALLOWED_ATTACHMENT_TYPES = [
-  "application/pdf",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/gif",
-] as const;
+export { ATTACHMENT_TYPES as ALLOWED_ATTACHMENT_TYPES } from "@/components/attachmentFileTypes";
 
 export const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024; // 5 MB
 

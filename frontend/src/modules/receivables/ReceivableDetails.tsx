@@ -1,3 +1,4 @@
+import { ATTACHMENT_ACCEPT, ATTACHMENT_FORMATS } from "@/components/attachmentFileTypes";
 import {
   Archive,
   Banknote,
@@ -11,6 +12,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePrintReport } from "@/components/usePrintReport";
+import { ArchiveConfirmationDialog } from "@/components/ArchiveConfirmationDialog";
 import { ATTACHMENT_KINDS, PAYMENT_METHODS } from "./constants";
 import { receivableService } from "./store";
 import type {
@@ -83,6 +85,7 @@ export function ReceivableDetails({
   const attachmentsRef = useRef<HTMLDivElement>(null);
   const { printReport, printSheet } = usePrintReport({ emphasizeSubtitle: true });
   const user = receivableService.getUser();
+  const [archiving, setArchiving] = useState(false);
   const [collections, setCollections] = useState(() =>
     receivableService.collectionsFor(record.id),
   );
@@ -162,15 +165,18 @@ export function ReceivableDetails({
       notify("You are not authorized to archive receivables.");
       return;
     }
-    if (!window.confirm("Archive this receivable? Historical information will be retained."))
-      return;
-    const result = receivableService.archive(record.id);
-    if (!result.ok) {
-      notify(result.errors.form ?? "Unable to archive.");
-      return;
+    try {
+      const result = receivableService.archive(record.id);
+      if (!result.ok) {
+        notify(result.errors.form ?? "Unable to archive.");
+        return;
+      }
+      setArchiving(false);
+      notify("Receivable archived.");
+      onChanged();
+    } catch {
+      notify("Unable to save the archive. Please try again.");
     }
-    notify("Receivable archived.");
-    onChanged();
   };
 
   const onRestore = () => {
@@ -345,6 +351,13 @@ export function ReceivableDetails({
 
   return (
     <div className="space-y-5">
+      {archiving && (
+        <ArchiveConfirmationDialog
+          recordLabel={`${record.invoiceNumber} — ${record.customerName}`}
+          onCancel={() => setArchiving(false)}
+          onConfirm={onArchive}
+        />
+      )}
       <section className="panel">
         <PanelTitle
           onBack={onBack}
@@ -362,7 +375,7 @@ export function ReceivableDetails({
         />
         <div className="flex flex-col gap-4 border-b border-[#d0e3ef] bg-[#e7f3fb] px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <span className="grid size-12 place-items-center bg-[#1f6ea6] text-white">
+            <span className="grid size-12 place-items-center bg-[#1f6ea6] text-white rounded-lg">
               <Banknote size={20} />
             </span>
             <div className="space-y-2">
@@ -387,7 +400,7 @@ export function ReceivableDetails({
               </button>
             ) : (
               user.permissions.archiveReceivables && (
-                <button onClick={onArchive} className="secondary-btn text-red-700">
+                <button onClick={() => setArchiving(true)} className="secondary-btn text-red-700">
                   <Archive size={15} /> Archive
                 </button>
               )
@@ -771,7 +784,7 @@ export function ReceivableDetails({
                   <span className="field-label">File (PDF / image, max 5 MB)</span>
                   <input
                     type="file"
-                    accept=".pdf,image/jpeg,image/png,image/webp,image/gif"
+                    accept={ATTACHMENT_ACCEPT}
                     className="input mt-2"
                     onChange={onUploadAttachment}
                     disabled={saving}
@@ -782,7 +795,7 @@ export function ReceivableDetails({
                 </label>
               </div>
               <p className="mt-3 text-[11px] text-[#777]">
-                Attachments are stored privately and are only available to authorized users.
+                {ATTACHMENT_FORMATS} · Max 5 MB each. Attachments are stored privately and are only available to authorized users.
               </p>
             </div>
           )}

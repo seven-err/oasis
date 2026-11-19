@@ -172,7 +172,7 @@ export function PayableForm({ mode, record, onCancel, onSaved }: Props) {
             </p>
           )}
           {mode === "edit" && record && (
-            <div className="border border-[#d0e3ef] bg-[#f4f9fd] p-4 text-[11px] text-[#666]">
+            <div className="rounded-lg border border-[#d0e3ef] bg-[#f4f9fd] p-4 text-[11px] text-[#666]">
               <p>
                 Approval status: <strong>{record.approvalStatus}</strong> (managed separately —
                 use Approve / Reject on the detail view).

@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/FormPopovers";
 import {
   AlertCircle,
   Archive,
@@ -23,6 +24,7 @@ import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { SummaryStatCards } from "@/components/SummaryStatCards";
 import { ActiveFilters } from "@/components/ActiveFilters";
 import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
+import { ArchiveConfirmationDialog } from "@/components/ArchiveConfirmationDialog";
 import { recordRowClick } from "@/components/recordRowClick";
 import {
   COLLECTION_STATUSES,
@@ -79,6 +81,7 @@ export function ReceivableRegister({
 }: Props) {
   const user = receivableService.getUser();
   const [deleting, setDeleting] = useState<ReceivableViewModel | null>(null);
+  const [archiving, setArchiving] = useState<ReceivableViewModel | null>(null);
   const customers = useMemo(() => receivableService.customers(false), [records]);
   const collections = useMemo(() => receivableService.allCollections(), [records]);
   const [filters, setFilters] = useState<ReceivableFilters>(EMPTY_FILTERS);
@@ -186,12 +189,22 @@ export function ReceivableRegister({
       }
       return;
     }
-    if (!window.confirm("Archive this receivable? Historical information will be retained."))
-      return;
-    const result = receivableService.archive(record.id);
-    if (result.ok) {
+    setArchiving(record);
+  };
+
+  const confirmArchive = () => {
+    if (!archiving) return;
+    try {
+      const result = receivableService.archive(archiving.id);
+      if (!result.ok) {
+        notify(result.errors.form ?? "Unable to archive receivable.");
+        return;
+      }
+      setArchiving(null);
       notify("Receivable archived.");
       onChanged();
+    } catch {
+      notify("Unable to save the archive. Please try again.");
     }
   };
 
@@ -299,7 +312,7 @@ export function ReceivableRegister({
         </button>
         {user.permissions.archiveReceivables && (
           <button
-            className="flex w-full items-center gap-2 border-t border-[#e1eef6] px-3 py-2 text-xs text-red-700 hover:bg-red-50"
+            className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-700 hover:bg-red-50"
             onClick={() => {
               setMenu(null);
               archiveOrRestore(row);
@@ -319,7 +332,7 @@ export function ReceivableRegister({
         {user.permissions.archiveReceivables && (
           <button
             type="button"
-            className="flex w-full items-center gap-2 border-t border-[#e1eef6] px-3 py-2 text-xs text-red-700 hover:bg-red-50"
+            className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-700 hover:bg-red-50"
             onClick={() => {
               setMenu(null);
               setDeleting(row);
@@ -355,6 +368,13 @@ export function ReceivableRegister({
 
   return (
     <div className="w-full max-w-full space-y-5 overflow-x-clip">
+      {archiving && (
+        <ArchiveConfirmationDialog
+          recordLabel={`${archiving.invoiceNumber} — ${archiving.customerName}`}
+          onCancel={() => setArchiving(null)}
+          onConfirm={confirmArchive}
+        />
+      )}
       {deleting && (
         <DeleteConfirmationDialog
           recordLabel={`Receivable ${deleting.invoiceNumber}`}
@@ -467,7 +487,7 @@ export function ReceivableRegister({
             onClear={() => { setFilters({ ...EMPTY_FILTERS }); setPage(1); }}
           />
           {showFilters && (
-            <div className="grid gap-3 border border-[#d0e3ef] bg-[#f4f9fd] p-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-3 rounded-lg border border-[#d0e3ef] bg-[#f4f9fd] p-4 md:grid-cols-2 xl:grid-cols-4">
               <label className="block">
                 <span className="field-label">Customer</span>
                 <select
@@ -613,13 +633,13 @@ export function ReceivableRegister({
               <div className="md:col-span-2">
                 <span className="field-label">Invoice date range</span>
                 <div className="mt-2 grid grid-cols-2 gap-2">
-                  <input
+                  <DateInput
                     type="date"
                     className="input"
                     value={filters.invoiceDateFrom}
                     onChange={(e) => setFilter("invoiceDateFrom", e.target.value)}
                   />
-                  <input
+                  <DateInput
                     type="date"
                     className="input"
                     value={filters.invoiceDateTo}
@@ -630,13 +650,13 @@ export function ReceivableRegister({
               <div className="md:col-span-2">
                 <span className="field-label">Transaction date range</span>
                 <div className="mt-2 grid grid-cols-2 gap-2">
-                  <input
+                  <DateInput
                     type="date"
                     className="input"
                     value={filters.transactionDateFrom}
                     onChange={(e) => setFilter("transactionDateFrom", e.target.value)}
                   />
-                  <input
+                  <DateInput
                     type="date"
                     className="input"
                     value={filters.transactionDateTo}
@@ -647,13 +667,13 @@ export function ReceivableRegister({
               <div className="md:col-span-2">
                 <span className="field-label">Due date range</span>
                 <div className="mt-2 grid grid-cols-2 gap-2">
-                  <input
+                  <DateInput
                     type="date"
                     className="input"
                     value={filters.dueDateFrom}
                     onChange={(e) => setFilter("dueDateFrom", e.target.value)}
                   />
-                  <input
+                  <DateInput
                     type="date"
                     className="input"
                     value={filters.dueDateTo}
@@ -664,13 +684,13 @@ export function ReceivableRegister({
               <div className="md:col-span-2">
                 <span className="field-label">Follow-up date range</span>
                 <div className="mt-2 grid grid-cols-2 gap-2">
-                  <input
+                  <DateInput
                     type="date"
                     className="input"
                     value={filters.followUpDateFrom}
                     onChange={(e) => setFilter("followUpDateFrom", e.target.value)}
                   />
-                  <input
+                  <DateInput
                     type="date"
                     className="input"
                     value={filters.followUpDateTo}

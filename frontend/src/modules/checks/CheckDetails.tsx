@@ -1,3 +1,6 @@
+import { checkStatusLabel } from "./utils";
+import { ATTACHMENT_ACCEPT, ATTACHMENT_FORMATS } from "@/components/attachmentFileTypes";
+import { ArchiveConfirmationDialog } from "@/components/ArchiveConfirmationDialog";
 import {
   Archive,
   Download,
@@ -33,6 +36,7 @@ type Props = {
 export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Props) {
   const { printReport, printSheet } = usePrintReport();
   const user = checkService.getUser();
+  const [archiving, setArchiving] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const [attachments, setAttachments] = useState(() => checkService.attachmentsFor(record.id));
   const activity = useMemo(() => checkService.activityFor(record.id), [record]);
@@ -50,14 +54,18 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
       notify("You are not authorized to archive checks.");
       return;
     }
-    if (!window.confirm("Archive this check? Historical information will be retained.")) return;
-    const result = checkService.archive(record.id);
-    if (!result.ok) {
-      notify(result.errors.form ?? "Unable to archive.");
-      return;
+    try {
+      const result = checkService.archive(record.id);
+      if (!result.ok) {
+        notify(result.errors.form ?? "Unable to archive.");
+        return;
+      }
+      setArchiving(false);
+      notify("Check archived.");
+      onChanged();
+    } catch {
+      notify("Unable to save the archive. Please try again.");
     }
-    notify("Check archived.");
-    onChanged();
   };
 
   const onRestore = () => {
@@ -127,7 +135,7 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
       "Due date": formatDate(record.dueDate),
       "Deposit date": formatDate(record.depositDate),
       "Clearing date": formatDate(record.clearingDate),
-      "Check status": record.checkStatus,
+      "Check status": checkStatusLabel(record.checkStatus),
       Remarks: record.remarks,
       "Prepared by": record.preparedByName,
       Created: formatDateTime(record.createdAt),
@@ -148,6 +156,13 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
 
   return (
     <div className="space-y-5">
+      {archiving && (
+        <ArchiveConfirmationDialog
+          recordLabel={`Check ${record.checkNumber} - ${record.payeeName}`}
+          onCancel={() => setArchiving(false)}
+          onConfirm={onArchive}
+        />
+      )}
       <section className="panel">
         <PanelTitle
           onBack={onBack}
@@ -165,7 +180,7 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
         />
         <div className="flex flex-col gap-4 border-b border-[#d0e3ef] bg-[#e7f3fb] px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <span className="grid size-12 place-items-center bg-[#1f6ea6] text-white">
+            <span className="grid size-12 place-items-center bg-[#1f6ea6] text-white rounded-lg">
               <FileText size={20} />
             </span>
             <div>
@@ -185,7 +200,7 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
               </button>
             ) : (
               user.permissions.archiveChecks && (
-                <button onClick={onArchive} className="secondary-btn text-red-700">
+                <button onClick={() => setArchiving(true)} className="secondary-btn text-red-700">
                   <Archive size={15} /> Archive
                 </button>
               )
@@ -270,7 +285,7 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
             <input
               type="file"
               className="sr-only"
-              accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf"
+              accept={ATTACHMENT_ACCEPT}
               multiple
               onChange={(e) => {
                 void onUpload(e.target.files);
@@ -279,13 +294,14 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
             />
           </label>
         )}
+        <p className="mb-3 text-xs text-[#777]">{ATTACHMENT_FORMATS} · Max 5 MB each</p>
         {attachments.length === 0 ? (
           <p className="text-xs text-[#888]">No attachments on file.</p>
         ) : (
           <ul className="divide-y divide-[#e1eef6] border border-[#d0e3ef]">
             {attachments.map((att) => (
               <li key={att.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
-                <span className="grid size-10 place-items-center bg-[#e7f3fb] text-[#1f6ea6]">
+                <span className="grid size-10 place-items-center bg-[#e7f3fb] text-[#1f6ea6] rounded-lg">
                   <Paperclip size={16} />
                 </span>
                 <div className="min-w-0 flex-1">

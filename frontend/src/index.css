@@ -390,24 +390,13 @@
     cursor: pointer;
   }
 
-  @media screen {
-    :where(button, a[href], [role="button"], summary, .cursor-pointer):not(.sidebar-nav-item):not(.notification-bell) {
-      transition-property: background-color, border-color, color, box-shadow, opacity, scale;
-      transition-duration: var(--motion-fast);
-      transition-timing-function: var(--motion-ease);
-    }
+  button,
+  input[type="search"] {
+    border-radius: 0.5rem;
+  }
 
-    :where(button, a[href], [role="button"], summary):not(.sidebar-nav-item):not(.notification-bell):not(:disabled):not([aria-disabled="true"]):active {
-      scale: 0.98;
-    }
-
-    :where(button:disabled, [aria-disabled="true"]) {
-      cursor: not-allowed;
-    }
-
-    :where(tr.cursor-pointer, div.cursor-pointer):active {
-      background-color: #e7f3fb;
-    }
+  input[type="file"]::file-selector-button {
+    border-radius: 0.5rem;
   }
 
   button:focus-visible,
@@ -495,9 +484,48 @@
 }
 
 @layer components {
+  .styled-date::-webkit-calendar-picker-indicator {
+    display: none;
+  }
+
+  .requirement-checkbox {
+    appearance: none;
+    display: inline-grid;
+    place-content: center;
+    border: 1px solid #6a8aa0;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+  }
+
+  .requirement-checkbox:checked {
+    border-color: #1f6ea6;
+    background: #1f6ea6;
+  }
+
+  .requirement-checkbox:checked::after {
+    content: "";
+    width: 4px;
+    height: 8px;
+    margin-top: -2px;
+    border-right: 2px solid #fff;
+    border-bottom: 2px solid #fff;
+    transform: rotate(45deg);
+  }
+
+  @media (forced-colors: active) {
+    .requirement-checkbox {
+      appearance: auto;
+    }
+
+    .requirement-checkbox:checked::after {
+      content: none;
+    }
+  }
+
   .section-highlight {
     position: relative;
-    border-radius: 0;
+    border-radius: 0.5rem;
   }
 
   .section-highlight::after {
@@ -506,7 +534,7 @@
     inset: 0;
     z-index: 1;
     border: 2px solid #1f6ea6;
-    border-radius: 0;
+    border-radius: inherit;
     pointer-events: none;
   }
 
@@ -517,7 +545,12 @@
 
   .panel {
     border: 1px solid #d0e3ef;
+    border-radius: 0.5rem;
     background: #fff;
+  }
+
+  .panel > .overflow-x-auto {
+    border-radius: inherit;
   }
 
   .primary-btn {
@@ -585,6 +618,7 @@
   .input {
     height: 40px;
     width: 100%;
+    border-radius: 0.5rem;
     border: 1px solid #c5dced;
     background: #fff;
     padding-left: 12px;
@@ -601,6 +635,7 @@
   }
 
   @media (forced-colors: none) {
+    select.input,
     .select-input {
       appearance: none;
       padding-right: 36px;

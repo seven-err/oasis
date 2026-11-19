@@ -1,3 +1,5 @@
+import { DateInput } from "@/components/FormPopovers";
+import { checkStatusLabel } from "./utils";
 import {
   ChevronDown,
   ChevronLeft,
@@ -83,10 +85,11 @@ export function FormInput({
   disabled?: boolean;
   autoComplete?: string;
 }) {
+  const Input = type === "date" ? DateInput : "input";
   return (
     <label className="block">
       <FieldLabel required={required}>{label}</FieldLabel>
-      <input
+      <Input
         name={name}
         type={type}
         value={value}
@@ -181,7 +184,7 @@ export function StatusBadge({ value }: { value: string }) {
         : value === "For Deposit" || value === "For Clearing"
           ? "status-partial"
           : "status-neutral";
-  return <span className={`status ${tone}`}>{value}</span>;
+  return <span className={`status ${tone}`}>{checkStatusLabel(value)}</span>;
 }
 
 export function AccountNumberDisplay({
@@ -265,7 +268,7 @@ export function PaginationBar({
         >
           <ChevronLeft size={15} />
         </button>
-        <span className="grid size-8 place-items-center bg-[#1f6ea6] text-white">{page}</span>
+        <span className="grid size-8 place-items-center rounded-lg bg-[#1f6ea6] text-white">{page}</span>
         <button
           disabled={page >= pages}
           className="table-action disabled:opacity-30"
@@ -287,7 +290,7 @@ export function SectionCard({
   children: ReactNode;
 }) {
   return (
-    <section className="border border-[#d0e3ef]">
+    <section className="overflow-hidden rounded-lg border border-[#d0e3ef]">
       <div className="border-b border-[#d0e3ef] bg-[#e7f3fb] px-5 py-3">
         <h3 className="text-[10px] font-bold uppercase tracking-[.14em] text-[#555]">{title}</h3>
       </div>
@@ -302,7 +305,7 @@ export function DetailGrid({
   items: { label: string; value: ReactNode }[];
 }) {
   return (
-    <dl className="grid gap-px bg-[#d0e3ef] sm:grid-cols-2">
+    <dl className="grid gap-px overflow-hidden rounded-lg bg-[#d0e3ef] sm:grid-cols-2">
       {items.map((item) => (
         <div key={item.label} className="bg-white p-3 sm:p-4">
           <dt className="field-label">{item.label}</dt>

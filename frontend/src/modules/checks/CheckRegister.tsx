@@ -1,3 +1,6 @@
+import { DateInput } from "@/components/FormPopovers";
+import { checkStatusLabel } from "./utils";
+import { ArchiveConfirmationDialog } from "@/components/ArchiveConfirmationDialog";
 import {
   AlertCircle,
   Archive,
@@ -58,6 +61,7 @@ export function CheckRegister({
 }: Props) {
   const user = checkService.getUser();
   const [deleting, setDeleting] = useState<CheckRecord | null>(null);
+  const [archiving, setArchiving] = useState<CheckRecord | null>(null);
   const [filters, setFilters] = useState<CheckFilters>(EMPTY_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
   const [sort, setSort] = useState<CheckSort>({ key: "checkDate", direction: "desc" });
@@ -122,11 +126,22 @@ export function CheckRegister({
       }
       return;
     }
-    if (!window.confirm("Archive this check? Historical information will be retained.")) return;
-    const result = checkService.archive(record.id);
-    if (result.ok) {
+    setArchiving(record);
+  };
+
+  const confirmArchive = () => {
+    if (!archiving) return;
+    try {
+      const result = checkService.archive(archiving.id);
+      if (!result.ok) {
+        notify(result.errors.form ?? "Unable to archive.");
+        return;
+      }
+      setArchiving(null);
       notify("Check archived.");
       onChanged();
+    } catch {
+      notify("Unable to save the archive. Please try again.");
     }
   };
 
@@ -155,7 +170,7 @@ export function CheckRegister({
         </button>
         {user.permissions.archiveChecks && (
           <button
-            className="flex w-full items-center gap-2 border-t border-[#e1eef6] px-3 py-2 text-xs text-red-700 hover:bg-red-50"
+            className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-700 hover:bg-red-50"
             onClick={() => {
               setMenuId(null);
               archiveOrRestore(row);
@@ -175,7 +190,7 @@ export function CheckRegister({
         {user.permissions.archiveChecks && (
           <button
             type="button"
-            className="flex w-full items-center gap-2 border-t border-[#e1eef6] px-3 py-2 text-xs text-red-700 hover:bg-red-50"
+            className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-700 hover:bg-red-50"
             onClick={() => {
               setMenuId(null);
               setDeleting(row);
@@ -195,6 +210,13 @@ export function CheckRegister({
 
   return (
     <div className="w-full max-w-full space-y-5 overflow-x-clip">
+      {archiving && (
+        <ArchiveConfirmationDialog
+          recordLabel={`Check ${archiving.checkNumber} - ${archiving.payeeName}`}
+          onCancel={() => setArchiving(null)}
+          onConfirm={confirmArchive}
+        />
+      )}
       {deleting && (
         <DeleteConfirmationDialog
           recordLabel={`Check ${deleting.checkNumber}`}
@@ -289,13 +311,14 @@ export function CheckRegister({
           <ActiveFilters
             filters={filters}
             defaults={EMPTY_FILTERS}
+            valueLabels={{ checkStatus: { Bounced: "Returned" } }}
             matched={filtered.length}
             total={records.filter((record) => filters.includeArchived || !record.archivedAt).length}
             onRemove={(key) => setFilter(key, EMPTY_FILTERS[key])}
             onClear={() => { setFilters({ ...EMPTY_FILTERS }); setPage(1); }}
           />
           {showFilters && (
-            <div className="grid gap-3 border border-[#d0e3ef] bg-[#f4f9fd] p-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-3 rounded-lg border border-[#d0e3ef] bg-[#f4f9fd] p-4 md:grid-cols-2 xl:grid-cols-4">
               <label className="block">
                 <span className="field-label">Check type</span>
                 <select
@@ -338,7 +361,7 @@ export function CheckRegister({
                   <option value="All">All statuses</option>
                   {CHECK_STATUSES.map((s) => (
                     <option key={s} value={s}>
-                      {s}
+                      {checkStatusLabel(s)}
                     </option>
                   ))}
                 </select>
@@ -363,13 +386,13 @@ export function CheckRegister({
                 <div key={label} className="md:col-span-2 xl:col-span-2">
                   <span className="field-label">{label} range</span>
                   <div className="mt-2 grid grid-cols-2 gap-2">
-                    <input
+                    <DateInput
                       type="date"
                       className="input"
                       value={filters[fromKey]}
                       onChange={(e) => setFilter(fromKey, e.target.value)}
                     />
-                    <input
+                    <DateInput
                       type="date"
                       className="input"
                       value={filters[toKey]}
