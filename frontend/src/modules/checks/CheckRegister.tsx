@@ -1,3 +1,4 @@
+import { checkStatusLabel } from "./utils";
 import { ArchiveConfirmationDialog } from "@/components/ArchiveConfirmationDialog";
 import {
   AlertCircle,
@@ -309,6 +310,7 @@ export function CheckRegister({
           <ActiveFilters
             filters={filters}
             defaults={EMPTY_FILTERS}
+            valueLabels={{ checkStatus: { Bounced: "Returned" } }}
             matched={filtered.length}
             total={records.filter((record) => filters.includeArchived || !record.archivedAt).length}
             onRemove={(key) => setFilter(key, EMPTY_FILTERS[key])}
@@ -358,7 +360,7 @@ export function CheckRegister({
                   <option value="All">All statuses</option>
                   {CHECK_STATUSES.map((s) => (
                     <option key={s} value={s}>
-                      {s}
+                      {checkStatusLabel(s)}
                     </option>
                   ))}
                 </select>
