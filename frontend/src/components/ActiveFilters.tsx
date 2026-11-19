@@ -29,7 +29,7 @@ export function ActiveFilters<T extends object>({ filters, defaults, valueLabels
         const text = `${label}: ${value}`;
         return (
           <button key={key} type="button" onClick={() => onRemove(key)} aria-label={`Remove filter ${text}`}
-            className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-[#b9d9ef] bg-[#e7f3fb] px-3 py-1.5 text-left text-[#16344d] transition-colors hover:bg-[#d7eef9] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1f6ea6]">
+            className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-[#b9d9ef] bg-[#e7f3fb] px-3 py-1.5 text-left text-[#16344d] hover:bg-[#d7eef9] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1f6ea6]">
             <span className="wrap-break-word min-w-0">{text}</span><X size={13} className="shrink-0" aria-hidden="true" />
           </button>
         );

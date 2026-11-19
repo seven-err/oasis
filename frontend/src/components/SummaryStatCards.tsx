@@ -22,7 +22,7 @@ export function SummaryStatCards({ items }: Props) {
           <>
             <div className="flex items-start justify-between gap-3">
               <span className="text-sm font-semibold leading-snug text-[#16344d]">{label}</span>
-              <Icon size={18} strokeWidth={1.75} className="shrink-0 text-[#1f6ea6]" />
+              <Icon size={18} strokeWidth={1.75} className="shrink-0 text-black" />
             </div>
             <strong
               className={`mt-auto pt-6 font-bold leading-none tracking-[-.03em] text-[#1a1a1a] ${

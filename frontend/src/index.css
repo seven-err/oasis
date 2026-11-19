@@ -1,6 +1,17 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
+/* Keep interface icons black even when their controls use colored text. */
+.lucide {
+  color: #000;
+}
+
+.primary-btn .lucide-plus,
+.primary-btn .lucide-pencil,
+.lucide-banknote {
+  color: #fff;
+}
+
 @layer base {
   @media screen {
     html,
@@ -401,6 +412,8 @@
 
   button:focus-visible,
   a:focus-visible,
+  [role="button"]:focus-visible,
+  [tabindex="0"]:focus-visible,
   input:focus-visible,
   select:focus-visible,
   textarea:focus-visible {
@@ -579,10 +592,6 @@
     background: #1a5f90;
   }
 
-  .primary-btn:active {
-    transform: translateY(1px);
-  }
-
   .primary-btn:disabled {
     cursor: not-allowed;
     opacity: 0.4;
@@ -710,5 +719,29 @@
   .status-neutral {
     color: #8a8a8a;
     background: #f6f6f6;
+  }
+
+  .primary-btn,
+  .secondary-btn,
+  .table-action,
+  .text-link,
+  button.summary-stat-card {
+    transition-property: background-color, border-color, color, box-shadow, opacity, scale;
+    transition-duration: var(--motion-fast);
+    transition-timing-function: var(--motion-ease);
+  }
+
+  .text-link:hover {
+    color: #144f7b;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(button, a[href], [role="button"], summary, .cursor-pointer):not(.sidebar-nav-item):not(.notification-bell) {
+    transition: none;
+  }
+
+  :where(button, a[href], [role="button"], summary):not(.sidebar-nav-item):not(.notification-bell):active {
+    scale: none;
   }
 }
