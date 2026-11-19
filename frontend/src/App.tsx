@@ -658,7 +658,7 @@ function App() {
           )}
           {nav.map((group) => (
             <div key={group.section} className="mb-5 last:mb-0">
-                <p aria-hidden={compactMenu} className="sidebar-copy mb-2 whitespace-nowrap px-3 text-[10px] font-semibold uppercase tracking-[.18em] text-[#6a8aa0]">
+                <p aria-hidden={compactMenu} className="sidebar-copy mb-2 whitespace-nowrap px-3 text-[10px] font-semibold uppercase tracking-[.18em] text-black">
                   {group.section}
                 </p>
               <div className="space-y-1">
@@ -669,7 +669,7 @@ function App() {
                     title={compactMenu ? label : undefined}
                     aria-label={label}
                     aria-current={page === itemPage ? "page" : undefined}
-                    className={`sidebar-nav-item relative group flex h-11 w-full items-center gap-3 border-l-2 border-transparent px-3 text-left text-[13px] font-medium ${page === itemPage ? "text-white" : "text-[#3d5e78] hover:bg-white/70 hover:text-[#16344d]"}`}
+                    className={`sidebar-nav-item relative group flex h-11 w-full items-center gap-3 border-l-2 border-transparent px-3 text-left text-[13px] font-medium text-black ${page === itemPage ? "" : "hover:bg-white/70"}`}
                   >
                     <Icon className="shrink-0" size={18} strokeWidth={1.8} />
                     <span aria-hidden={compactMenu} className="sidebar-copy shrink-0 whitespace-nowrap">{label}</span>

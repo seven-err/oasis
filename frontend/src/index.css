@@ -1,6 +1,17 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
+/* Keep interface icons black even when their controls use colored text. */
+.lucide {
+  color: #000;
+}
+
+.primary-btn .lucide-plus,
+.primary-btn .lucide-pencil,
+.lucide-banknote {
+  color: #fff;
+}
+
 @layer base {
   @media screen {
     html,
