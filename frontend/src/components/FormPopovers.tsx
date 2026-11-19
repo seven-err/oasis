@@ -57,7 +57,7 @@ export function DateInput(props: InputHTMLAttributes<HTMLInputElement>) {
         props.onChange?.(event);
       }} />
       <button ref={triggerRef} type="button" disabled={props.disabled || props.readOnly} aria-label="Open calendar" aria-haspopup="dialog" popoverTarget={id}
-        className="absolute inset-y-0 right-1 my-auto grid size-8 place-items-center text-[#5c7890] hover:bg-[#e7f3fb] disabled:opacity-40"
+        className="absolute bottom-1 right-1 grid size-8 place-items-center text-[#5c7890] hover:bg-[#e7f3fb] disabled:opacity-40"
         onClick={() => {
           const date = value ? new Date(`${value}T00:00:00`) : new Date();
           setMonth(new Date(date.getFullYear(), date.getMonth(), 1));
