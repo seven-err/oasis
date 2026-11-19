@@ -28,6 +28,61 @@ pnpm install
 
 ## Running
 
+The Laravel app includes email/password login, Super Admin / HR / Finance access,
+personal password changes, user administration, permission settings and activity
+logs. The HR and Finance business screens still run in the separate React
+prototype. Their Laravel routes enforce permissions and return an explicit
+"not yet ported" response; they do not access browser-local records.
+
+After configuring `backend/.env` and the database, initialize access control:
+
+```bash
+cd backend
+php artisan migrate
+php artisan db:seed --class=RolePermissionSeeder
+```
+
+Set `OASIS_ADMIN_NAME`, `OASIS_ADMIN_EMAIL` and `OASIS_ADMIN_PASSWORD` in your
+local environment or secret manager, then run:
+
+```bash
+php artisan db:seed --class=SuperAdminSeeder
+```
+
+Use a unique initial password of at least 12 characters with uppercase and
+lowercase letters, a number and a symbol. Remove the three initial-admin values
+after seeding and rebuild cached configuration if used. Repeating the seeder
+does not reset an existing administrator's password; an email collision with a
+non-admin account stops setup without promoting that account. Default seeding
+no longer creates `test@example.com` with a known password.
+
+Open the Laravel app at `http://localhost:8000/login`. The initial administrator
+must change their password before accessing the dashboard. Create further
+accounts in User Management. Temporary passwords appear once in the creation
+or reset response; deliver them using an approved private channel. They are not
+emailed, logged or stored in session flash data. Password resets and security
+changes revoke existing sessions and remembered sign-ins. With no public
+registration or self-service recovery, users contact a Super Admin for resets.
+
+Existing accounts remain in place but receive no role or active access
+automatically. Assign their roles and activate them through User Management.
+System Settings can reduce HR/Finance module permissions within their fixed
+department boundaries; dashboard and personal account access are retained.
+
+Production requires HTTPS: use `APP_ENV=production`, `APP_DEBUG=false` and
+`SESSION_SECURE_COOKIE=true`. Configure trusted proxies for the actual hosting
+environment when TLS terminates at a proxy. System activity timestamps are UTC.
+Never run the reference SQL scripts directly: the checks script includes a
+second `users` table definition that must be omitted when porting the modules.
+
+Backend verification uses an isolated in-memory SQLite database:
+
+```bash
+cd backend
+php artisan test
+npm run build
+```
+
 Use two terminals, run from the repo root (one command per line, so it also works in Windows PowerShell):
 
 ```bash

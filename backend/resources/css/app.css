@@ -4,6 +4,93 @@
 @source '../../storage/framework/views/*.php';
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+    body { background: #f7f9fb; color: #17232e; font-family: var(--font-sans); line-height: 1.6; }
+    h1 { font-size: clamp(1.7rem, 3vw, 2.2rem); font-weight: 600; line-height: 1.2; }
+    h2 { font-size: 1.15rem; font-weight: 600; margin-bottom: .65rem; }
+    p { margin-bottom: 1rem; }
+    button, a, input, select { -webkit-tap-highlight-color: transparent; }
+    button { cursor: pointer; }
+    a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid #2278b0; outline-offset: 3px; }
+    label { font-weight: 500; font-size: .875rem; }
+    input:not([type='checkbox']), select { width: 100%; border: 1px solid #bac6cf; border-radius: .4rem; padding: .65rem .8rem; background: white; min-height: 44px; }
+    input[aria-invalid='true'] { border-color: #b42318; }
+    input[type='checkbox'] { width: 1rem; height: 1rem; accent-color: #1f6ea6; }
+    select:disabled { background: #f1f3f5; color: #536373; }
+    small { color: #536373; }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: .875rem; }
+    th { color: #536373; font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+    td, th { padding: .85rem; border-bottom: 1px solid #e4e9ef; vertical-align: top; }
+    td { overflow-wrap: anywhere; }
+}
+
+@layer components {
+    .app-shell { display: flex; min-height: 100dvh; }
+    .sidebar { width: 248px; flex-shrink: 0; padding: 1.5rem 1rem; background: #d7eef9; border-right: 1px solid #c5dced; display: flex; flex-direction: column; gap: 1.5rem; }
+    .brand { display: block; font-size: 1.75rem; font-weight: 700; letter-spacing: .08em; color: #16344d; }
+    .brand span { display: block; font-size: .65rem; font-weight: 500; letter-spacing: .06em; }
+    .sidebar nav { display: grid; gap: .3rem; }
+    .sidebar nav a { padding: .65rem .75rem; border-radius: .4rem; font-size: .875rem; color: #294c66; }
+    .sidebar nav a:hover { background: #ffffffb3; }
+    .sidebar nav a[aria-current='page'] { background: #1f6ea6; color: white; }
+    .sidebar-account { margin-top: auto; display: grid; gap: .5rem; overflow-wrap: anywhere; font-size: .875rem; }
+    .sidebar-account span { color: #3d5e78; }
+    .main-content { padding: 2.5rem; flex: 1; min-width: 0; max-width: 1600px; }
+    .guest-content { width: min(100% - 2rem, 460px); margin: 6vh auto; }
+    .guest-content > .brand { margin-bottom: 2rem; }
+    .page-heading { margin-bottom: 1.75rem; }
+    .eyebrow { font-size: .7rem; font-weight: 600; letter-spacing: .18em; color: #536373; margin-bottom: .35rem; }
+    .panel { padding: 1.5rem; background: white; border: 1px solid #dce3ea; border-radius: .65rem; margin-bottom: 1.25rem; min-width: 0; }
+    .narrow { max-width: 620px; }
+    .stack { display: grid; gap: 1.1rem; }
+    .field { display: grid; gap: .35rem; min-width: 0; }
+    .field small:empty { display: none; }
+    .field-error { color: #b42318; }
+    .input-group { display: flex; position: relative; }
+    .input-group:has(.password-toggle) input { padding-right: 4.25rem; }
+    .password-toggle { position: absolute; right: .5rem; top: .45rem; min-height: 30px; padding: 0 .4rem; color: #1f6ea6; font-size: .8rem; }
+    .button { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; padding: .65rem 1rem; min-height: 44px; border: 1px solid transparent; border-radius: .4rem; background: #1f6ea6; color: white; font-weight: 600; font-size: .875rem; text-align: center; }
+    .button:hover { background: #185985; }
+    .button.secondary { background: white; border-color: #bac6cf; color: #294c66; }
+    .button.secondary:hover { background: #f1f5f8; }
+    .button.danger { background: #a62b25; }
+    .text-link { color: #1f6ea6; text-decoration: underline; text-underline-offset: 3px; display: inline-block; }
+    .panel > .text-link { margin-top: 1rem; }
+    .muted { color: #536373; }
+    .small { font-size: .8rem; margin-top: 1.25rem; }
+    .check-label { display: flex; align-items: center; gap: .6rem; }
+    .notice, .errors { padding: 1rem; border: 1px solid #aacbdf; background: #edf7fc; border-radius: .4rem; margin-bottom: 1.25rem; }
+    .errors { background: #fff4f2; border-color: #f1b2aa; color: #84251e; }
+    .errors ul { list-style: disc; padding-left: 1.25rem; }
+    .toolbar, .actions { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .toolbar { justify-content: space-between; margin-bottom: 1rem; }
+    .toolbar p { margin: 0; }
+    .filters { display: flex; align-items: end; gap: 1rem; flex-wrap: wrap; }
+    .filters .field { flex: 1; min-width: 150px; }
+    .table-wrap { overflow-x: auto; padding: .5rem; }
+    .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 1.25rem; }
+    .card-grid .panel { margin: 0 0 1.25rem; }
+    .card-link:hover { border-color: #1f6ea6; }
+    .badge { display: inline-block; font-size: .7rem; padding: .15rem .5rem; border-radius: .3rem; background: #edf1f5; color: #435363; margin-bottom: .5rem; }
+    .details { display: grid; grid-template-columns: minmax(100px, .8fr) 1.5fr; gap: .75rem; margin-bottom: 1.5rem; }
+    .details dt { font-size: .85rem; color: #536373; }
+    .details dd { overflow-wrap: anywhere; }
+    .credential { font-size: 1rem; color: #17232e; user-select: all; }
+    .menu-toggle { display: none; }
+    @media (max-width: 767px) {
+        .app-shell { flex-direction: column; }
+        .sidebar { width: 100%; padding: 1rem; gap: 1rem; }
+        .sidebar nav { display: none; }
+        .sidebar.is-open nav { display: grid; }
+        .sidebar-account { grid-template-columns: 1fr auto; align-items: center; }
+        .sidebar-account span { grid-column: 1; }
+        .sidebar-account form { grid-column: 2; grid-row: 1 / 3; }
+        .menu-toggle { display: inline-flex; align-self: start; }
+        .main-content { padding: 1.5rem 1rem; }
+        .panel { padding: 1rem; }
+        .table-wrap { padding: .3rem; }
+    }
 }

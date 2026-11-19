@@ -1,0 +1,241 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\ActivityLog;
+use App\Models\Role;
+use App\Models\User;
+use Database\Seeders\DatabaseSeeder;
+use Database\Seeders\RolePermissionSeeder;
+use Database\Seeders\SuperAdminSeeder;
+use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use PHPUnit\Framework\Attributes\TestWith;
+use RuntimeException;
+use Tests\TestCase;
+
+class UserManagementTest extends TestCase
+{
+    use LazilyRefreshDatabase;
+
+    protected $seed = true;
+
+    protected $seeder = RolePermissionSeeder::class;
+
+    private function payload(User $user, array $changes = []): array
+    {
+        return array_merge([
+            'name' => $user->name, 'email' => $user->email, 'role_id' => $user->role_id,
+            'is_active' => (int) $user->is_active, 'current_password' => 'password',
+        ], $changes);
+    }
+
+    public function test_admin_creates_account_with_hashed_temporary_password_shown_once(): void
+    {
+        $admin = User::factory()->withRole('super-admin')->create();
+        $this->signIn($admin);
+
+        $response = $this->post('/users', [
+            'name' => 'New HR', 'email' => 'NEWHR@example.com',
+            'role_id' => Role::where('slug', 'hr')->firstOrFail()->id,
+            'is_active' => 1, 'current_password' => 'password',
+        ]);
+
+        $response->assertOk()->assertViewIs('users.credentials')->assertHeader('Cache-Control', 'no-store, private');
+        $temporary = $response->viewData('temporaryPassword');
+        $user = User::where('email', 'newhr@example.com')->firstOrFail();
+        $this->assertTrue(Hash::check($temporary, $user->password));
+        $this->assertTrue($user->must_change_password);
+        $this->assertSame('hr', $user->role->slug);
+        $this->assertStringNotContainsString($temporary, json_encode(session()->all()));
+        $this->assertStringNotContainsString($temporary, ActivityLog::all()->toJson());
+        $this->get(route('users.show', $user))->assertOk()->assertDontSee($temporary);
+        $this->assertDatabaseHas('activity_logs', ['action' => 'user.created', 'user_id' => $admin->id]);
+    }
+
+    #[TestWith(['hr'])]
+    #[TestWith(['finance'])]
+    public function test_non_admins_cannot_write_user_accounts(string $role): void
+    {
+        $user = User::factory()->withRole($role)->create();
+        $target = User::factory()->withRole('finance')->create();
+        $this->signIn($user);
+
+        $this->post('/users', $this->payload($target, ['email' => 'intruder@example.com']))->assertForbidden();
+        $this->put(route('users.update', $target), $this->payload($target, ['name' => 'Hacked']))->assertForbidden();
+        $this->post(route('users.reset-password', $target), ['current_password' => 'password', 'confirmation' => 'RESET'])->assertForbidden();
+        $this->get(route('users.show', $target))->assertForbidden();
+        $this->get(route('users.edit', $target))->assertForbidden();
+
+        $this->assertSame($target->name, $target->fresh()->name);
+        $this->assertDatabaseCount('users', 2);
+        $this->assertDatabaseCount('activity_logs', 0);
+    }
+
+    public function test_admin_can_edit_role_deactivate_and_reactivate_account(): void
+    {
+        $admin = User::factory()->withRole('super-admin')->create();
+        $target = User::factory()->withRole('hr')->create();
+        $this->signIn($admin);
+
+        $this->put(route('users.update', $target), $this->payload($target, [
+            'name' => 'Updated Finance', 'role_id' => Role::where('slug', 'finance')->firstOrFail()->id,
+            'is_active' => 0, 'confirmation' => 'DEACTIVATE',
+        ]))->assertRedirect(route('users.show', $target));
+
+        $target->refresh();
+        $this->assertSame('finance', $target->role->slug);
+        $this->assertFalse($target->is_active);
+        $this->assertSame(1, $target->auth_version);
+
+        $this->put(route('users.update', $target), $this->payload($target, ['is_active' => 1]))->assertSessionHasNoErrors();
+        $this->assertTrue($target->fresh()->is_active);
+    }
+
+    public function test_admin_cannot_change_own_role(): void
+    {
+        $admin = User::factory()->withRole('super-admin')->create();
+        $this->signIn($admin);
+
+        $this->put(route('users.update', $admin), $this->payload($admin, [
+            'role_id' => Role::where('slug', 'finance')->firstOrFail()->id,
+        ]))->assertSessionHasErrors(['role_id' => 'You cannot change your own role.']);
+
+        $this->assertSame('super-admin', $admin->fresh()->role->slug);
+    }
+
+    public function test_last_active_admin_cannot_be_deactivated(): void
+    {
+        $admin = User::factory()->withRole('super-admin')->create();
+        User::factory()->withRole('super-admin')->create(['is_active' => false]);
+        $this->signIn($admin);
+
+        $this->put(route('users.update', $admin), $this->payload($admin, ['is_active' => 0, 'confirmation' => 'DEACTIVATE']))
+            ->assertSessionHasErrors(['is_active' => 'The last active Super Admin cannot be deactivated or demoted.']);
+
+        $this->assertTrue($admin->fresh()->is_active);
+    }
+
+    public function test_sensitive_administration_requires_password_and_explicit_confirmation(): void
+    {
+        $this->signIn(User::factory()->withRole('super-admin')->create());
+        $target = User::factory()->withRole('finance')->create();
+
+        $this->put(route('users.update', $target), $this->payload($target, ['current_password' => 'wrong']))
+            ->assertSessionHasErrors('current_password');
+        $this->put(route('users.update', $target), $this->payload($target, ['is_active' => 0]))
+            ->assertSessionHasErrors('confirmation');
+        $this->post(route('users.reset-password', $target), ['current_password' => 'password'])
+            ->assertSessionHasErrors('confirmation');
+
+        $this->assertTrue($target->fresh()->is_active);
+        $this->assertSame(0, $target->fresh()->auth_version);
+    }
+
+    public function test_admin_can_demote_another_admin_when_one_active_admin_remains(): void
+    {
+        $admin = User::factory()->withRole('super-admin')->create();
+        $target = User::factory()->withRole('super-admin')->create();
+        $this->signIn($admin);
+
+        $this->put(route('users.update', $target), $this->payload($target, [
+            'role_id' => Role::where('slug', 'hr')->firstOrFail()->id,
+        ]))->assertSessionHasNoErrors();
+
+        $this->assertSame('hr', $target->fresh()->role->slug);
+        $this->assertSame('super-admin', $admin->fresh()->role->slug);
+        $this->assertTrue($admin->fresh()->is_active);
+    }
+
+    public function test_password_reset_revokes_database_sessions_and_remember_token(): void
+    {
+        config(['session.driver' => 'database']);
+        $admin = User::factory()->withRole('super-admin')->create();
+        $this->post('/login', ['email' => $admin->email, 'password' => 'password'])->assertRedirect(route('dashboard'));
+        $target = User::factory()->withRole('finance')->create();
+        $oldToken = $target->remember_token;
+        DB::table('sessions')->insert(['id' => 'target-session', 'user_id' => $target->id, 'payload' => '', 'last_activity' => time()]);
+
+        $response = $this->post(route('users.reset-password', $target), ['current_password' => 'password', 'confirmation' => 'RESET']);
+
+        $response->assertOk()->assertViewIs('users.credentials');
+        $target->refresh();
+        $this->assertTrue($target->must_change_password);
+        $this->assertTrue(Hash::check($response->viewData('temporaryPassword'), $target->password));
+        $this->assertSame(1, $target->auth_version);
+        $this->assertNotSame($oldToken, $target->remember_token);
+        $this->assertDatabaseMissing('sessions', ['id' => 'target-session']);
+        $this->assertDatabaseHas('activity_logs', ['action' => 'user.password_reset']);
+    }
+
+    public function test_account_creation_rejects_duplicate_email_and_protected_fields(): void
+    {
+        $admin = User::factory()->withRole('super-admin')->create();
+        $this->signIn($admin);
+
+        $this->post('/users', $this->payload($admin, ['email' => strtoupper($admin->email)]))->assertSessionHasErrors('email');
+        $this->post('/users', $this->payload($admin, ['email' => 'new@example.com', 'must_change_password' => false, 'password' => 'Injected']))
+            ->assertSessionHasErrors(['password', 'must_change_password']);
+        $this->post('/users', [])->assertSessionHasErrors(['name', 'email', 'role_id', 'is_active', 'current_password']);
+
+        $this->assertDatabaseCount('users', 1);
+    }
+
+    public function test_user_list_search_filters_and_output_escaping(): void
+    {
+        $admin = User::factory()->withRole('super-admin')->create();
+        $target = User::factory()->withRole('hr')->create(['name' => '<script>alert(1)</script>', 'email' => 'match@example.com']);
+        User::factory()->withRole('finance')->create(['name' => 'Excluded User', 'is_active' => false]);
+        $this->signIn($admin);
+
+        $this->get('/users?search=match&role=hr&status=active')->assertOk()
+            ->assertSee('&lt;script&gt;', false)->assertDontSee('<script>alert(1)</script>', false)
+            ->assertDontSee('Excluded User');
+        $this->get(route('users.show', $target))->assertOk()->assertDontSee('<script>alert(1)</script>', false);
+        $this->get('/users?role=invalid&status=unknown')->assertSessionHasErrors(['role', 'status']);
+        $this->get('/users?search=%27%20OR%201%3D1--')->assertOk()->assertDontSee('Excluded User');
+    }
+
+    public function test_initial_admin_seeder_is_idempotent_and_never_resets_password(): void
+    {
+        config(['oasis.initial_admin' => ['name' => 'Initial Admin', 'email' => 'admin@example.com', 'password' => 'Initial-Password2026!']]);
+
+        $this->seed(SuperAdminSeeder::class);
+        $first = User::where('email', 'admin@example.com')->firstOrFail();
+        $hash = $first->password;
+        $this->seed(SuperAdminSeeder::class);
+
+        $this->assertDatabaseCount('users', 1);
+        $this->assertSame($hash, $first->fresh()->password);
+        $this->assertSame('super-admin', $first->role->slug);
+        $this->assertTrue($first->must_change_password);
+        $this->assertTrue(Hash::check('Initial-Password2026!', $first->password));
+        $this->assertDatabaseCount('activity_logs', 1);
+    }
+
+    public function test_default_seeding_does_not_create_known_test_credentials(): void
+    {
+        config(['oasis.initial_admin' => ['name' => null, 'email' => null, 'password' => null]]);
+
+        $this->seed(DatabaseSeeder::class);
+
+        $this->assertDatabaseCount('users', 0);
+        $this->assertDatabaseCount('roles', 3);
+    }
+
+    public function test_initial_seeder_refuses_to_promote_an_existing_account(): void
+    {
+        $user = User::factory()->withRole('hr')->create();
+        config(['oasis.initial_admin' => ['name' => 'Admin', 'email' => $user->email, 'password' => 'Initial-Password2026!']]);
+
+        try {
+            $this->seed(SuperAdminSeeder::class);
+            $this->fail('Expected a collision to stop initial administrator setup.');
+        } catch (RuntimeException $exception) {
+            $this->assertStringContainsString('no privileges were changed', $exception->getMessage());
+        }
+
+        $this->assertSame('hr', $user->fresh()->role->slug);
+    }
+}
