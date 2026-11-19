@@ -109,7 +109,7 @@ test("monitoring deletion is authorized, recoverable, audited, and retains relat
       onConfirm: () => { confirmations++; },
     }));
     assert.match(markup, /Payable INV-123/);
-    assert.match(markup, /Confirm Delete/);
+    assert.match(markup, />Confirm<\/button>/);
     assert.match(markup, />Cancel<\/button>/);
     assert.match(markup, /aria-labelledby=/);
     assert.equal(confirmations, 0, "opening the confirmation must not delete a record");
