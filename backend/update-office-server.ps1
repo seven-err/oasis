@@ -84,7 +84,10 @@ try {
                 $runtimePrefix = [IO.Path]::GetFullPath($runtimeRoot).TrimEnd('\') + '\'
                 if ($resolvedCandidate.StartsWith($runtimePrefix, [StringComparison]::OrdinalIgnoreCase) -and (Test-Path -LiteralPath $resolvedCandidate)) {
                     & git -c core.longpaths=true worktree remove --force $resolvedCandidate
-                    if ($LASTEXITCODE -ne 0) { Write-Warning "Could not remove the preflight checkout at $candidate." }
+                    if ($LASTEXITCODE -ne 0 -and (Test-Path -LiteralPath $resolvedCandidate)) {
+                        try { Remove-Item -LiteralPath $resolvedCandidate -Recurse -Force }
+                        catch { Write-Warning "Could not remove the preflight checkout at $candidate." }
+                    }
                 }
             }
             Invoke-Checked 'powershell.exe' @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $launcher, '-Stop')
