@@ -2655,11 +2655,9 @@ function Status({ value }: { value: string }) {
 
 function Empty({ title, action }: { title: string; action: () => void }) {
   return (
-    <div className="grid place-items-center px-5 py-20 text-center">
-      <span className="grid size-12 place-items-center">
-        <Search size={24} />
-      </span>
-      <h3 className="mt-4 text-sm font-bold">{title}</h3>
+    <div className="flex flex-col items-center px-5 py-20 text-center">
+      <Search size={24} aria-hidden="true" />
+      <h3 className="mt-2 text-sm font-bold">{title}</h3>
       <p className="mt-1 text-xs text-[#888]">Adjust the filters or create a new record.</p>
       <button onClick={action} className="primary-btn mt-5">
         <Plus size={15} /> Add record
