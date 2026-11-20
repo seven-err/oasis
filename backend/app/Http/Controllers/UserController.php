@@ -27,6 +27,9 @@ class UserController extends Controller
             'role' => ['nullable', Rule::in(array_keys(Role::ACCESS))],
             'status' => ['nullable', Rule::in(['active', 'inactive'])],
         ]);
+        if (! $request->expectsJson()) {
+            return app(ApplicationController::class)->show($request, 'users');
+        }
         $users = User::with('role')
             ->when($filters['search'] ?? null, fn ($query, $search) => $query->where(fn ($query) => $query
                 ->where('name', 'like', '%'.$search.'%')->orWhere('email', 'like', '%'.$search.'%')))
@@ -34,18 +37,19 @@ class UserController extends Controller
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('is_active', $status === 'active'))
             ->orderByDesc('id')->paginate(20)->withQueryString();
 
-        return $request->expectsJson() ? response()->json($users)
-            : view('users.index', ['users' => $users, 'roles' => Role::orderBy('id')->get()]);
+        return response()->json($users);
     }
 
-    public function create(): View
+    public function create(Request $request): View|JsonResponse
     {
         Gate::authorize('users');
 
-        return view('users.form', ['user' => new User, 'roles' => Role::orderBy('id')->get()]);
+        return $request->expectsJson()
+            ? response()->json(['roles' => Role::orderBy('id')->get()])
+            : app(ApplicationController::class)->show($request, 'users');
     }
 
-    public function store(SaveUserRequest $request): Response
+    public function store(SaveUserRequest $request): Response|JsonResponse
     {
         Gate::authorize('users');
         $temporaryPassword = Str::password(24);
@@ -62,24 +66,30 @@ class UserController extends Controller
             return $user;
         });
 
-        return response()->view('users.credentials', compact('user', 'temporaryPassword'));
+        return $request->expectsJson()
+            ? response()->json(compact('user', 'temporaryPassword'))
+            : response()->view('users.credentials', compact('user', 'temporaryPassword'));
     }
 
-    public function show(User $user): View
+    public function show(Request $request, User $user): View|JsonResponse
     {
         Gate::authorize('users');
 
-        return view('users.show', ['user' => $user->load('role')]);
+        return $request->expectsJson()
+            ? response()->json(['user' => $user->load('role')])
+            : app(ApplicationController::class)->show($request, 'users');
     }
 
-    public function edit(User $user): View
+    public function edit(Request $request, User $user): View|JsonResponse
     {
         Gate::authorize('users');
 
-        return view('users.form', ['user' => $user->load('role'), 'roles' => Role::orderBy('id')->get()]);
+        return $request->expectsJson()
+            ? response()->json(['user' => $user->load('role'), 'roles' => Role::orderBy('id')->get()])
+            : app(ApplicationController::class)->show($request, 'users');
     }
 
-    public function update(SaveUserRequest $request, User $user): RedirectResponse
+    public function update(SaveUserRequest $request, User $user): RedirectResponse|JsonResponse
     {
         Gate::authorize('users');
         DB::transaction(function () use ($request, $user) {
@@ -115,10 +125,12 @@ class UserController extends Controller
                 "Updated account #{$user->id}; role #{$newRole}; status ".($active ? 'active.' : 'inactive.'));
         });
 
-        return redirect()->route('users.show', $user)->with('status', 'Account updated.');
+        return $request->expectsJson()
+            ? response()->json(['message' => 'Account updated.'])
+            : redirect()->route('users.show', $user)->with('status', 'Account updated.');
     }
 
-    public function resetPassword(Request $request, User $user): Response
+    public function resetPassword(Request $request, User $user): Response|JsonResponse
     {
         Gate::authorize('users');
         $request->validate([
@@ -135,6 +147,8 @@ class UserController extends Controller
             ActivityLog::record($request->user(), 'user.password_reset', "Reset password for account #{$user->id}; sessions revoked.");
         });
 
-        return response()->view('users.credentials', compact('user', 'temporaryPassword'));
+        return $request->expectsJson()
+            ? response()->json(compact('user', 'temporaryPassword'))
+            : response()->view('users.credentials', compact('user', 'temporaryPassword'));
     }
 }

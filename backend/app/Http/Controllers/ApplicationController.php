@@ -11,13 +11,13 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ApplicationController extends Controller
 {
-    public function show(Request $request): View
+    public function show(Request $request, ?string $page = null): View
     {
-        Gate::authorize($request->route()->defaults['permission'] ?? 'dashboard');
+        Gate::authorize($page === 'users' ? 'users' : ($request->route()->defaults['permission'] ?? 'dashboard'));
 
         return view('application', [
             'session' => $this->sessionData($request),
-            'initialPage' => $request->route()->defaults['page'] ?? 'dashboard',
+            'initialPage' => $page ?? $request->route()->defaults['page'] ?? 'dashboard',
         ]);
     }
 

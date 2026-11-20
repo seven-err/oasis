@@ -42,6 +42,7 @@ export function canAccessPage(page: string) {
 }
 
 export function initialPage(pathname: string) {
+  if (/^\/users(?:\/(?:create|\d+(?:\/edit)?))?\/?$/.test(pathname)) return 'users';
   return Object.entries(pagePaths).find(([, path]) => path === pathname)?.[0] ?? "dashboard";
 }
 
@@ -74,7 +75,7 @@ export async function apiRequest<T>(url: string, options: RequestInit = {}): Pro
     throw new Error("Please sign in again.");
   }
   const data = await response.json();
-  if (!response.ok) throw new Error(data.errors ? Object.values(data.errors).flat().join(" ") : data.message ?? "The request could not be completed.");
+  if (!response.ok) throw Object.assign(new Error(data.errors ? Object.values(data.errors).flat().join(" ") : data.message ?? "The request could not be completed."), { errors: data.errors });
   return data;
 }
 

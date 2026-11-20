@@ -189,12 +189,50 @@ class UserManagementTest extends TestCase
         User::factory()->withRole('finance')->create(['name' => 'Excluded User', 'is_active' => false]);
         $this->signIn($admin);
 
-        $this->get('/users?search=match&role=hr&status=active')->assertOk()
-            ->assertSee('&lt;script&gt;', false)->assertDontSee('<script>alert(1)</script>', false)
-            ->assertDontSee('Excluded User');
+        $this->getJson('/users?search=match&role=hr&status=active')->assertOk()
+            ->assertJsonCount(1, 'data')->assertJsonPath('data.0.name', $target->name)
+            ->assertJsonPath('data.0.email', 'match@example.com')->assertDontSee('Excluded User');
         $this->get(route('users.show', $target))->assertOk()->assertDontSee('<script>alert(1)</script>', false);
         $this->get('/users?role=invalid&status=unknown')->assertSessionHasErrors(['role', 'status']);
         $this->get('/users?search=%27%20OR%201%3D1--')->assertOk()->assertDontSee('Excluded User');
+    }
+
+    public function test_user_pages_share_the_monitoring_application_shell(): void
+    {
+        $admin = User::factory()->withRole('super-admin')->create();
+        $target = User::factory()->withRole('finance')->create();
+        $this->signIn($admin);
+
+        foreach (['/users', '/users/create', '/users/'.$target->id, '/users/'.$target->id.'/edit'] as $url) {
+            $this->get($url)->assertOk()->assertViewIs('application')->assertViewHas('initialPage', 'users')
+                ->assertSee('id="root"', false)->assertDontSee('class="sidebar"', false);
+        }
+        $this->getJson('/users/create')->assertOk()->assertJsonCount(3, 'roles');
+        $this->getJson('/users/'.$target->id.'/edit')->assertOk()->assertJsonPath('user.id', $target->id)
+            ->assertJsonCount(3, 'roles')->assertJsonMissingPath('user.password')->assertJsonMissingPath('user.auth_version');
+        $this->getJson('/users/'.$target->id)->assertOk()->assertJsonPath('user.email', $target->email)
+            ->assertHeader('Cache-Control', 'no-store, private');
+    }
+
+    public function test_json_account_actions_keep_validation_and_one_time_credentials(): void
+    {
+        $admin = User::factory()->withRole('super-admin')->create();
+        $this->signIn($admin);
+
+        $this->postJson('/users', $this->payload($admin, ['email' => 'new@example.com', 'current_password' => 'wrong']))
+            ->assertUnprocessable()->assertJsonValidationErrors('current_password');
+        $created = $this->postJson('/users', $this->payload($admin, ['email' => 'new@example.com']))
+            ->assertOk()->assertHeader('Cache-Control', 'no-store, private')->assertJsonMissingPath('user.password');
+        $target = User::findOrFail($created->json('user.id'));
+        $this->assertTrue(Hash::check($created->json('temporaryPassword'), $target->password));
+        $this->putJson('/users/'.$target->id, $this->payload($target, ['name' => 'Updated user']))
+            ->assertOk()->assertJsonPath('message', 'Account updated.');
+        $reset = $this->postJson('/users/'.$target->id.'/reset-password', ['confirmation' => 'RESET', 'current_password' => 'password'])
+            ->assertOk()->assertHeader('Cache-Control', 'no-store, private')->assertJsonMissingPath('user.password');
+        $this->assertTrue(Hash::check($reset->json('temporaryPassword'), $target->fresh()->password));
+        $this->getJson('/users/'.$target->id)->assertOk()->assertDontSee($reset->json('temporaryPassword'));
+        $this->assertStringNotContainsString($reset->json('temporaryPassword'), json_encode(session()->all()));
+        $this->assertStringNotContainsString($reset->json('temporaryPassword'), ActivityLog::all()->toJson());
     }
 
     public function test_initial_admin_seeder_is_idempotent_and_never_resets_password(): void

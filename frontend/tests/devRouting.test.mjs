@@ -14,6 +14,9 @@ test("development page navigation loads editable React while account requests re
     "/hr/alphalist",
     "/checks",
     "/users",
+    "/users/create",
+    "/users/3",
+    "/users/3/edit",
     "/settings",
     "/account",
   ]) {
