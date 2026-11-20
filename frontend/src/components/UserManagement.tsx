@@ -263,9 +263,6 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
         </div>
       ) : details && user ? (
         <>
-          <button className="text-link" onClick={() => navigate("/users")}>
-            ← Back to accounts
-          </button>
           <div className="grid items-start gap-5 xl:grid-cols-[1.35fr_1fr]">
             <section className="panel p-5 sm:p-6" aria-labelledby="account-name">
               <header className="mb-5 flex flex-wrap items-start justify-between gap-3 border-b border-[#e1eef6] pb-5">
