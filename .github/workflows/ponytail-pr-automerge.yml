@@ -18,7 +18,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  office-updater-tests:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test office updater without starting services
+        shell: powershell
+        run: .\backend\tests\OfficeServerUpdateTest.ps1
+
   review-and-merge:
+    needs: office-updater-tests
     if: github.event_name == 'push' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     defaults:

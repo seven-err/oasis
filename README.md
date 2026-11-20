@@ -15,16 +15,36 @@ Office Management System. `frontend/` is the React prototype, `backend/` is the 
 git clone https://github.com/seven-err/oasis.git
 cd oasis
 
-# Backend: installs packages, creates .env, app key, the `oasis` database and its tables
+# Local development: installs packages, creates .env, app key, tables and local accounts
 cd backend
-composer run setup
+composer run setup-local
 
 # Frontend
 cd ../frontend
 pnpm install
+pnpm build
 ```
 
-`composer run setup` uses MySQL at `127.0.0.1:3306` as `root` with no password. If yours differs, edit `backend/.env` and run `php artisan migrate`.
+Setup uses MySQL at `127.0.0.1:3306` as `root` with no password. If yours differs,
+copy `backend/.env.example` to `backend/.env` and edit its database settings before
+running setup. Keep MySQL running. Run first-time setup only once: it generates
+the app key. For an existing clone, use the update steps below instead.
+
+Local setup prints a separate random temporary password for each account:
+
+| Local account | Role |
+| --- | --- |
+| `super-admin@oasis.test` | Super Admin |
+| `hr@oasis.test` | HR |
+| `finance@oasis.test` | Finance |
+
+Save the printed passwords and change each at first login. To add these accounts
+to an existing local checkout, run `php artisan db:seed --class=LocalDevelopmentSeeder`
+from `backend/`. Repeating this command preserves existing passwords, roles and
+account status. A local Super Admin can reset a forgotten HR/Finance password.
+The seeder refuses to run unless `APP_ENV=local`; it is never used by the office
+updater. Passwords, `.env` files and databases are not copied through Git.
+Local credentials are separate from the accounts at the shared ngrok URL.
 
 ## Running
 
@@ -36,19 +56,21 @@ on direct module URLs; the React sidebar and dashboard use the same permissions.
 Business records keep their existing browser storage keys and are not migrated
 into MySQL by this authentication integration.
 
-After configuring `backend/.env` and the database, initialize access control:
+For the shared office host, use `composer run setup` for its first-time setup
+and set `APP_ENV=production`, `APP_DEBUG=false` in its private `backend/.env`.
+Do not use `setup-local` on that host. Initialize access control:
 
 ```bash
 cd backend
-php artisan migrate
-php artisan db:seed --class=RolePermissionSeeder
+php artisan migrate --force
+php artisan db:seed --class=RolePermissionSeeder --force
 ```
 
 Set `OASIS_ADMIN_NAME`, `OASIS_ADMIN_EMAIL` and `OASIS_ADMIN_PASSWORD` in your
 local environment or secret manager, then run:
 
 ```bash
-php artisan db:seed --class=SuperAdminSeeder
+php artisan db:seed --class=SuperAdminSeeder --force
 ```
 
 Use a unique initial password of at least 12 characters with uppercase and
@@ -67,8 +89,10 @@ emailed, logged or stored in session flash data. Password resets and security
 changes revoke existing sessions and remembered sign-ins. With no public
 registration or self-service recovery, users contact a Super Admin for resets.
 
-During development, the existing `http://localhost:5173` app proxies sign-in
-and account requests to Laravel on port 8000. Use the same hostname and port
+During development, open `http://localhost:5173`. Sign-in and account requests
+are proxied to Laravel on port 8000; dashboard and module pages use Vite so
+saved UI edits appear immediately. Keep both development servers running.
+Use the same hostname and port
 where you previously worked to retain that browser's saved business records;
 browser storage is separate for `localhost:5173` and `localhost:8000`.
 After changing a temporary password, subsequent sign-ins require the new
@@ -120,6 +144,8 @@ php artisan migrate
 php artisan db:seed --class=RolePermissionSeeder
 npm install
 npm run build
+# Existing local clones only: creates missing local accounts without resetting existing ones
+php artisan db:seed --class=LocalDevelopmentSeeder
 cd ../frontend
 pnpm install
 pnpm build
@@ -159,8 +185,32 @@ Set the GitHub repository Actions variable `OASIS_TEAM_URL` to the shared
 HTTPS origin, then run the Pages deployment. The existing GitHub Pages link
 will send teammates to the shared login instead of trying to run PHP on Pages.
 
-Stop before rebuilding or updating the shared server, then run the launcher
-again after pulling and building:
+To make merged UI changes appear at the ngrok URL automatically, keep a clean
+checkout on `main` on the office PC, separate from development branches.
+Run this from that checkout's root after completing the host setup above:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\backend\update-office-server.ps1 -PublicUrl https://YOUR-DOMAIN.ngrok-free.dev -Watch
+```
+
+Leave this terminal running. It checks `origin/main` every 30 seconds. After a
+teammate's PR merges into `main`, it stops the server, fast-forwards the host
+checkout, installs locked dependencies, migrates without deleting data, builds
+both apps, and restarts the same ngrok URL. Refresh the browser after deployment.
+Feature-branch pushes go through the PR checks before they reach this host.
+The updater preserves accounts, passwords, the app key, `.env` and existing
+permission settings. It does not seed local accounts or run `migrate:fresh`.
+Back up the shared database before merging schema changes.
+
+For a one-time update, omit `-Watch`. Pass `-PhpCgiPath` if the launcher needs
+it. Updates briefly take the site offline. A failed deployment stops the
+updater and leaves the server stopped; fix the reported error and rerun it.
+Network fetch failures in watch mode are retried without stopping the server.
+The updater refuses dirty worktrees, development branches and diverged history.
+Restart the watcher after changes to the updater script itself.
+
+Press Ctrl+C to stop watching; that leaves the web server running. To take the
+site offline, stop the watcher first, then run:
 
 ```powershell
 .\backend\start-office-server.ps1 -Stop
@@ -191,7 +241,7 @@ Never commit straight to `main`, and never leave finished work on a branch witho
    git push -u origin feature/short-name
    ```
 5. Open a pull request into `main` on GitHub (or `gh pr create --fill`).
-6. The PR is reviewed and checked automatically. If it passes, it merges itself and the site at https://seven-err.github.io/oasis/ updates about 2 minutes later. If it fails, read the review comment on the PR, fix it on the same branch, and push again.
+6. The PR is reviewed and checked automatically. If it passes, it merges itself. GitHub Pages updates separately; the shared ngrok site updates when the office PC's watcher pulls and builds the merged code. If checks fail, read the review comment on the PR, fix it on the same branch, and push again.
 7. If GitHub says the branch has conflicts, update it from `main`, fix the marked files, then commit and push:
    ```bash
    git pull origin main
