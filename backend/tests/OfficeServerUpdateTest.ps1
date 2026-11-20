@@ -2,9 +2,11 @@ $ErrorActionPreference = 'Stop'
 $updater = Join-Path (Split-Path $PSScriptRoot -Parent) 'update-office-server.ps1'
 $originalLocalAppData = $env:LOCALAPPDATA
 $originalAppEnvironment = $env:APP_ENV
+$originalCi = $env:CI
 $testRoot = Join-Path ([IO.Path]::GetTempPath()) ('oasis-update-test-' + [guid]::NewGuid())
 $env:LOCALAPPDATA = $testRoot
 $env:APP_ENV = 'local'
+$env:CI = 'previous-value'
 $runtimeRoot = Join-Path $testRoot 'OASIS/office-server'
 $calls = [Collections.Generic.List[string]]::new()
 $scenario = 'success'
@@ -36,27 +38,34 @@ function powershell.exe {
 function composer { $global:LASTEXITCODE = 0; $calls.Add('composer ' + ($args -join ' ')) }
 function php { $global:LASTEXITCODE = 0; $calls.Add('php ' + ($args -join ' ')) }
 function npm { $global:LASTEXITCODE = 0; $calls.Add('npm ' + ($args -join ' ')) }
-function pnpm {
+function npx {
     $global:LASTEXITCODE = 0
-    $calls.Add('pnpm ' + ($args -join ' '))
-    if ($scenario -eq 'build-failure' -and $args[0] -eq 'build') { $global:LASTEXITCODE = 1 }
+    $calls.Add('npx ' + ($args -join ' '))
+    Assert ($env:CI -eq 'true') 'Package installation must not prompt when switching pnpm versions.'
+    if ($scenario -eq 'build-failure' -and $args[-1] -eq 'build') { $global:LASTEXITCODE = 1 }
+}
+function Get-Command([string] $Name) {
+    if ($scenario -eq 'missing-tool' -and $Name -eq 'npx') { return }
+    Microsoft.PowerShell.Core\Get-Command $Name -ErrorAction SilentlyContinue
 }
 
 try {
     & $updater -PublicUrl 'https://oasis-test.ngrok-free.dev'
-    Assert ($calls -contains 'pnpm build') 'React must be rebuilt.'
+    Assert ($calls -contains 'npx --yes pnpm@10.34.3 build') 'React must be rebuilt without requiring global pnpm.'
+    Assert ($calls -contains 'npx --yes pnpm@10.34.3 install --frozen-lockfile') 'Frontend dependencies must use the pinned pnpm version.'
     Assert ($calls -contains 'npm run build') 'Laravel assets must be rebuilt.'
     Assert ($calls -contains 'php artisan migrate --force --no-interaction') 'Migrations must run without clearing data.'
     Assert ($calls -contains 'php artisan db:seed --class=RolePermissionSeeder --force --no-interaction') 'Only permissions should be seeded on the host.'
     Assert (-not ($calls -match 'setup|fresh|LocalDevelopmentSeeder|key:generate')) 'Deployment must preserve accounts, database and app key.'
     Assert ($env:APP_ENV -eq 'local') 'Deployment environment must be restored.'
+    Assert ($env:CI -eq 'previous-value') 'CI environment must be restored.'
     Assert (Test-Path -LiteralPath (Join-Path $runtimeRoot 'deployed-revision.txt')) 'Success must record the deployed revision.'
 
     $calls.Clear()
     & $updater -PublicUrl 'https://oasis-test.ngrok-free.dev'
     Assert (-not ($calls -match '^launcher ')) 'An unchanged revision must not interrupt the server.'
 
-    foreach ($scenario in @('dirty', 'branch', 'diverged', 'network')) {
+    foreach ($scenario in @('dirty', 'branch', 'diverged', 'network', 'missing-tool')) {
         $calls.Clear()
         $failed = $false
         try { & $updater -PublicUrl 'https://oasis-test.ngrok-free.dev' } catch { $failed = $true }
@@ -81,6 +90,7 @@ try {
 finally {
     $env:LOCALAPPDATA = $originalLocalAppData
     $env:APP_ENV = $originalAppEnvironment
+    $env:CI = $originalCi
     $resolvedTestRoot = [IO.Path]::GetFullPath($testRoot)
     $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
     if ($resolvedTestRoot.StartsWith($tempRoot, [StringComparison]::OrdinalIgnoreCase) -and (Split-Path $resolvedTestRoot -Leaf) -like 'oasis-update-test-*') {

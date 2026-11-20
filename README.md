@@ -197,6 +197,8 @@ both apps, and restarts the same ngrok URL. Refresh the browser after deployment
 Feature-branch pushes go through the PR checks before they reach this host.
 The updater preserves accounts, passwords, the app key, `.env` and existing
 permission settings. It does not seed local accounts or run `migrate:fresh`.
+The host uses the pinned pnpm version through `npx`, so it does not need a global
+pnpm command. Required tools are checked before stopping the running server.
 Back up the shared database before merging schema changes.
 
 For a one-time update, omit `-Watch`. Pass `-PhpCgiPath` if the launcher needs
