@@ -36,15 +36,20 @@ function powershell.exe {
 function composer { $global:LASTEXITCODE = 0; $calls.Add('composer ' + ($args -join ' ')) }
 function php { $global:LASTEXITCODE = 0; $calls.Add('php ' + ($args -join ' ')) }
 function npm { $global:LASTEXITCODE = 0; $calls.Add('npm ' + ($args -join ' ')) }
-function pnpm {
+function npx {
     $global:LASTEXITCODE = 0
-    $calls.Add('pnpm ' + ($args -join ' '))
-    if ($scenario -eq 'build-failure' -and $args[0] -eq 'build') { $global:LASTEXITCODE = 1 }
+    $calls.Add('npx ' + ($args -join ' '))
+    if ($scenario -eq 'build-failure' -and $args[-1] -eq 'build') { $global:LASTEXITCODE = 1 }
+}
+function Get-Command([string] $Name) {
+    if ($scenario -eq 'missing-tool' -and $Name -eq 'npx') { return }
+    Microsoft.PowerShell.Core\Get-Command $Name -ErrorAction SilentlyContinue
 }
 
 try {
     & $updater -PublicUrl 'https://oasis-test.ngrok-free.dev'
-    Assert ($calls -contains 'pnpm build') 'React must be rebuilt.'
+    Assert ($calls -contains 'npx --yes pnpm@10.34.3 build') 'React must be rebuilt without requiring global pnpm.'
+    Assert ($calls -contains 'npx --yes pnpm@10.34.3 install --frozen-lockfile') 'Frontend dependencies must use the pinned pnpm version.'
     Assert ($calls -contains 'npm run build') 'Laravel assets must be rebuilt.'
     Assert ($calls -contains 'php artisan migrate --force --no-interaction') 'Migrations must run without clearing data.'
     Assert ($calls -contains 'php artisan db:seed --class=RolePermissionSeeder --force --no-interaction') 'Only permissions should be seeded on the host.'
@@ -56,7 +61,7 @@ try {
     & $updater -PublicUrl 'https://oasis-test.ngrok-free.dev'
     Assert (-not ($calls -match '^launcher ')) 'An unchanged revision must not interrupt the server.'
 
-    foreach ($scenario in @('dirty', 'branch', 'diverged', 'network')) {
+    foreach ($scenario in @('dirty', 'branch', 'diverged', 'network', 'missing-tool')) {
         $calls.Clear()
         $failed = $false
         try { & $updater -PublicUrl 'https://oasis-test.ngrok-free.dev' } catch { $failed = $true }
