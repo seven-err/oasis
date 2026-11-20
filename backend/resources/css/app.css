@@ -132,15 +132,15 @@
     }
 
     .login-logo {
-        width: 84px;
-        height: 76px;
+        width: 64px;
+        height: 58px;
         flex-shrink: 0;
-        background: url('../../../frontend/Oasis-Logo.png') left center / 92px 92px no-repeat;
+        background: url('../../../frontend/Oasis-Logo.png') left center / 70px 70px no-repeat;
     }
 
     .login-brand-copy { display: grid; grid-template-rows: 1fr auto 1fr; align-self: stretch; }
-    .login-brand-copy svg { grid-row: 2; width: 112px; height: auto; color: #ed0000; }
-    .login-brand-copy span { grid-row: 3; align-self: start; padding-top: 9px; color: #5c7890; font-size: 10px; letter-spacing: .04em; }
+    .login-brand-copy svg { grid-row: 2; width: 85px; height: auto; color: #ed0000; }
+    .login-brand-copy span { grid-row: 3; align-self: start; padding-top: 6px; color: #5c7890; font-size: 9px; letter-spacing: .04em; }
     .login-content { padding: 30px 32px 28px; }
     .login-eyebrow { margin-bottom: 9px; color: #5c7890; font-size: 9px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
     .login-content h1 { margin-bottom: 9px; color: #111; font-size: 27px; font-weight: 600; letter-spacing: -.035em; }
