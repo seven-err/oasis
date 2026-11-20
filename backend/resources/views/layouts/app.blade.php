@@ -40,7 +40,12 @@
     <main id="main-content" class="guest-content">
         <a class="brand" href="{{ route('login') }}">OASIS <span>Office Management System</span></a>
 @endauth
-    <header class="page-heading"><p class="eyebrow">OASIS</p><h1>@yield('title')</h1></header>
+    <header class="page-heading">
+        @yield('breadcrumb')
+        <p class="eyebrow">OASIS</p>
+        <h1>@yield('title')</h1>
+        @hasSection('description')<p class="muted mt-2 mb-0 text-sm">@yield('description')</p>@endif
+    </header>
     @if(session('status'))<div class="notice" role="status">{{ session('status') }}</div>@endif
     @if($errors->any())
         <div class="errors" role="alert" tabindex="-1">

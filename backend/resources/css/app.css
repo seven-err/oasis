@@ -79,6 +79,30 @@
     .details dt { font-size: .85rem; color: #536373; }
     .details dd { overflow-wrap: anywhere; }
     .credential { font-size: 1rem; color: #17232e; user-select: all; }
+    .user-details-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); align-items: start; gap: 1.5rem; max-width: 1120px; }
+    .user-details-grid .panel { margin-bottom: 0; }
+    .account-summary { display: flex; align-items: start; justify-content: space-between; flex-wrap: wrap; gap: 1rem; padding-bottom: 1.25rem; margin-bottom: 1.25rem; border-bottom: 1px solid #e4e9ef; }
+    .account-status { flex-shrink: 0; padding: .2rem .65rem; border-radius: 999px; background: #edf1f5; color: #435363; font-size: .75rem; font-weight: 600; }
+    .account-status.is-active { background: #e8f5ee; color: #236343; }
+    .account-section-title { margin-bottom: 1rem; color: #536373; font-size: .7rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+    .account-details { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); column-gap: 1.25rem; font-size: .875rem; }
+    .account-details dt, .account-details dd { padding: .65rem 0; border-bottom: 1px solid #f0f3f6; overflow-wrap: anywhere; }
+    .account-details dt { color: #536373; }
+    .account-details dd { font-weight: 500; }
+    .account-details dt:first-child, .account-details dd:nth-child(2) { padding-top: 0; }
+    .account-details dt:nth-last-child(2), .account-details dd:last-child { border-bottom: 0; }
+    .account-footer { margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid #e4e9ef; }
+    .account-reset { border-top: 3px solid #a62b25; }
+    .account-reset-actions { padding-top: .25rem; }
+    @media (max-width: 1100px) {
+        .user-details-grid { grid-template-columns: minmax(0, 1fr); max-width: 720px; }
+    }
+    @media (max-width: 480px) {
+        .account-details { grid-template-columns: minmax(0, 1fr); }
+        .account-details dt { padding-bottom: .15rem; border-bottom: 0; font-size: .75rem; }
+        .account-details dd { padding-top: 0; }
+        .account-reset-actions .button { width: 100%; }
+    }
     .menu-toggle { display: none; }
     @media (max-width: 767px) {
         .app-shell { flex-direction: column; }
