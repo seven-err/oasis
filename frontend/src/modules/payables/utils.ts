@@ -211,8 +211,6 @@ export function filterPayables(
     if (filters.categoryId !== "All" && r.categoryId !== filters.categoryId) return false;
     if (filters.paymentStatus !== "All" && r.paymentStatus !== filters.paymentStatus)
       return false;
-    if (filters.approvalStatus !== "All" && r.approvalStatus !== filters.approvalStatus)
-      return false;
     if (
       filters.paymentMethod !== "All" &&
       r.displayPaymentMethod !== filters.paymentMethod
@@ -245,29 +243,20 @@ export function sortPayables(
   return copy;
 }
 
-/**
- * Summary cards:
- * - Obligation money totals exclude Rejected (and archived) payables.
- * - Status counts for Unpaid/Partial/Paid/Overdue use Approved obligation set.
- * - Pending Approval / Rejected count all non-archived by approval status.
- */
 export function summarizePayables(records: PayableViewModel[]): PayableSummary {
   const active = records.filter((r) => !r.archivedAt);
-  const obligations = active.filter((r) => r.approvalStatus === "Approved");
 
   return {
     totalPayables: active.length,
-    totalAmountDue: roundMoney(obligations.reduce((s, r) => s + r.totalAmount, 0)),
-    totalAmountPaid: roundMoney(obligations.reduce((s, r) => s + r.amountPaid, 0)),
+    totalAmountDue: roundMoney(active.reduce((s, r) => s + r.totalAmount, 0)),
+    totalAmountPaid: roundMoney(active.reduce((s, r) => s + r.amountPaid, 0)),
     totalRemainingBalance: roundMoney(
-      obligations.reduce((s, r) => s + r.remainingBalance, 0),
+      active.reduce((s, r) => s + r.remainingBalance, 0),
     ),
-    unpaid: obligations.filter((r) => r.paymentStatus === "Unpaid").length,
-    partial: obligations.filter((r) => r.paymentStatus === "Partial").length,
-    paid: obligations.filter((r) => r.paymentStatus === "Paid").length,
-    overdue: obligations.filter((r) => r.paymentStatus === "Overdue").length,
-    pendingApproval: active.filter((r) => r.approvalStatus === "Pending").length,
-    rejected: active.filter((r) => r.approvalStatus === "Rejected").length,
+    unpaid: active.filter((r) => r.paymentStatus === "Unpaid").length,
+    partial: active.filter((r) => r.paymentStatus === "Partial").length,
+    paid: active.filter((r) => r.paymentStatus === "Paid").length,
+    overdue: active.filter((r) => r.paymentStatus === "Overdue").length,
   };
 }
 

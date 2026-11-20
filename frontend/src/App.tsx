@@ -2238,7 +2238,7 @@ function Reports({ checks, payables, receivables, employees, notify }: any) {
   const { printReport, printSheet } = usePrintReport();
   const activeChecks = (checks as CheckRecord[]).filter((x) => !x.archivedAt);
   const payableRows = (payables as PayableViewModel[]).filter(
-    (x) => !x.archivedAt && x.approvalStatus === "Approved" && x.remainingBalance > 0,
+    (x) => !x.archivedAt && x.remainingBalance > 0,
   );
   const reports = [
     {
@@ -2269,7 +2269,6 @@ function Reports({ checks, payables, receivables, employees, notify }: any) {
         Paid: x.amountPaid,
         Remaining: x.remainingBalance,
         PaymentStatus: x.paymentStatus,
-        ApprovalStatus: x.approvalStatus,
       })),
     },
     {

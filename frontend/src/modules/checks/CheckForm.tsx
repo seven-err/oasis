@@ -6,7 +6,7 @@ import { allowedStatusesForType, defaultStatusForType } from "./statusTransition
 import { checkService } from "./store";
 import { validateAttachmentFile } from "./validation";
 import type { CheckFormValues, CheckRecord, ValidationResult } from "./types";
-import { FieldError, FieldLabel, FormInput, FormSelect, FormTextarea, PanelTitle } from "./ui";
+import { FieldError, FieldLabel, FormInput, FormSelect, PanelTitle } from "./ui";
 import { emptyFormValues, recordToFormValues } from "./utils";
 
 type Props = {
@@ -300,18 +300,6 @@ export function CheckForm({ mode, record, onCancel, onSaved }: Props) {
             </p>
           </fieldset>
 
-          <fieldset>
-            <legend className="mb-4 text-[10px] font-bold uppercase tracking-[.14em] text-[#1f6ea6]">
-              Status and remarks
-            </legend>
-            <FormTextarea
-              label="Remarks"
-              name="remarks"
-              value={values.remarks}
-              onChange={set("remarks")}
-              error={errors.remarks}
-            />
-          </fieldset>
 
           <fieldset>
             <legend className="mb-4 text-[10px] font-bold uppercase tracking-[.14em] text-[#1f6ea6]">

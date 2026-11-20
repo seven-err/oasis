@@ -23,32 +23,22 @@ const REPORTS: { kind: PayableReportKind; title: string; detail: string }[] = [
   {
     kind: "unpaid",
     title: "Unpaid Payables Report",
-    detail: "Approved obligations with no valid payments",
+    detail: "Payables with no valid payments",
   },
   {
     kind: "partial",
     title: "Partially Paid Payables Report",
-    detail: "Approved obligations with partial payment progress",
+    detail: "Payables with partial payment progress",
   },
   {
     kind: "paid",
     title: "Paid Payables Report",
-    detail: "Approved obligations fully settled",
+    detail: "Payables fully settled",
   },
   {
     kind: "overdue",
     title: "Overdue Payables Report",
-    detail: "Approved obligations past due with remaining balance",
-  },
-  {
-    kind: "pending_approval",
-    title: "Pending Approval Report",
-    detail: "Payables awaiting approve or reject decision",
-  },
-  {
-    kind: "rejected",
-    title: "Rejected Payables Report",
-    detail: "Rejected records retained for historical reference",
+    detail: "Payables past due with remaining balance",
   },
   {
     kind: "by_category",
@@ -92,23 +82,18 @@ function selectPayableRows(
   dateTo: string,
 ): PayableViewModel[] {
   const active = activeRecords(records).filter((r) => inReportDateRange(r.invoiceDate, dateFrom, dateTo));
-  const approved = active.filter((r) => r.approvalStatus === "Approved");
 
   switch (kind) {
     case "complete_register":
       return active;
     case "unpaid":
-      return approved.filter((r) => r.paymentStatus === "Unpaid");
+      return active.filter((r) => r.paymentStatus === "Unpaid");
     case "partial":
-      return approved.filter((r) => r.paymentStatus === "Partial");
+      return active.filter((r) => r.paymentStatus === "Partial");
     case "paid":
-      return approved.filter((r) => r.paymentStatus === "Paid");
+      return active.filter((r) => r.paymentStatus === "Paid");
     case "overdue":
-      return approved.filter((r) => r.paymentStatus === "Overdue");
-    case "pending_approval":
-      return active.filter((r) => r.approvalStatus === "Pending");
-    case "rejected":
-      return active.filter((r) => r.approvalStatus === "Rejected");
+      return active.filter((r) => r.paymentStatus === "Overdue");
     case "by_date_range":
       return active.filter((r) => {
         if (dateFrom && r.invoiceDate < dateFrom) return false;
@@ -117,7 +102,7 @@ function selectPayableRows(
       });
     case "by_category":
     case "by_payee":
-      return approved;
+      return active;
     default:
       return active;
   }
@@ -135,7 +120,6 @@ function payableExportRows(rows: PayableViewModel[]) {
     AmountPaid: r.amountPaid.toFixed(2),
     RemainingBalance: r.remainingBalance.toFixed(2),
     PaymentStatus: r.paymentStatus,
-    ApprovalStatus: r.approvalStatus,
     PaymentMethod: r.displayPaymentMethod ?? "",
     ReferenceNumber: r.displayReferenceNumber,
   }));
@@ -181,7 +165,6 @@ function paymentExportRows(payments: PayablePayment[], records: PayableViewModel
       RecordedBy: p.recordedByName,
       IsReversal: p.isReversal ? "Yes" : "No",
       Reversed: p.reversedAt ? "Yes" : "No",
-      Remarks: p.remarks ?? "",
     };
   });
 }
@@ -256,7 +239,6 @@ export function PayableReports({ records, onBack, notify }: Props) {
       Paid: row.AmountPaid,
       Remaining: row.RemainingBalance,
       PaymentStatus: row.PaymentStatus,
-      ApprovalStatus: row.ApprovalStatus,
     };
   });
   const preview = previewRows(active);
