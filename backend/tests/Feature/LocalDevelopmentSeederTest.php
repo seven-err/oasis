@@ -17,6 +17,10 @@ class LocalDevelopmentSeederTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
+    protected $seed = true;
+
+    protected $seeder = RolePermissionSeeder::class;
+
     public function test_local_accounts_can_log_in_with_the_printed_passwords(): void
     {
         $this->assertDatabaseCount('users', 0);
