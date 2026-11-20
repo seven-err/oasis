@@ -1,22 +1,18 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { ArrowUpDown, FileText, Plus, Search, SlidersHorizontal, X } from "lucide-react";
+import { Plus, SlidersHorizontal } from "lucide-react";
 import { apiRequest, getSession } from "../auth";
-import { ActiveFilters } from "./ActiveFilters";
+import { PaginationBar } from "../modules/checks/ui";
+import { recordRowClick } from "./recordRowClick";
 import { useHeaderBack } from "./HeaderBack";
+import {
+  cacheUserList,
+  clearUserListCache,
+  getCachedUserList,
+  type Role,
+  type User,
+  type UserList,
+} from "./userManagementCache";
 
-type Role = { id: number; name: string; slug: string };
-type User = {
-  id: number;
-  name: string;
-  email: string;
-  role_id: number;
-  role: Role | null;
-  is_active: boolean;
-  must_change_password: boolean;
-  created_at: string;
-  last_login_at: string | null;
-};
-type UserList = { data: User[]; total: number; current_page: number; last_page: number };
 type Credentials = { user: User; temporaryPassword: string };
 type ValidationErrors = Record<string, string[]>;
 
@@ -24,23 +20,22 @@ const date = (value: string | null) => (value ? new Date(value).toLocaleString()
 
 export function UserManagement({ notify, onOpenReports }: { notify: (message: string) => void; onOpenReports: () => void }) {
   const [path, setPath] = useState(() => window.location.pathname + window.location.search);
-  const [search, setSearch] = useState(() => new URLSearchParams(window.location.search).get("search") ?? "");
-  const [showFilters, setShowFilters] = useState(false);
-  const [list, setList] = useState<UserList | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [credentials, setCredentials] = useState<Credentials | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [errors, setErrors] = useState<ValidationErrors>({});
   const url = new URL(path, window.location.origin);
   const match = url.pathname.match(/^\/users\/(\d+)(\/edit)?\/?$/);
   const creating = url.pathname === "/users/create";
   const editing = Boolean(match?.[2]);
   const form = creating || editing;
   const details = Boolean(match && !editing);
-  const sort = url.searchParams.get("sort") === "desc" ? "desc" : "asc";
+  const [list, setList] = useState<UserList | null>(() =>
+    !form && !details ? getCachedUserList("/users" + url.search) : null,
+  );
+  const [user, setUser] = useState<User | null>(null);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [credentials, setCredentials] = useState<Credentials | null>(null);
+  const [loading, setLoading] = useState(!list);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [errors, setErrors] = useState<ValidationErrors>({});
 
   function navigate(next: string) {
     window.history.pushState({}, "", next);
@@ -76,20 +71,29 @@ export function UserManagement({ notify, onOpenReports }: { notify: (message: st
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
+    const endpoint = form || details ? url.pathname : "/users" + url.search;
+    const cachedList = !form && !details ? getCachedUserList(endpoint) : null;
+    setLoading(!cachedList);
     setError("");
     setErrors({});
     setUser(null);
-    const endpoint = form || details ? url.pathname : "/users" + url.search;
+    if (cachedList) {
+      setList(cachedList);
+    }
     void apiRequest<UserList & { user?: User; roles?: Role[] }>(endpoint)
       .then((result) => {
         if (!active) return;
+        if (!form && !details && result.data) cacheUserList(endpoint, result);
         setList(result.data ? result : null);
         setUser(result.user ?? null);
         setRoles(result.roles ?? []);
       })
       .catch((failure: Error) => {
-        if (active) setError(failure.message);
+        if (active) {
+          clearUserListCache();
+          setList(null);
+          setError(failure.message);
+        }
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -116,6 +120,7 @@ export function UserManagement({ notify, onOpenReports }: { notify: (message: st
         method: editing && !reset ? "PUT" : "POST",
         body: JSON.stringify(payload),
       });
+      clearUserListCache();
       if (result.temporaryPassword) {
         setCredentials(result);
       } else {
@@ -351,8 +356,7 @@ export function UserManagement({ notify, onOpenReports }: { notify: (message: st
         </>
       ) : !form && !details && list ? (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-[#777]">{list.total} matching accounts</p>
+          <div className="flex justify-end">
             <button className="primary-btn" onClick={() => navigate("/users/create")}>
               <Plus size={15} /> Add user
             </button>
@@ -451,81 +455,64 @@ export function UserManagement({ notify, onOpenReports }: { notify: (message: st
                 <option value="inactive">Inactive</option>
               </select>
             </label>
-            <div className="flex items-center gap-3">
-              <button className="secondary-btn">Filter</button>
-              <button type="button" className="text-link" onClick={() => navigate("/users")}>
-                Clear
-              </button>
-            </div>
+            <button className="secondary-btn">
+              <SlidersHorizontal size={15} aria-hidden="true" /> Filter
+            </button>
           </form>
-          )}
-          <div className="panel overflow-x-auto">
-            <table>
-              <caption className="sr-only">User accounts</caption>
-              <thead>
-                <tr>
-                  <th>User</th>
-                  <th>Email</th>
-                  <th>Role</th>
-                  <th>Status</th>
-                  <th>Last login</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {list.data.map((account) => (
-                  <tr key={account.id}>
-                    <td className="font-semibold">{account.name}</td>
-                    <td>{account.email}</td>
-                    <td>{account.role?.name ?? "Unassigned"}</td>
-                    <td>{account.is_active ? "Active" : "Inactive"}</td>
-                    <td>{date(account.last_login_at)}</td>
-                    <td>
-                      <button
-                        className="text-link"
-                        onClick={() => navigate(`/users/${account.id}`)}
-                      >
-                        Manage<span className="sr-only"> {account.name}</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {!list.data.length && (
+          <div className="panel overflow-hidden">
+            <div className="overflow-x-auto">
+              <table>
+                <caption className="sr-only">User accounts</caption>
+                <thead>
                   <tr>
-                    <td colSpan={6}>No accounts match these filters.</td>
+                    <th>User</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Last login</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {list.data.map((account) => (
+                    <tr
+                      key={account.id}
+                      className="cursor-pointer"
+                      onClick={recordRowClick(() => navigate(`/users/${account.id}`))}
+                    >
+                      <td className="font-semibold">
+                        <button
+                          type="button"
+                          className="text-left hover:underline"
+                          aria-label={`Open account for ${account.name}`}
+                          onClick={() => navigate(`/users/${account.id}`)}
+                        >
+                          {account.name}
+                        </button>
+                      </td>
+                      <td>{account.email}</td>
+                      <td>{account.role?.name ?? "Unassigned"}</td>
+                      <td>{account.is_active ? "Active" : "Inactive"}</td>
+                      <td>{date(account.last_login_at)}</td>
+                    </tr>
+                  ))}
+                  {!list.data.length && (
+                    <tr>
+                      <td colSpan={5}>No accounts match these filters.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <PaginationBar
+              page={list.current_page}
+              pageSize={list.per_page}
+              total={list.total}
+              onPageChange={(page) => {
+                url.searchParams.set("page", String(page));
+                navigate("/users" + url.search);
+              }}
+            />
           </div>
-          <nav
-            aria-label="Account pages"
-            className="flex flex-wrap items-center justify-end gap-3 text-sm"
-          >
-            <button
-              className="secondary-btn"
-              disabled={list.current_page <= 1}
-              onClick={() => {
-                url.searchParams.set("page", String(list.current_page - 1));
-                navigate(url.pathname + url.search);
-              }}
-            >
-              Previous
-            </button>
-            <span>
-              Page {list.current_page} of {list.last_page}
-            </span>
-            <button
-              className="secondary-btn"
-              disabled={list.current_page >= list.last_page}
-              onClick={() => {
-                url.searchParams.set("page", String(list.current_page + 1));
-                navigate(url.pathname + url.search);
-              }}
-            >
-              Next
-            </button>
-          </nav>
         </>
       ) : null}
     </section>
