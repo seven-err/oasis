@@ -223,8 +223,8 @@ export function AccountNumberDisplay({
 export function EmptyState({ title, onAdd }: { title: string; onAdd: () => void }) {
   return (
     <div className="grid place-items-center px-5 py-20 text-center">
-      <span className="grid size-12 place-items-center bg-[#e7f3fb]">
-        <Search size={20} />
+      <span className="grid size-12 place-items-center">
+        <Search size={24} />
       </span>
       <h3 className="mt-4 text-sm font-bold">{title}</h3>
       <p className="mt-1 text-xs text-[#888]">Adjust the filters or create a new record.</p>
