@@ -14,7 +14,8 @@ $revisionFile = Join-Path $runtimeRoot 'deployed-revision.txt'
 $launcher = Join-Path $PSScriptRoot 'start-office-server.ps1'
 
 function Invoke-Checked([string] $Command, [string[]] $Arguments) {
-    & $Command @Arguments | Out-Host
+    # A pipeline waits for inherited output handles held by the launched web services.
+    & $Command @Arguments
     if ($LASTEXITCODE -ne 0) { throw "$Command failed (exit $LASTEXITCODE). Deployment stopped; fix the error and rerun this updater." }
 }
 
