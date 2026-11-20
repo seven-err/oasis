@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Plus, SlidersHorizontal } from "lucide-react";
+import { ArrowUpDown, FileText, Plus, Search, SlidersHorizontal, X } from "lucide-react";
 import { apiRequest, getSession } from "../auth";
 import { PaginationBar } from "../modules/checks/ui";
+import { ActiveFilters } from "./ActiveFilters";
 import { recordRowClick } from "./recordRowClick";
 import { useHeaderBack } from "./HeaderBack";
 import {
@@ -21,6 +22,9 @@ const date = (value: string | null) => (value ? new Date(value).toLocaleString()
 export function UserManagement({ notify, onOpenReports }: { notify: (message: string) => void; onOpenReports: () => void }) {
   const [path, setPath] = useState(() => window.location.pathname + window.location.search);
   const url = new URL(path, window.location.origin);
+  const [search, setSearch] = useState(() => url.searchParams.get("search") ?? "");
+  const [showFilters, setShowFilters] = useState(false);
+  const sort = url.searchParams.get("sort") === "desc" ? "desc" : "asc";
   const match = url.pathname.match(/^\/users\/(\d+)(\/edit)?\/?$/);
   const creating = url.pathname === "/users/create";
   const editing = Boolean(match?.[2]);
