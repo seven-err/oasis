@@ -41,6 +41,7 @@ Route::middleware('private.pages')->group(function () {
         }
 
         Route::middleware('can:users')->group(function () {
+            Route::get('/users/report', [UserController::class, 'report'])->name('users.report');
             Route::resource('users', UserController::class)->except('destroy');
             Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword'])
                 ->middleware('throttle:6,1')->name('users.reset-password');

@@ -418,6 +418,7 @@ export function ReceivableRegister({
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#888]" />
               <input
                 className="input pl-10 pr-10"
+                aria-label="Search receivables"
                 placeholder="Search invoice, customer, client ID, contact, reference…"
                 value={filters.search}
                 onChange={(e) => setFilter("search", e.target.value)}
@@ -441,6 +442,8 @@ export function ReceivableRegister({
                 className="secondary-btn w-full sm:w-auto"
                 onClick={() => setShowFilters((x) => !x)}
                 type="button"
+                aria-expanded={showFilters}
+                aria-controls="receivable-filter-panel"
               >
                 <SlidersHorizontal size={15} />
                 {showFilters ? "Hide filters" : "More filters"}
@@ -473,7 +476,7 @@ export function ReceivableRegister({
             onClear={() => { setFilters({ ...EMPTY_FILTERS }); setPage(1); }}
           />
           {showFilters && (
-            <div className="grid gap-3 rounded-lg border border-[#d0e3ef] bg-[#f4f9fd] p-4 md:grid-cols-2 xl:grid-cols-4">
+            <div id="receivable-filter-panel" className="grid gap-3 rounded-lg border border-[#d0e3ef] bg-[#f4f9fd] p-4 md:grid-cols-2 xl:grid-cols-4">
               <label className="block">
                 <span className="field-label">Customer</span>
                 <select

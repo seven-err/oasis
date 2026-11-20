@@ -12,6 +12,10 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePrintReport } from "@/components/usePrintReport";
+import { confirmLeavingUnsavedForm, useUnsavedForm } from "@/hooks/useUnsavedForm";
+import { focusFirstError, updateVisibleErrors } from "@/components/formValidation";
+import { checkService } from "@/modules/checks/store";
+import { validatePaymentPayload } from "./validation";
 import { PAYMENT_METHODS } from "./constants";
 import { payableService } from "./store";
 import type {
@@ -73,12 +77,19 @@ export function PayableDetails({
   const linkableChecks = useMemo(() => payableService.linkableChecks(), [payments]);
 
   const [showPaymentForm, setShowPaymentForm] = useState(focus === "payments");
+  const paymentDraft = useUnsavedForm(showPaymentForm);
   const [showApprovePanel, setShowApprovePanel] = useState(focus === "approve");
   const [paymentValues, setPaymentValues] = useState<PaymentFormValues>(emptyPayment);
   const [paymentErrors, setPaymentErrors] = useState<ValidationResult["errors"]>({});
   const [rejectionReason, setRejectionReason] = useState("");
   const [rejectError, setRejectError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setPaymentErrors((current) => Object.values(current).some(Boolean)
+      ? updateVisibleErrors(current, validatePaymentPayload(paymentValues, { payable: record, payments, checkExists: (id) => checkService.list().some((check) => check.id === id && !check.archivedAt) }).errors)
+      : current);
+  }, [paymentValues, record, payments]);
 
   useEffect(() => {
     if (focus === "payments") setShowPaymentForm(true);
@@ -106,7 +117,6 @@ export function PayableDetails({
     (key: keyof PaymentFormValues) =>
     (value: string) => {
       setPaymentValues((prev) => ({ ...prev, [key]: value }));
-      setPaymentErrors((e) => ({ ...e, [key]: undefined, form: undefined }));
     };
 
   const onArchive = () => {
@@ -149,10 +159,14 @@ export function PayableDetails({
     onChanged();
   };
 
-  const onReject = () => {
+  const onReject = (event: React.MouseEvent<HTMLButtonElement>) => {
     const result = payableService.reject(record.id, rejectionReason);
     if (!result.ok) {
       setRejectError(result.errors.rejectionReason ?? result.errors.form ?? "Unable to reject.");
+      if (result.errors.rejectionReason) {
+        const section = event.currentTarget.closest("section");
+        if (section) focusFirstError(section, { rejectionReason: true });
+      }
       return;
     }
     notify("Payable rejected.");
@@ -162,16 +176,18 @@ export function PayableDetails({
     onChanged();
   };
 
-  const onRecordPayment = (e: React.FormEvent) => {
+  const onRecordPayment = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSaving(true);
     const result = payableService.recordPayment(record.id, paymentValues);
     if (!result.ok) {
       setPaymentErrors(result.errors);
+      focusFirstError(e.currentTarget, result.errors);
       setSaving(false);
       return;
     }
     setSaving(false);
+    paymentDraft.markSaved();
     setPaymentValues(emptyPayment());
     setShowPaymentForm(false);
     refreshPayments();
@@ -267,7 +283,7 @@ export function PayableDetails({
           action={
             <div className="flex flex-wrap gap-2">
               {user.permissions.editPayables && !record.archivedAt && (
-                <button onClick={onEdit} className="primary-btn">
+                <button onClick={() => { if (confirmLeavingUnsavedForm()) onEdit(); }} className="primary-btn">
                   <Pencil size={15} /> Edit
                 </button>
               )}
@@ -341,7 +357,7 @@ export function PayableDetails({
               value={rejectionReason}
               onChange={(v) => {
                 setRejectionReason(v);
-                setRejectError("");
+                if (v.trim()) setRejectError("");
               }}
               error={rejectError}
             />
@@ -365,9 +381,9 @@ export function PayableDetails({
             title="Record payment"
             subtitle={`Remaining balance ${peso.format(record.remainingBalance)}. Overpayments are not allowed.`}
           />
-          <form onSubmit={onRecordPayment} className="space-y-4 p-5" noValidate>
+          <form onSubmit={onRecordPayment} onChangeCapture={paymentDraft.markDirty} className="space-y-4 p-5" noValidate>
             {paymentErrors.form && (
-              <div className="border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800">
+              <div role="alert" tabIndex={-1} className="border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800">
                 {paymentErrors.form}
               </div>
             )}
@@ -444,7 +460,7 @@ export function PayableDetails({
               <button
                 type="button"
                 className="secondary-btn"
-                onClick={() => setShowPaymentForm(false)}
+                onClick={() => { if (paymentDraft.confirmDiscard()) { setPaymentValues(emptyPayment()); setPaymentErrors({}); setShowPaymentForm(false); } }}
               >
                 Cancel
               </button>

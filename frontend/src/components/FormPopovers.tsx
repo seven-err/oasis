@@ -1,5 +1,6 @@
 import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useId, useRef, useState, type InputHTMLAttributes } from "react";
+import { StatusBadge } from "./StatusBadge";
 
 function useFieldPopover() {
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -111,7 +112,7 @@ export function RequirementStatusSelect({ value, allowComplete, onChange }: {
       <input type="hidden" name="requirementStatus" value={value} />
       <button ref={triggerRef} type="button" popoverTarget={id} aria-label={`Requirement status: ${value}`} aria-haspopup="dialog"
         className="input flex items-center justify-between text-left">
-        <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${value === "Complete" ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-700"}`}>{value}</span>
+        <StatusBadge value={value} />
         <ChevronDown size={16} className="text-[#6a8aa0]" />
       </button>
       <div ref={popupRef} id={id} popover="auto" role="dialog" aria-label="Choose requirement status" className="fixed inset-auto m-0 rounded-xl border border-[#d0e3ef] bg-white p-1.5 text-[#16344d] shadow-xl">

@@ -5,8 +5,9 @@ import {
   Plus,
   Search,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { useHeaderBack } from "@/components/HeaderBack";
+export { StatusBadge } from "@/components/StatusBadge";
 
 export function PanelTitle({
   title,
@@ -52,9 +53,9 @@ export function FieldLabel({
   );
 }
 
-export function FieldError({ message }: { message?: string }) {
+export function FieldError({ message, id }: { message?: string; id?: string }) {
   if (!message) return null;
-  return <p className="mt-1.5 text-[11px] text-red-700">{message}</p>;
+  return <p id={id} className="mt-1.5 text-[11px] text-red-700">{message}</p>;
 }
 
 export function FormInput({
@@ -80,12 +81,16 @@ export function FormInput({
   disabled?: boolean;
   max?: number | string;
 }) {
+  const errorId = useId();
   const Input = type === "date" ? DateInput : "input";
   return (
     <label className="block">
       <FieldLabel required={required}>{label}</FieldLabel>
       <Input
         name={name}
+        aria-required={required || undefined}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
         type={type}
         value={value}
         disabled={disabled}
@@ -96,7 +101,7 @@ export function FormInput({
         onChange={(e) => onChange(e.target.value)}
         className={`input mt-2 ${error ? "border-red-400" : ""}`}
       />
-      <FieldError message={error} />
+      <FieldError id={errorId} message={error} />
     </label>
   );
 }
@@ -120,11 +125,15 @@ export function FormSelect({
   children: ReactNode;
   disabled?: boolean;
 }) {
+  const errorId = useId();
   return (
     <label className="relative block">
       <FieldLabel required={required}>{label}</FieldLabel>
       <select
         name={name}
+        aria-required={required || undefined}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
@@ -132,7 +141,7 @@ export function FormSelect({
       >
         {children}
       </select>
-      <FieldError message={error} />
+      <FieldError id={errorId} message={error} />
     </label>
   );
 }
@@ -154,31 +163,23 @@ export function FormTextarea({
   onChange: (value: string) => void;
   rows?: number;
 }) {
+  const errorId = useId();
   return (
     <label className="block">
       <FieldLabel required={required}>{label}</FieldLabel>
       <textarea
         name={name}
+        aria-required={required || undefined}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
         value={value}
         rows={rows}
         onChange={(e) => onChange(e.target.value)}
         className={`input mt-2 h-auto min-h-[88px] py-2.5 ${error ? "border-red-400" : ""}`}
       />
-      <FieldError message={error} />
+      <FieldError id={errorId} message={error} />
     </label>
   );
-}
-
-export function StatusBadge({ value }: { value: string }) {
-  const tone =
-    value === "Paid" || value === "Approved"
-      ? "status-good"
-      : value === "Overdue" || value === "Rejected"
-        ? "status-alert"
-        : value === "Partial"
-          ? "status-partial"
-          : "status-neutral";
-  return <span className={`status ${tone}`}>{value}</span>;
 }
 
 export function EmptyState({ title, onAdd }: { title: string; onAdd: () => void }) {

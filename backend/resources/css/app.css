@@ -17,7 +17,7 @@
     a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid #2278b0; outline-offset: 3px; }
     label { font-weight: 500; font-size: .875rem; }
     input:not([type='checkbox']), select { width: 100%; border: 1px solid #bac6cf; border-radius: .4rem; padding: .65rem .8rem; background: white; min-height: 44px; }
-    input[aria-invalid='true'] { border-color: #b42318; }
+    input[aria-invalid='true'], select[aria-invalid='true'], textarea[aria-invalid='true'] { border-color: #b42318; box-shadow: 0 0 0 1px #b42318; }
     input[type='checkbox'] { width: 1rem; height: 1rem; accent-color: #1f6ea6; }
     select:disabled { background: #f1f3f5; color: #536373; }
     small { color: #536373; }
@@ -171,11 +171,11 @@
     .login-description { margin-bottom: 26px; color: #777; font-size: 12px; }
     .login-form { display: grid; gap: 20px; }
     .login-form .field { gap: 8px; }
-    .login-form .field-error { display: none; }
     .login-form .field label { color: #777; font-size: 9px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
     .login-form input:not([type='checkbox']) { min-height: 44px; padding: 11px 12px; border-color: #c5dced; border-radius: 8px; color: #111; font-size: 12px; }
     .login-form input::placeholder { color: #999; }
     .login-form input:focus { border-color: #1f6ea6; outline: none; box-shadow: 0 0 0 2px rgb(31 110 166 / 16%); }
+    .login-form input[aria-invalid='true'] { border-color: #b42318; box-shadow: 0 0 0 1px #b42318; }
     .login-form .input-group:has(.password-toggle) input { padding-right: 58px; }
     .login-form .password-toggle { top: 7px; color: #111; font-size: 10px; }
     .login-remember { gap: 8px; color: #5c7890; font-size: 11px; font-weight: 400; }

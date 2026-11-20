@@ -365,7 +365,7 @@ export function PayableRegister({
                   <span>
                     {c.name}
                     {!c.isActive && (
-                      <span className="ml-2 text-[10px] text-[#999]">Inactive</span>
+                      <span className="ml-2"><StatusBadge value="Inactive" /></span>
                     )}
                   </span>
                   {c.isActive && (
@@ -397,6 +397,7 @@ export function PayableRegister({
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#888]" />
               <input
                 className="input pl-10 pr-10"
+                aria-label="Search payables"
                 placeholder="Search payee, invoice, description, reference…"
                 value={filters.search}
                 onChange={(e) => setFilter("search", e.target.value)}
@@ -420,15 +421,12 @@ export function PayableRegister({
                 className="secondary-btn w-full sm:w-auto"
                 onClick={() => setShowFilters((x) => !x)}
                 type="button"
+                aria-expanded={showFilters}
+                aria-controls="payable-filter-panel"
               >
                 <SlidersHorizontal size={15} />
                 {showFilters ? "Hide filters" : "More filters"}
               </button>
-              {user.permissions.manageCategories && (
-                <button type="button" onClick={() => setShowCategories((visible) => !visible)} className="secondary-btn w-full sm:w-auto">
-                  <LayoutGrid size={15} aria-hidden="true" /> Categories
-                </button>
-              )}
               <button
                 className="secondary-btn w-full sm:w-auto"
                 type="button"
@@ -444,6 +442,11 @@ export function PayableRegister({
               <button type="button" onClick={onOpenReports} className="secondary-btn w-full sm:w-auto">
                 <FileText size={15} /> Reports
               </button>
+              {user.permissions.manageCategories && (
+                <button type="button" onClick={() => setShowCategories((visible) => !visible)} className="secondary-btn w-full sm:w-auto">
+                  <LayoutGrid size={15} aria-hidden="true" /> Categories
+                </button>
+              )}
             </div>
           </div>
 
@@ -457,7 +460,7 @@ export function PayableRegister({
             onClear={() => { setFilters({ ...EMPTY_FILTERS }); setPage(1); }}
           />
           {showFilters && (
-            <div className="grid gap-3 rounded-lg border border-[#d0e3ef] bg-[#f4f9fd] p-4 md:grid-cols-2 xl:grid-cols-4">
+            <div id="payable-filter-panel" className="grid gap-3 rounded-lg border border-[#d0e3ef] bg-[#f4f9fd] p-4 md:grid-cols-2 xl:grid-cols-4">
               <label className="block">
                 <span className="field-label">Payee name</span>
                 <input

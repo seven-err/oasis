@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PAYMENT_METHODS } from "./constants";
 import { receivableService } from "./store";
 import type {
@@ -9,6 +9,9 @@ import type {
 } from "./types";
 import { FieldError, FormInput, FormSelect, FormTextarea, PanelTitle } from "./ui";
 import { emptyFormValues, recordToFormValues } from "./utils";
+import { useUnsavedForm } from "@/hooks/useUnsavedForm";
+import { focusFirstError, updateVisibleErrors } from "@/components/formValidation";
+import { validateCustomerPayload, validateReceivablePayload } from "./validation";
 
 type Props = {
   mode: "create" | "edit";
@@ -26,6 +29,7 @@ const emptyCustomer = (): CustomerFormValues => ({
 });
 
 export function ReceivableForm({ mode, record, onCancel, onSaved }: Props) {
+  const { markDirty, markSaved } = useUnsavedForm();
   const [customerTick, setCustomerTick] = useState(0);
   const customers = useMemo(
     () => receivableService.customers(true),
@@ -42,11 +46,21 @@ export function ReceivableForm({ mode, record, onCancel, onSaved }: Props) {
   const [customerValues, setCustomerValues] = useState<CustomerFormValues>(emptyCustomer);
   const [customerErrors, setCustomerErrors] = useState<ValidationResult["errors"]>({});
 
+  useEffect(() => {
+    setErrors((current) => Object.values(current).some(Boolean)
+      ? updateVisibleErrors(current, validateReceivablePayload(values, { existing: receivableService.list(), customers, editingId: record?.id }).errors)
+      : current);
+  }, [values, customers, record]);
+  useEffect(() => {
+    setCustomerErrors((current) => Object.values(current).some(Boolean)
+      ? updateVisibleErrors(current, validateCustomerPayload(customerValues, { existing: receivableService.customers(false) }).errors)
+      : current);
+  }, [customerValues]);
+
   const set =
     (key: keyof ReceivableFormValues) =>
     (value: string) => {
       setValues((prev) => ({ ...prev, [key]: value }));
-      setErrors((e) => ({ ...e, [key]: undefined, form: undefined }));
     };
 
   const applyCustomer = (customerId: string) => {
@@ -60,23 +74,15 @@ export function ReceivableForm({ mode, record, onCancel, onSaved }: Props) {
       emailAddress: customer?.emailAddress ?? "",
       billingAddress: customer?.billingAddress ?? "",
     }));
-    setErrors((e) => ({
-      ...e,
-      customerId: undefined,
-      clientId: undefined,
-      customerName: undefined,
-      contactNumber: undefined,
-      emailAddress: undefined,
-      billingAddress: undefined,
-      form: undefined,
-    }));
   };
 
-  const onCreateCustomer = (e: React.FormEvent) => {
+  const onCreateCustomer = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     const result = receivableService.createCustomer(customerValues);
     if (!result.ok) {
       setCustomerErrors(result.errors);
+      const form = e.currentTarget.closest("form");
+      if (form) focusFirstError(form, Object.fromEntries(Object.entries(result.errors).map(([key, value]) => [`new${key[0].toUpperCase()}${key.slice(1)}`, value])));
       return;
     }
     setCustomerTick((n) => n + 1);
@@ -86,7 +92,7 @@ export function ReceivableForm({ mode, record, onCancel, onSaved }: Props) {
     applyCustomer(String(result.data.id));
   };
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSaving(true);
     const result =
@@ -96,10 +102,12 @@ export function ReceivableForm({ mode, record, onCancel, onSaved }: Props) {
 
     if (!result.ok) {
       setErrors(result.errors);
+      focusFirstError(e.currentTarget, result.errors);
       setSaving(false);
       return;
     }
     setSaving(false);
+    markSaved();
     onSaved(result.data);
   };
 
@@ -111,9 +119,9 @@ export function ReceivableForm({ mode, record, onCancel, onSaved }: Props) {
         title={mode === "create" ? "Add receivable" : "Edit receivable"}
         subtitle="Select an existing customer to populate contact details. Amount paid, remaining balance, days overdue, and collection status are calculated from collection history."
       />
-      <form onSubmit={onSubmit} className="p-5 md:p-6" noValidate>
+      <form onSubmit={onSubmit} onChangeCapture={markDirty} className="p-5 md:p-6" noValidate>
         {errors.form && (
-          <div className="mb-5 border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800">
+          <div role="alert" tabIndex={-1} className="mb-5 border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800">
             {errors.form}
           </div>
         )}
@@ -163,7 +171,6 @@ export function ReceivableForm({ mode, record, onCancel, onSaved }: Props) {
                     value={customerValues.clientId}
                     onChange={(v) => {
                       setCustomerValues((p) => ({ ...p, clientId: v }));
-                      setCustomerErrors((e) => ({ ...e, clientId: undefined }));
                     }}
                     error={customerErrors.clientId}
                   />
@@ -174,7 +181,6 @@ export function ReceivableForm({ mode, record, onCancel, onSaved }: Props) {
                     value={customerValues.customerName}
                     onChange={(v) => {
                       setCustomerValues((p) => ({ ...p, customerName: v }));
-                      setCustomerErrors((e) => ({ ...e, customerName: undefined }));
                     }}
                     error={customerErrors.customerName}
                   />
@@ -185,7 +191,6 @@ export function ReceivableForm({ mode, record, onCancel, onSaved }: Props) {
                     value={customerValues.contactNumber}
                     onChange={(v) => {
                       setCustomerValues((p) => ({ ...p, contactNumber: v }));
-                      setCustomerErrors((e) => ({ ...e, contactNumber: undefined }));
                     }}
                     error={customerErrors.contactNumber}
                   />
@@ -197,7 +202,6 @@ export function ReceivableForm({ mode, record, onCancel, onSaved }: Props) {
                     value={customerValues.emailAddress}
                     onChange={(v) => {
                       setCustomerValues((p) => ({ ...p, emailAddress: v }));
-                      setCustomerErrors((e) => ({ ...e, emailAddress: undefined }));
                     }}
                     error={customerErrors.emailAddress}
                   />
@@ -209,7 +213,6 @@ export function ReceivableForm({ mode, record, onCancel, onSaved }: Props) {
                       value={customerValues.billingAddress}
                       onChange={(v) => {
                         setCustomerValues((p) => ({ ...p, billingAddress: v }));
-                        setCustomerErrors((e) => ({ ...e, billingAddress: undefined }));
                       }}
                       error={customerErrors.billingAddress}
                     />
@@ -387,7 +390,7 @@ export function ReceivableForm({ mode, record, onCancel, onSaved }: Props) {
 
         <div className="mt-7 flex justify-end gap-2 border-t border-[#e1eef6] pt-5">
           <button className="primary-btn" disabled={saving}>
-            {saving ? "Saving…" : "Save receivable"}
+            {saving ? "Saving…" : mode === "edit" ? "Save changes" : "Save receivable"}
           </button>
         </div>
       </form>

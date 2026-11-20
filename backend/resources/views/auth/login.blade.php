@@ -34,16 +34,17 @@
                 @if(session('status'))
                     <div class="notice" role="status">{{ session('status') }}</div>
                 @endif
-                @if($errors->any())
+                @php($otherErrors = collect($errors->getMessages())->except(['email', 'password'])->flatten())
+                @if($otherErrors->isNotEmpty())
                     <div class="errors" role="alert">
-                        <ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
+                        <ul>@foreach($otherErrors as $error)<li>{{ $error }}</li>@endforeach</ul>
                     </div>
                 @endif
 
                 <form method="post" action="{{ route('login.store') }}" class="login-form">
                     @csrf
-                    <x-field name="email" label="Email address" type="email" autocomplete="username" placeholder="you@company.com" required autofocus maxlength="255" :show-error="false" />
-                    <x-field name="password" label="Password" type="password" autocomplete="current-password" placeholder="Enter your password" required maxlength="1024" :show-error="false" />
+                    <x-field name="email" label="Email address" type="email" autocomplete="username" placeholder="you@company.com" required :autofocus="!$errors->has('password') || $errors->has('email')" maxlength="255" />
+                    <x-field name="password" label="Password" type="password" autocomplete="current-password" placeholder="Enter your password" required :autofocus="!$errors->has('email') && $errors->has('password')" maxlength="1024" />
                     <label class="check-label login-remember"><input type="checkbox" name="remember" value="1" @checked(old('remember'))> Remember me on this device</label>
                     <button class="button login-submit" type="submit">Sign in</button>
                 </form>
