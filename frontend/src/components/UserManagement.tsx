@@ -456,6 +456,7 @@ export function UserManagement({ notify, onOpenReports }: { notify: (message: st
               <SlidersHorizontal size={15} aria-hidden="true" /> Filter
             </button>
           </form>
+          )}
           <div className="panel overflow-hidden">
             <div className="overflow-x-auto">
               <table>
