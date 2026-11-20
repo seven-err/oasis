@@ -158,7 +158,7 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
         </div>
       )}
       {credentials ? (
-        <div className="panel max-w-2xl p-5 sm:p-6">
+        <div className="panel mx-auto w-full max-w-2xl p-5 sm:p-6">
           <h2 className="text-base font-semibold">{heading}</h2>
           <p className="my-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
             These credentials are shown only once. Save the temporary password and deliver it
@@ -189,70 +189,74 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
           Loading accounts…
         </p>
       ) : form && (creating || user) ? (
-        <div className="panel max-w-2xl p-5 sm:p-6">
-          <h2 className="mb-5 text-base font-semibold">{heading}</h2>
+        <div className="panel mx-auto w-full max-w-2xl p-5 sm:p-8">
+          <h2 className="mb-6 text-center text-lg font-semibold">{heading}</h2>
           <form key={path} className="space-y-5" onSubmit={save}>
-            <UserField
-              name="name"
-              label="Full name"
-              value={user?.name}
-              autoComplete="name"
-              maxLength={255}
-              errors={errors}
-            />
-            <UserField
-              name="email"
-              label="Email address"
-              type="email"
-              value={user?.email}
-              autoComplete="email"
-              maxLength={255}
-              errors={errors}
-            />
-            <label className="block">
-              <span className="field-label">Role</span>
-              <select
-                className="input mt-2"
-                name="role_id"
-                required
-                disabled={user?.id === getSession()?.user.id}
-                defaultValue={user?.role_id ?? roles.find((role) => role.slug === "hr")?.id}
-                aria-invalid={Boolean(errors.role_id)}
-                aria-describedby="role-error"
-              >
-                {roles.map((role) => (
-                  <option key={role.id} value={role.id}>
-                    {role.name}
-                  </option>
-                ))}
-              </select>
-              {user && user.id === getSession()?.user.id && (
-                <>
-                  <input type="hidden" name="role_id" value={user.role_id} />
-                  <small className="mt-1 block text-[#777]">You cannot change your own role.</small>
-                </>
-              )}
-              <span id="role-error" className="mt-1 block text-xs text-red-700">
-                {errors.role_id?.join(" ")}
-              </span>
-            </label>
-            <label className="block">
-              <span className="field-label">Account status</span>
-              <select
-                className="input mt-2"
-                name="is_active"
-                required
-                defaultValue={user?.is_active === false ? "0" : "1"}
-                aria-invalid={Boolean(errors.is_active)}
-                aria-describedby="status-error"
-              >
-                <option value="1">Active</option>
-                <option value="0">Inactive</option>
-              </select>
-              <span id="status-error" className="mt-1 block text-xs text-red-700">
-                {errors.is_active?.join(" ")}
-              </span>
-            </label>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <UserField
+                name="name"
+                label="Full name"
+                value={user?.name}
+                autoComplete="name"
+                maxLength={255}
+                errors={errors}
+              />
+              <UserField
+                name="email"
+                label="Email address"
+                type="email"
+                value={user?.email}
+                autoComplete="email"
+                maxLength={255}
+                errors={errors}
+              />
+              <label className="block">
+                <span className="field-label">Role</span>
+                <select
+                  className="input mt-2"
+                  name="role_id"
+                  required
+                  disabled={user?.id === getSession()?.user.id}
+                  defaultValue={user?.role_id ?? roles.find((role) => role.slug === "hr")?.id}
+                  aria-invalid={Boolean(errors.role_id)}
+                  aria-describedby="role-error"
+                >
+                  {roles.map((role) => (
+                    <option key={role.id} value={role.id}>
+                      {role.name}
+                    </option>
+                  ))}
+                </select>
+                {user && user.id === getSession()?.user.id && (
+                  <>
+                    <input type="hidden" name="role_id" value={user.role_id} />
+                    <small className="mt-1 block text-[#777]">
+                      You cannot change your own role.
+                    </small>
+                  </>
+                )}
+                <span id="role-error" className="mt-1 block text-xs text-red-700">
+                  {errors.role_id?.join(" ")}
+                </span>
+              </label>
+              <label className="block">
+                <span className="field-label">Account status</span>
+                <select
+                  className="input mt-2"
+                  name="is_active"
+                  required
+                  defaultValue={user?.is_active === false ? "0" : "1"}
+                  aria-invalid={Boolean(errors.is_active)}
+                  aria-describedby="status-error"
+                >
+                  <option value="1">Active</option>
+                  <option value="0">Inactive</option>
+                </select>
+                <span id="status-error" className="mt-1 block text-xs text-red-700">
+                  {errors.is_active?.join(" ")}
+                </span>
+              </label>
+            </div>
             {user?.is_active && (
               <UserField
                 name="confirmation"
@@ -274,7 +278,7 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
                 A temporary password will be generated and shown once after creation.
               </p>
             )}
-            <div className="flex flex-wrap gap-3 border-t border-[#e1eef6] pt-5">
+            <div className="flex flex-wrap justify-center gap-3 border-t border-[#e1eef6] pt-5">
               <button className="primary-btn" disabled={saving}>
                 {saving ? "Saving…" : creating ? "Create account" : "Save account"}
               </button>
