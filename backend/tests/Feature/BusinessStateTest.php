@@ -123,11 +123,13 @@ class BusinessStateTest extends TestCase
 
     public function test_shared_attachments_are_private_and_downloadable_by_the_correct_department(): void
     {
-        Storage::fake('business');
+        $sharedDisk = Storage::fake('business');
         $this->signIn(User::factory()->withRole('finance')->create());
         $uploaded = $this->post('/business-files/checks', ['file' => UploadedFile::fake()->create('receipt.pdf', 10, 'application/pdf')])
             ->assertCreated()->json();
         Storage::disk('business')->assertExists($uploaded['storageKey']);
+        config(['filesystems.disks.business.root' => $sharedDisk->path('')]);
+        Storage::forgetDisk('business');
         $this->get($uploaded['previewDataUrl'])->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff');
         $this->signIn(User::factory()->withRole('hr')->create());
         $this->get($uploaded['previewDataUrl'])->assertForbidden();
