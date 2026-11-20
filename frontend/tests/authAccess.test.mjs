@@ -3,7 +3,7 @@ import test, { afterEach } from "node:test";
 import { createServer } from "vite";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { canAccessPage, initialPage, moduleUser, setSession } from "../src/auth.ts";
+import { canAccessPage, initialPage, moduleUser, readSession, setSession } from "../src/auth.ts";
 
 const access = {
   "super-admin": ["dashboard", "hr", "checks", "payables", "receivables", "users", "activity", "settings", "account"],
@@ -15,6 +15,19 @@ const sessionFor = (role) => ({
   user: { id: 10, name: "Signed In User", email: "user@example.test", role, roleName: role, mustChangePassword: false, permissions: access[role] },
 });
 afterEach(() => setSession(null));
+
+test("session requests stop waiting and explain connection failures", async () => {
+  const originalFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = async (_url, options) => {
+      assert.ok(options.signal instanceof AbortSignal);
+      throw new DOMException("Timed out", "TimeoutError");
+    };
+    await assert.rejects(readSession(), /server and database are running/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
 
 test("anonymous sessions and temporary passwords cannot unlock existing screens", () => {
   for (const page of ["dashboard", "checks", "employees", "users"]) assert.equal(canAccessPage(page), false);

@@ -14,6 +14,12 @@ declare global {
 const root = ReactDOM.createRoot(document.getElementById("root")!);
 
 async function start() {
+  root.render(
+    <main className="mx-auto mt-24 max-w-md rounded-xl border border-[#d0e3ef] bg-white p-8 text-[#16344d]">
+      <h1 className="text-xl font-semibold">OASIS</h1>
+      <p role="status" className="my-4">Connecting to OASIS…</p>
+    </main>,
+  );
   try {
     if (import.meta.env.VITE_TEAM_URL) {
       const teamLogin = new URL("/login", import.meta.env.VITE_TEAM_URL);
