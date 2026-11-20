@@ -3,11 +3,12 @@ import test from "node:test";
 import { setImmediate } from "node:timers/promises";
 import { createServer } from "vite";
 
-async function browser(t, { remote = null, legacy, version = 0 } = {}) {
+async function browser(t, { remote = null, legacy, version = 0, extra = {}, draft } = {}) {
   const previous = Object.fromEntries(
     ["window", "document", "localStorage", "fetch"].map((key) => [key, globalThis[key]]),
   );
   const values = new Map(legacy ? [["oasis.employees.v2", JSON.stringify(legacy)]] : []);
+  if (draft) values.set("oasis.unsaved.55.hr", JSON.stringify(draft));
   const events = new EventTarget();
   globalThis.window = {
     addEventListener: events.addEventListener.bind(events),
@@ -25,18 +26,22 @@ async function browser(t, { remote = null, legacy, version = 0 } = {}) {
     if (options.method === "PUT") {
       const body = JSON.parse(options.body);
       backend.writes.push(body);
+      const destination = url.endsWith("/hr") ? backend : extra.payables;
       if (backend.fail) throw new Error("Network unavailable");
-      if (body.version !== backend.version)
+      if (body.version !== destination.version)
         return Response.json(
           { message: "Someone else updated this module. Download your unsaved copy." },
           { status: 409 },
         );
-      backend.data = structuredClone(body.data);
-      return Response.json({ version: ++backend.version });
+      destination.data = structuredClone(body.data);
+      return Response.json({ version: ++destination.version });
     }
-    return Response.json({ modules: { hr: { version: backend.version, data: backend.data } } });
+    return Response.json({
+      modules: { hr: { version: backend.version, data: backend.data }, ...extra },
+    });
   };
   const vite = await createServer({
+    optimizeDeps: { noDiscovery: true },
     server: { middlewareMode: true, hmr: false },
     appType: "custom",
   });
@@ -156,4 +161,51 @@ test("remote refresh never replaces an open edit form", async (t) => {
   document.querySelector = () => null;
   await storage.refreshBusinessStorage();
   assert.equal(storage.readBusinessJson("oasis.employees.v2", null).employees[0].id, 5);
+});
+
+test("edits in another module during an in-flight save are also flushed", async (t) => {
+  const extra = {
+    payables: {
+      version: 1,
+      data: {
+        "oasis.payables.v1": [],
+        "oasis.payable-payments.v1": [],
+        "oasis.payable-categories.v1": [],
+        "oasis.payable-activity.v1": [],
+      },
+    },
+  };
+  const { storage, backend, settled } = await browser(t, {
+    remote: { "oasis.employees.v2": { employees: [], deletedEmployees: [] } },
+    version: 1,
+    extra,
+  });
+  const fetchBackend = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    if (url.endsWith("/payables"))
+      storage.writeBusinessJson("oasis.employees.v2", {
+        employees: [{ id: 9, name: "Later edit" }],
+        deletedEmployees: [],
+      });
+    return fetchBackend(url, options);
+  };
+  storage.writeBusinessJson("oasis.payables.v1", [{ id: 10, totalAmount: 250 }]);
+  await settled();
+  assert.equal(backend.data["oasis.employees.v2"].employees[0].name, "Later edit");
+  assert.equal(extra.payables.data["oasis.payables.v1"][0].totalAmount, 250);
+  assert.equal(storage.businessSyncStatus(), "All changes saved");
+});
+
+test("reopening after a failed save preserves the draft and flags newer server records", async (t) => {
+  const data = {
+    "oasis.employees.v2": { employees: [{ id: 1, name: "Unsaved" }], deletedEmployees: [] },
+  };
+  const { storage, backend } = await browser(t, {
+    remote: { "oasis.employees.v2": { employees: [], deletedEmployees: [] } },
+    version: 2,
+    draft: { version: 1, data },
+  });
+  assert.equal(storage.readBusinessJson("oasis.employees.v2", null).employees[0].name, "Unsaved");
+  assert.equal(storage.hasBusinessConflict(), true);
+  assert.equal(backend.writes.length, 0);
 });
