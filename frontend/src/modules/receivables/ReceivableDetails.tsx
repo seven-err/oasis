@@ -223,8 +223,7 @@ export function ReceivableDetails({
     ) {
       return;
     }
-    const remarks = window.prompt("Optional reversal remarks:", "") ?? undefined;
-    const result = receivableService.reverseCollection(collection.id, remarks || undefined);
+    const result = receivableService.reverseCollection(collection.id);
     if (!result.ok) {
       notify(result.errors.form ?? "Unable to reverse collection.");
       return;
@@ -303,7 +302,6 @@ export function ReceivableDetails({
       "Invoice date": formatDate(record.invoiceDate),
       "Due date": formatDate(record.dueDate),
       Description: record.description,
-      Remarks: record.remarks,
       "Total receivable amount": peso.format(record.totalReceivableAmount),
       "Amount paid": peso.format(record.amountPaid),
       "Remaining balance": peso.format(record.remainingBalance),
@@ -524,14 +522,6 @@ export function ReceivableDetails({
                   </p>
                 </>
               )}
-              <div className="sm:col-span-2 lg:col-span-3">
-                <FormTextarea
-                  label="Remarks"
-                  name="remarks"
-                  value={collectionValues.remarks}
-                  onChange={setCol("remarks")}
-                />
-              </div>
             </div>
             <div className="flex justify-end gap-2 border-t border-[#e1eef6] pt-4">
               <button
@@ -628,7 +618,6 @@ export function ReceivableDetails({
         <DetailGrid
           items={[
             { label: "Customer name", value: record.customerName },
-            { label: "Client ID", value: record.clientId },
             { label: "Contact number", value: record.contactNumber },
             { label: "Email address", value: record.emailAddress },
             { label: "Billing address", value: record.billingAddress },
@@ -645,7 +634,6 @@ export function ReceivableDetails({
             { label: "Invoice date", value: formatDate(record.invoiceDate) },
             { label: "Due date", value: formatDate(record.dueDate) },
             { label: "Description", value: record.description },
-            { label: "Remarks", value: record.remarks ?? "—" },
           ]}
         />
       </SectionCard>

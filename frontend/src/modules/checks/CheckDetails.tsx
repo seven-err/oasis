@@ -139,7 +139,6 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
       "Deposit date": formatDate(record.depositDate),
       "Clearing date": formatDate(record.clearingDate),
       "Check status": checkStatusLabel(record.checkStatus),
-      Remarks: record.remarks,
       "Prepared by": record.preparedByName,
       Created: formatDateTime(record.createdAt),
       "Last updated": formatDateTime(record.updatedAt),
@@ -270,11 +269,10 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
         />
       </SectionCard>
 
-      <SectionCard title="5. Status and remarks">
+      <SectionCard title="5. Status">
         <DetailGrid
           items={[
             { label: "Check status", value: <StatusBadge value={record.checkStatus} /> },
-            { label: "Remarks", value: record.remarks || "—" },
           ]}
         />
       </SectionCard>

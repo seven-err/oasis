@@ -167,7 +167,6 @@ function collectionExportRows(
       BankName: c.bankName ?? "",
       CheckNumber: c.checkNumber ?? "",
       RecordedBy: c.recordedByName,
-      Remarks: c.remarks ?? "",
     };
   });
 }

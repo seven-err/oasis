@@ -35,7 +35,7 @@ export const PAYABLE_PAYMENTS_STORAGE_KEY = "oasis.payable-payments.v1";
 export const PAYABLE_CATEGORIES_STORAGE_KEY = "oasis.payable-categories.v1";
 export const PAYABLE_ACTIVITY_STORAGE_KEY = "oasis.payable-activity.v1";
 
-export const CURRENT_USER: OasisPayableUser = moduleUser("payables", ["editPayables","approvePayables","recordPayments","reversePayments","archivePayables","manageCategories","exportReports"]);
+export const CURRENT_USER: OasisPayableUser = moduleUser("payables", ["editPayables","recordPayments","reversePayments","archivePayables","manageCategories","exportReports"]);
 
 export const EMPTY_FILTERS: PayableFilters = {
   search: "",
@@ -48,7 +48,6 @@ export const EMPTY_FILTERS: PayableFilters = {
   dueDateFrom: "",
   dueDateTo: "",
   paymentStatus: "All",
-  approvalStatus: "All",
   paymentMethod: "All",
   referenceNumber: "",
   includeArchived: false,

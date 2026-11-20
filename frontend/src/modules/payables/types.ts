@@ -23,7 +23,6 @@ export type OasisPayableUser = {
   role: string;
   permissions: {
     editPayables: boolean;
-    approvePayables: boolean;
     recordPayments: boolean;
     reversePayments: boolean;
     archivePayables: boolean;
@@ -127,7 +126,6 @@ export type PayableFilters = {
   dueDateFrom: string;
   dueDateTo: string;
   paymentStatus: PaymentStatus | "All";
-  approvalStatus: ApprovalStatus | "All";
   paymentMethod: PaymentMethod | "All";
   referenceNumber: string;
   includeArchived: boolean;
@@ -144,7 +142,6 @@ export type PayableSortKey =
   | "amountPaid"
   | "remainingBalance"
   | "paymentStatus"
-  | "approvalStatus"
   | "displayPaymentMethod"
   | "displayReferenceNumber";
 
@@ -162,8 +159,6 @@ export type PayableSummary = {
   partial: number;
   paid: number;
   overdue: number;
-  pendingApproval: number;
-  rejected: number;
 };
 
 export type PayableActivity = {
@@ -185,8 +180,6 @@ export type PayableReportKind =
   | "partial"
   | "paid"
   | "overdue"
-  | "pending_approval"
-  | "rejected"
   | "by_category"
   | "by_payee"
   | "payment_history"
@@ -207,5 +200,5 @@ export type PayableView =
   | { mode: "register" }
   | { mode: "create" }
   | { mode: "edit"; id: number }
-  | { mode: "details"; id: number; focus?: "payments" | "approve" | "payment-history" }
+  | { mode: "details"; id: number; focus?: "payments" | "payment-history" }
   | { mode: "reports" };

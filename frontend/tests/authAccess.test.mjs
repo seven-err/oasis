@@ -67,7 +67,14 @@ test("module actions use the signed-in identity and deny unassigned modules", ()
   assert.equal(user.name, "Signed In User");
   assert.deepEqual(user.permissions, { editChecks: false, archiveChecks: false });
   setSession(sessionFor("finance"));
-  assert.equal(moduleUser("checks", ["editChecks"]).permissions.editChecks, true);
+  for (const [module, actions] of [
+    ["checks", ["editChecks", "archiveChecks"]],
+    ["payables", ["editPayables", "recordPayments", "reversePayments", "archivePayables", "manageCategories"]],
+    ["receivables", ["editReceivables", "recordCollections", "archiveReceivables"]],
+  ]) {
+    assert.equal(canAccessPage(module), true);
+    assert.ok(Object.values(moduleUser(module, actions).permissions).every(Boolean));
+  }
 });
 
 test("existing dashboard hides restricted module totals and record details", async () => {
