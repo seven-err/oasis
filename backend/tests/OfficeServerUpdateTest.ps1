@@ -33,6 +33,9 @@ function powershell.exe {
     $calls.Add('launcher ' + ($args -join ' '))
     if ($args -contains '-PublicUrl') {
         '{}' | Set-Content -LiteralPath (Join-Path $runtimeRoot 'state.json')
+        if ($scenario -eq 'launcher-handoff') {
+            & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -File (Join-Path $testRoot 'launcher-handoff.ps1')
+        }
     }
 }
 function composer { $global:LASTEXITCODE = 0; $calls.Add('composer ' + ($args -join ' ')) }
@@ -85,6 +88,24 @@ try {
     $scenario = 'success'
     & $updater -PublicUrl 'https://oasis-test.ngrok-free.dev'
     Assert (Test-Path -LiteralPath (Join-Path $runtimeRoot 'deployed-revision.txt')) 'Rerunning must retry an unsuccessful revision.'
+
+    Remove-Item -LiteralPath (Join-Path $runtimeRoot 'deployed-revision.txt')
+    $scenario = 'launcher-handoff'
+    @'
+$child = Start-Process -FilePath powershell.exe -ArgumentList '-NoProfile -Command Start-Sleep -Seconds 20' -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $PSScriptRoot 'service.out.log') -RedirectStandardError (Join-Path $PSScriptRoot 'service.err.log')
+$child.Id | Set-Content -LiteralPath (Join-Path $PSScriptRoot 'service.pid')
+Write-Output 'Test launcher returned with its service running.'
+'@ | Set-Content -LiteralPath (Join-Path $testRoot 'launcher-handoff.ps1')
+    $elapsed = [Diagnostics.Stopwatch]::StartNew()
+    try {
+        & $updater -PublicUrl 'https://oasis-test.ngrok-free.dev'
+        Assert ($elapsed.Elapsed.TotalSeconds -lt 10) 'Deployment must finish without waiting for launched services to exit.'
+        Assert (Test-Path -LiteralPath (Join-Path $runtimeRoot 'deployed-revision.txt')) 'The running service must not prevent recording the deployed revision.'
+    }
+    finally {
+        $serviceId = Get-Content -LiteralPath (Join-Path $testRoot 'service.pid') -ErrorAction SilentlyContinue
+        if ($serviceId) { Stop-Process -Id ([int] $serviceId) -ErrorAction SilentlyContinue }
+    }
     Write-Output 'Office updater tests passed.'
 }
 finally {
