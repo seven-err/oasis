@@ -1,4 +1,5 @@
 import { normalizeAttachmentFile } from "@/components/attachmentFileTypes";
+import { businessStorageReady, readBusinessJson, writeBusinessJson, uploadBusinessFile } from "@/businessStorage";
 import { checkService } from "@/modules/checks/store";
 import { isDeletionExpired } from "@/components/deletedRecordRetention";
 import {
@@ -60,17 +61,11 @@ export type ReceivableServiceResult<T> =
   | { ok: false; errors: ValidationResult["errors"] };
 
 function readJson<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
+  return readBusinessJson(key, fallback);
 }
 
 function writeJson(key: string, value: unknown): void {
-  localStorage.setItem(key, JSON.stringify(value));
+  writeBusinessJson(key, value);
 }
 
 function load(): StoreSnapshot {
@@ -706,8 +701,13 @@ export const receivableService = {
 
     file = normalizeAttachmentFile(file);
     let previewDataUrl: string | undefined;
+    let storageKey: string | undefined;
     try {
-      previewDataUrl = await readFileAsDataUrl(file);
+      if (businessStorageReady()) {
+        const uploaded = await uploadBusinessFile('receivables', file);
+        previewDataUrl = uploaded.previewDataUrl;
+        storageKey = uploaded.storageKey;
+      } else previewDataUrl = await readFileAsDataUrl(file);
     } catch {
       return { ok: false, errors: { file: "Unable to read the selected file." } };
     }
@@ -720,7 +720,7 @@ export const receivableService = {
       mimeType: file.type,
       sizeBytes: file.size,
       kind,
-      storageKey: `private/receivables/${receivableId}/${uid("file")}-${file.name}`,
+      storageKey: storageKey ?? `private/receivables/${receivableId}/${uid("file")}-${file.name}`,
       previewDataUrl,
       uploadedById: user.id,
       uploadedByName: user.name,

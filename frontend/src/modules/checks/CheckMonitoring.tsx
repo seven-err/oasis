@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useViewHistory } from "@/hooks/useViewHistory";
+import { useBusinessRefresh } from "@/hooks/useBusinessRefresh";
 import { CheckDetails } from "./CheckDetails";
 import { CheckForm } from "./CheckForm";
 import { CheckRegister } from "./CheckRegister";
@@ -28,6 +29,7 @@ export function CheckMonitoring({ notify, createSignal = 0, initialRecordId, onR
     setRecords(next);
     onRecordsChange?.(next);
   }, [onRecordsChange]);
+  useBusinessRefresh("checks", refresh);
 
   useEffect(() => {
     if (createSignal > 0) setView({ mode: "create" });

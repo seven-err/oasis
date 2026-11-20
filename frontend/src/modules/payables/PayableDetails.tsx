@@ -65,6 +65,7 @@ export function PayableDetails({
   const user = payableService.getUser();
   const [archiving, setArchiving] = useState(false);
   const [payments, setPayments] = useState(() => payableService.paymentsFor(record.id));
+  useEffect(() => setPayments(payableService.paymentsFor(record.id)), [record]);
   const activity = useMemo(
     () => payableService.activityFor(record.id),
     [record, payments],

@@ -44,7 +44,9 @@ from `backend/`. Repeating this command preserves existing passwords, roles and
 account status. A local Super Admin can reset a forgotten HR/Finance password.
 The seeder refuses to run unless `APP_ENV=local`; it is never used by the office
 updater. Passwords, `.env` files and databases are not copied through Git.
-Local credentials are separate from the accounts at the shared ngrok URL.
+On the office PC, local development and the ngrok host use the same
+`backend/.env` database, so accounts and business records are shared. A clone
+on a different PC with its own MySQL database remains a separate installation.
 
 ## Running
 
@@ -53,8 +55,9 @@ personal password changes, user administration, permission settings and activity
 logs. Successful sign-in opens the existing React OASIS interface, including
 its HR Alphalist, Check, Payable and Receivable screens. Laravel checks access
 on direct module URLs; the React sidebar and dashboard use the same permissions.
-Business records keep their existing browser storage keys and are not migrated
-into MySQL by this authentication integration.
+Business records are saved in MySQL through the authenticated Laravel backend.
+The existing React screens and record formats are retained, with access checked
+for each module. Shared attachments are stored privately on the host PC.
 
 For the shared office host, use `composer run setup` for its first-time setup
 and set `APP_ENV=production`, `APP_DEBUG=false` in its private `backend/.env`.
@@ -91,10 +94,11 @@ registration or self-service recovery, users contact a Super Admin for resets.
 
 During development, open `http://localhost:5173`. Sign-in and account requests
 are proxied to Laravel on port 8000; dashboard and module pages use Vite so
-saved UI edits appear immediately. Keep both development servers running.
-Use the same hostname and port
-where you previously worked to retain that browser's saved business records;
-browser storage is separate for `localhost:5173` and `localhost:8000`.
+saved UI edits appear immediately. `npm run dev` (or `pnpm dev`) in `frontend/`
+starts Laravel on port 8000 automatically when it is not already running, then
+starts Vite. PHP must be on PATH (or set `PHP_BINARY`) and MySQL must be running.
+It uses local HTTP cookies without changing the ngrok server's HTTPS settings.
+Both processes use the same `backend/.env` database; no passwords are reset.
 After changing a temporary password, subsequent sign-ins require the new
 password. GitHub Pages serves static files only; authenticated use requires
 the Laravel server as well.
@@ -118,18 +122,11 @@ php artisan test
 npm run build
 ```
 
-Use two terminals, run from the repo root (one command per line, so it also works in Windows PowerShell):
-
+Run from the repo root:
 ```bash
-# Terminal 1: http://localhost:8000
-cd backend
-composer run dev
-```
-
-```bash
-# Terminal 2: http://localhost:5173 (open this one)
+# http://127.0.0.1:5173 (open this one)
 cd frontend
-pnpm dev
+npm run dev
 ```
 
 ## After pulling new changes
@@ -221,8 +218,14 @@ site offline, stop the watcher first, then run:
 The free ngrok plan currently includes an assigned stable domain, 1 GB/month
 of outbound transfer and 20,000 requests/month, with a first-visit browser
 notice. Check [ngrok's current free-plan limits](https://ngrok.com/docs/pricing-limits).
-This provides shared login/accounts; existing HR and Finance records still
-live in each browser's storage and are not synchronized between teammates.
+This shares accounts and HR/Finance records through the office PC's MySQL
+database. Saves report their status; a failed or conflicting save preserves an
+unsaved copy with download/retry options. Concurrent edits to the same module
+require reloading rather than silently overwriting another person's changes.
+Other visible browsers check for updates every 30 seconds and on focus, while
+open edit forms keep their draft. Polling and uploads count against ngrok limits.
+Module snapshots are limited to 6 MB; uploaded attachments are limited to 10 MB.
+Back up the MySQL database and `backend/storage/app/private/business-files`.
 
 ## Making changes
 
@@ -235,7 +238,7 @@ Never commit straight to `main`, and never leave finished work on a branch witho
    git checkout -b feature/short-name
    ```
 2. Make your change and test it with `pnpm dev` (in `frontend`).
-3. If you changed starting data (e.g. `initialEmployees`, or sample checks, payables or receivables), bump that module's storage key version, e.g. `oasis.employees.v2` → `v3` (keys live in `App.tsx` and `frontend/src/modules/*/constants.ts`). Otherwise browsers keep their saved old data.
+3. Business records now come from MySQL. Changing demo data or storage keys does not update shared records; use the application's record forms instead.
 4. Commit and push your branch:
    ```bash
    git add -A
@@ -250,12 +253,13 @@ Never commit straight to `main`, and never leave finished work on a branch witho
    ```
 8. After a merge, everyone runs the "After pulling new changes" steps above.
 
-## Seeing old data (e.g. Employee Alphalist)
+## Existing browser records
 
-Employee records are saved in each browser's localStorage, not the backend, so records you add are visible only to you. To load the latest list from the code, open the app, press F12 → Console, and run:
-
-```js
-localStorage.removeItem("oasis.employees.v2"); location.reload();
-```
-
-This deletes any employees you added in that browser.
+When a module has no shared snapshot yet, the first signed-in browser imports
+its existing saved records for that module. Sign in first from the hostname
+and port where the office's records were previously entered. Original browser
+storage is retained as a backup; no demo business records are inserted into an
+empty shared module. Standard payable categories are initialized when needed.
+Once a shared snapshot exists, it is authoritative. Copies from other browsers
+are retained locally and are not automatically merged into the shared data.
+Clearing browser storage no longer resets the shared records.

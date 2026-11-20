@@ -67,10 +67,10 @@ export async function apiRequest<T>(url: string, options: RequestInit = {}): Pro
   const response = await fetch(url, {
     ...options,
     credentials: "same-origin",
-    headers: { Accept: "application/json", "Content-Type": "application/json", "X-CSRF-TOKEN": session?.csrfToken ?? "", ...options.headers },
+    headers: { Accept: "application/json", ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }), "X-CSRF-TOKEN": session?.csrfToken ?? "", ...options.headers },
   });
   if (response.status === 401 || response.status === 419) {
-    window.location.assign("/login");
+    if (!url.startsWith("/business-")) window.location.assign("/login");
     throw new Error("Please sign in again.");
   }
   const data = await response.json();
@@ -79,6 +79,8 @@ export async function apiRequest<T>(url: string, options: RequestInit = {}): Pro
 }
 
 export async function logout() {
+  const { waitForBusinessSave } = await import("./businessStorage");
+  await waitForBusinessSave();
   await apiRequest("/logout", { method: "POST" });
   setSession(null);
   window.location.assign("/login");

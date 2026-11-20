@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { getSession, readSession, setSession, type AuthSession } from "./auth";
 import "./index.css";
+import { initializeBusinessStorage } from "./businessStorage";
 
 declare global {
   interface Window {
@@ -33,6 +34,7 @@ async function start() {
       return;
     }
     setSession(session);
+    await initializeBusinessStorage();
     const { default: App } = await import("./App");
     root.render(
       <React.StrictMode>

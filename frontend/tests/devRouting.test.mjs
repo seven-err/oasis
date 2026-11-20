@@ -4,7 +4,8 @@ import { resolveConfig } from "vite";
 
 test("development page navigation loads editable React while account requests reach Laravel", async () => {
   const config = await resolveConfig({}, "serve");
-  const proxy = Object.values(config.server.proxy)[0];
+  const [pattern, proxy] = Object.entries(config.server.proxy)[0];
+  assert.equal(new RegExp(pattern).test('/business-state?versions[hr]=1'), true);
   const request = (url, method = "GET", accept = "text/html") =>
     proxy.bypass({ url, method, headers: { accept } });
 
@@ -26,6 +27,9 @@ test("development page navigation loads editable React while account requests re
     "/login",
     "/logout",
     "/change-password",
+    "/business-state",
+    "/business-state?versions[hr]=1",
+    "/business-files/checks/receipt.pdf",
     "/oasis/assets/app.js",
     "/build/assets/app.css",
   ]) {

@@ -1,4 +1,5 @@
 import { checkService } from "@/modules/checks/store";
+import { readBusinessJson, writeBusinessJson } from "@/businessStorage";
 import { isDeletionExpired } from "@/components/deletedRecordRetention";
 import {
   CURRENT_USER,
@@ -41,17 +42,11 @@ export type PayableServiceResult<T> =
   | { ok: false; errors: ValidationResult["errors"] };
 
 function readJson<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
+  return readBusinessJson(key, fallback);
 }
 
 function writeJson(key: string, value: unknown): void {
-  localStorage.setItem(key, JSON.stringify(value));
+  writeBusinessJson(key, value);
 }
 
 function load(): StoreSnapshot {

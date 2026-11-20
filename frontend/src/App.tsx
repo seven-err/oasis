@@ -1,4 +1,6 @@
 import { apiRequest, canAccessPage, getSession, initialPage, logout, pagePaths } from "./auth";
+import { readBusinessJson, writeBusinessJson } from "./businessStorage";
+import { BusinessSyncStatus } from "./components/BusinessSyncStatus";
 import { DateInput, RequirementStatusSelect } from "@/components/FormPopovers";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
@@ -275,7 +277,7 @@ const EMPLOYEE_STORAGE_KEY = "oasis.employees.v2";
 
 export function loadEmployeeRecords(): { employees: Employee[]; deletedEmployees: Employee[] } {
   try {
-    const saved = JSON.parse(localStorage.getItem(EMPLOYEE_STORAGE_KEY) ?? "null");
+    const saved = readBusinessJson<{ employees: Employee[]; deletedEmployees: Employee[] } | null>(EMPLOYEE_STORAGE_KEY, null);
     if (saved && Array.isArray(saved.employees) && Array.isArray(saved.deletedEmployees)) {
       return {
         employees: saved.employees,
@@ -442,11 +444,25 @@ function App() {
   } = useViewHistory<EmployeeView | null>(() => null, null);
   const [toast, setToast] = useState("");
   useEffect(() => {
+    const refresh = () => {
+      if (canAccessPage("checks")) setChecks(getCheckRecords());
+      if (canAccessPage("payables")) setPayables(getPayableRecords());
+      if (canAccessPage("receivables")) setReceivables(getReceivableRecords());
+      if (canAccessPage("employees")) {
+        const directory = loadEmployeeRecords();
+        setEmployees(directory.employees);
+        setDeletedEmployees(directory.deletedEmployees);
+      }
+    };
+    window.addEventListener("oasis:business-updated", refresh);
+    return () => window.removeEventListener("oasis:business-updated", refresh);
+  }, []);
+  useEffect(() => {
     if (!canAccessPage("employees")) return;
     try {
-      localStorage.setItem(EMPLOYEE_STORAGE_KEY, JSON.stringify({ employees, deletedEmployees }));
+      writeBusinessJson(EMPLOYEE_STORAGE_KEY, { employees, deletedEmployees });
     } catch {
-      setToast("Employee changes could not be saved in this browser. Do not refresh before retrying.");
+      setToast("Employee changes have not been saved. Keep this page open and retry.");
     }
   }, [employees, deletedEmployees]);
   const [pendingDeletion, setPendingDeletion] = useState<{ module: ArchiveModule; id: number }[] | null>(null);
@@ -615,6 +631,7 @@ function App() {
   return (
     <HeaderBackProvider>
     <div className="min-h-screen bg-[#f3f8fc] text-[#111]">
+      <BusinessSyncStatus />
       {sidebarOpen && (
         <button
           aria-label="Close navigation overlay"
