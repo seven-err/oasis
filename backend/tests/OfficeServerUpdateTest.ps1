@@ -2,9 +2,11 @@ $ErrorActionPreference = 'Stop'
 $updater = Join-Path (Split-Path $PSScriptRoot -Parent) 'update-office-server.ps1'
 $originalLocalAppData = $env:LOCALAPPDATA
 $originalAppEnvironment = $env:APP_ENV
+$originalCi = $env:CI
 $testRoot = Join-Path ([IO.Path]::GetTempPath()) ('oasis-update-test-' + [guid]::NewGuid())
 $env:LOCALAPPDATA = $testRoot
 $env:APP_ENV = 'local'
+$env:CI = 'previous-value'
 $runtimeRoot = Join-Path $testRoot 'OASIS/office-server'
 $calls = [Collections.Generic.List[string]]::new()
 $scenario = 'success'
@@ -39,6 +41,7 @@ function npm { $global:LASTEXITCODE = 0; $calls.Add('npm ' + ($args -join ' ')) 
 function npx {
     $global:LASTEXITCODE = 0
     $calls.Add('npx ' + ($args -join ' '))
+    Assert ($env:CI -eq 'true') 'Package installation must not prompt when switching pnpm versions.'
     if ($scenario -eq 'build-failure' -and $args[-1] -eq 'build') { $global:LASTEXITCODE = 1 }
 }
 function Get-Command([string] $Name) {
@@ -55,6 +58,7 @@ try {
     Assert ($calls -contains 'php artisan db:seed --class=RolePermissionSeeder --force --no-interaction') 'Only permissions should be seeded on the host.'
     Assert (-not ($calls -match 'setup|fresh|LocalDevelopmentSeeder|key:generate')) 'Deployment must preserve accounts, database and app key.'
     Assert ($env:APP_ENV -eq 'local') 'Deployment environment must be restored.'
+    Assert ($env:CI -eq 'previous-value') 'CI environment must be restored.'
     Assert (Test-Path -LiteralPath (Join-Path $runtimeRoot 'deployed-revision.txt')) 'Success must record the deployed revision.'
 
     $calls.Clear()
@@ -86,6 +90,7 @@ try {
 finally {
     $env:LOCALAPPDATA = $originalLocalAppData
     $env:APP_ENV = $originalAppEnvironment
+    $env:CI = $originalCi
     $resolvedTestRoot = [IO.Path]::GetFullPath($testRoot)
     $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
     if ($resolvedTestRoot.StartsWith($tempRoot, [StringComparison]::OrdinalIgnoreCase) -and (Split-Path $resolvedTestRoot -Leaf) -like 'oasis-update-test-*') {
