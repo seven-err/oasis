@@ -83,7 +83,7 @@ try {
                 $resolvedCandidate = [IO.Path]::GetFullPath($candidate)
                 $runtimePrefix = [IO.Path]::GetFullPath($runtimeRoot).TrimEnd('\') + '\'
                 if ($resolvedCandidate.StartsWith($runtimePrefix, [StringComparison]::OrdinalIgnoreCase) -and (Test-Path -LiteralPath $resolvedCandidate)) {
-                    & git worktree remove --force $resolvedCandidate
+                    & git -c core.longpaths=true worktree remove --force $resolvedCandidate
                     if ($LASTEXITCODE -ne 0) { Write-Warning "Could not remove the preflight checkout at $candidate." }
                 }
             }
