@@ -19,7 +19,7 @@ type ValidationErrors = Record<string, string[]>;
 
 const date = (value: string | null) => (value ? new Date(value).toLocaleString() : "Never");
 
-export function UserManagement({ notify, onOpenReports }: { notify: (message: string) => void; onOpenReports: () => void }) {
+export function UserManagement({ notify }: { notify: (message: string) => void }) {
   const [path, setPath] = useState(() => window.location.pathname + window.location.search);
   const url = new URL(path, window.location.origin);
   const [search, setSearch] = useState(() => url.searchParams.get("search") ?? "");
@@ -392,9 +392,6 @@ export function UserManagement({ notify, onOpenReports }: { notify: (message: st
               navigate(url.pathname + url.search);
             }}>
               <ArrowUpDown size={15} aria-hidden="true" /> {sort === "asc" ? "A-Z" : "Z-A"}
-            </button>
-            <button type="button" className="secondary-btn w-full sm:w-auto" onClick={onOpenReports}>
-              <FileText size={15} aria-hidden="true" /> Reports
             </button>
           </div>
           </div>
