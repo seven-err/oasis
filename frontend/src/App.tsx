@@ -1,6 +1,7 @@
 import { apiRequest, canAccessPage, getSession, initialPage, logout, pagePaths } from "./auth";
 import { readBusinessJson, writeBusinessJson } from "./businessStorage";
 import { BusinessSyncStatus } from "./components/BusinessSyncStatus";
+import { UserManagement } from "./components/UserManagement";
 import { DateInput, RequirementStatusSelect } from "@/components/FormPopovers";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
@@ -2347,31 +2348,6 @@ function Reports({ checks, payables, receivables, employees, notify }: any) {
   );
 }
 
-function UserManagement({ notify }: { notify: (s: string) => void }) {
-  const [users, setUsers] = useState<{ id: number; name: string; email: string; role: { name: string } | null; is_active: boolean; last_login_at: string | null }[]>([]);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    void apiRequest<{ data: typeof users }>("/users")
-      .then((result) => setUsers(result.data))
-      .catch((error) => notify(error.message))
-      .finally(() => setLoading(false));
-  }, []);
-  return (
-    <section className="space-y-4">
-      <div className="flex justify-end"><a className="primary-btn" href="/users/create"><Plus size={15} /> Add user</a></div>
-      <div className="panel overflow-x-auto">
-        <table><thead><tr><th>User</th><th>Email</th><th>Role</th><th>Status</th><th>Last login</th><th>Actions</th></tr></thead>
-          <tbody>{users.map((user) => (
-            <tr key={user.id}><td className="font-semibold">{user.name}</td><td>{user.email}</td><td>{user.role?.name ?? "Unassigned"}</td>
-              <td><Status value={user.is_active ? "Active" : "Inactive"} /></td><td>{user.last_login_at ? new Date(user.last_login_at).toLocaleString() : "Never"}</td>
-              <td><a className="text-link" href={"/users/" + user.id}>Manage</a></td></tr>
-          ))}{loading && <tr><td colSpan={6}>Loading accounts…</td></tr>}</tbody>
-        </table>
-      </div>
-      <a className="text-link" href="/users">Search and filter all accounts</a>
-    </section>
-  );
-}
 
 function ActivityLogs() {
   const [logs, setLogs] = useState<{ id: number; action: string; description: string; user: { name: string } | null; created_at: string }[]>([]);

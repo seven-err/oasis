@@ -39,6 +39,10 @@ test("existing page navigation follows server permissions and rejects unknown pa
   assert.equal(canAccessPage("payables"), false);
   assert.equal(initialPage("/hr/alphalist"), "employees");
   assert.equal(initialPage("/receivables"), "receivables");
+  for (const path of ["/users", "/users/create", "/users/3", "/users/3/edit", "/team"]) {
+    assert.equal(initialPage(path), "users", path);
+  }
+  assert.equal(initialPage("/users-unrelated"), "dashboard");
 });
 
 test("module actions use the signed-in identity and deny unassigned modules", () => {
