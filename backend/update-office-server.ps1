@@ -54,7 +54,7 @@ try {
             Invoke-Checked 'git' @('merge', '--ff-only', $revision)
 
             $previousEnvironment = @{}
-            foreach ($name in @('APP_ENV', 'APP_DEBUG', 'APP_URL', 'VITE_TEAM_URL')) {
+            foreach ($name in @('APP_ENV', 'APP_DEBUG', 'APP_URL', 'VITE_TEAM_URL', 'CI')) {
                 $previousEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
             }
             try {
@@ -62,6 +62,7 @@ try {
                 $env:APP_DEBUG = 'false'
                 $env:APP_URL = $PublicUrl
                 $env:VITE_TEAM_URL = ''
+                $env:CI = 'true'
                 Push-Location (Join-Path $repoRoot 'backend')
                 try {
                     Invoke-Checked 'composer' @('install', '--no-interaction', '--prefer-dist', '--optimize-autoloader')
