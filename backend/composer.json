@@ -41,6 +41,10 @@
             "npm install --ignore-scripts",
             "npm run build"
         ],
+        "setup-local": [
+            "@setup",
+            "@php artisan db:seed --class=LocalDevelopmentSeeder --no-interaction"
+        ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
             "@php artisan dev"
