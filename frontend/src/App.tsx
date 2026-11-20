@@ -1,4 +1,5 @@
 import { apiRequest, canAccessPage, getSession, initialPage, logout, pagePaths } from "./auth";
+import { loadActivityLogs, type ActivityLog } from "./activityLogs";
 import { readBusinessJson, writeBusinessJson } from "./businessStorage";
 import { BusinessSyncStatus } from "./components/BusinessSyncStatus";
 import { UserManagement } from "./components/UserManagement";
@@ -2350,10 +2351,12 @@ function Reports({ checks, payables, receivables, employees, notify }: any) {
 
 
 function ActivityLogs() {
-  const [logs, setLogs] = useState<{ id: number; action: string; description: string; user: { name: string } | null; created_at: string }[]>([]);
+  const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [showingAll, setShowingAll] = useState(false);
   useEffect(() => {
-    void apiRequest<{ data: typeof logs }>("/activity-logs").then((result) => setLogs(result.data)).catch((error) => setError(error.message));
+    void loadActivityLogs().then(setLogs).catch((error) => setError(error.message)).finally(() => setLoading(false));
   }, []);
   return (
     <section className="panel">
@@ -2361,7 +2364,18 @@ function ActivityLogs() {
       <div className="overflow-x-auto"><table><thead><tr><th>Action</th><th>Description</th><th>Performed by</th><th>Date &amp; time</th></tr></thead>
         <tbody>{logs.map((log) => <tr key={log.id}><td className="font-semibold">{log.action}</td><td>{log.description}</td><td>{log.user?.name ?? "System"}</td><td>{new Date(log.created_at).toLocaleString()}</td></tr>)}</tbody>
       </table></div>
-      <a className="text-link m-5" href="/activity-logs">View all activity</a>
+      {!showingAll && <button type="button" className="text-link m-5" disabled={loading} onClick={async () => {
+        setLoading(true);
+        setError("");
+        try {
+          setLogs(await loadActivityLogs(true));
+          setShowingAll(true);
+        } catch (error) {
+          setError(error instanceof Error ? error.message : "Unable to load activity logs.");
+        } finally {
+          setLoading(false);
+        }
+      }}>{loading ? "Loading activity…" : "View all activity"}</button>}
     </section>
   );
 }
