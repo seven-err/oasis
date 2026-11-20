@@ -1,4 +1,5 @@
 import { normalizeAttachmentFile } from "@/components/attachmentFileTypes";
+import { businessStorageReady, readBusinessJson, writeBusinessJson, uploadBusinessFile } from "@/businessStorage";
 import { isDeletionExpired } from "@/components/deletedRecordRetention";
 import {
   CHECK_ACTIVITY_STORAGE_KEY,
@@ -27,17 +28,11 @@ type StoreSnapshot = {
 };
 
 function readJson<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
+  return readBusinessJson(key, fallback);
 }
 
 function writeJson(key: string, value: unknown): void {
-  localStorage.setItem(key, JSON.stringify(value));
+  writeBusinessJson(key, value);
 }
 
 function load(): StoreSnapshot {
@@ -61,7 +56,7 @@ function load(): StoreSnapshot {
 
 function persist(snapshot: StoreSnapshot): void {
   // Strip large preview data URLs from durable storage
-  const attachments = snapshot.attachments.map(({ previewDataUrl: _p, ...rest }) => rest);
+  const attachments = snapshot.attachments.map(({ previewDataUrl, ...rest }) => ({ ...rest, ...(previewDataUrl?.startsWith('/business-files/') ? { previewDataUrl } : {}) }));
   writeJson(CHECKS_STORAGE_KEY, snapshot.checks);
   writeJson(CHECK_ATTACHMENTS_STORAGE_KEY, attachments);
   writeJson(CHECK_ACTIVITY_STORAGE_KEY, snapshot.activity);
@@ -353,7 +348,8 @@ export const checkService = {
     if (fileError) return { ok: false, errors: { attachments: fileError } };
 
     file = normalizeAttachmentFile(file);
-    const previewDataUrl = await readFileAsDataUrl(file);
+    const uploaded = businessStorageReady() ? await uploadBusinessFile('checks', file) : null;
+    const previewDataUrl = uploaded?.previewDataUrl ?? await readFileAsDataUrl(file);
     const attachment: CheckAttachment = {
       id: uid("att"),
       checkId,
@@ -361,7 +357,7 @@ export const checkService = {
       mimeType: file.type || "application/octet-stream",
       sizeBytes: file.size,
       kind,
-      storageKey: `private/checks/${checkId}/${uid("file")}_${file.name}`,
+      storageKey: uploaded?.storageKey ?? `private/checks/${checkId}/${uid("file")}_${file.name}`,
       previewDataUrl,
       uploadedById: user.id,
       uploadedByName: user.name,

@@ -1,0 +1,6 @@
+{
+  "hr": ["oasis.employees.v2"],
+  "checks": ["oasis.checks.v1", "oasis.check-attachments.v1", "oasis.check-activity.v1"],
+  "payables": ["oasis.payables.v1", "oasis.payable-payments.v1", "oasis.payable-categories.v1", "oasis.payable-activity.v1"],
+  "receivables": ["oasis.receivables.v1", "oasis.receivable-collections.v1", "oasis.receivable-customers.v1", "oasis.receivable-followups.v1", "oasis.receivable-attachments.v1", "oasis.receivable-activity.v1"]
+}

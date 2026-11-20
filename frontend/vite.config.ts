@@ -4,7 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
 
 const proxy = {
-  "^/(auth|login|logout|change-password|dashboard|account|profile|team|activity|archives|deleted|reports|users|settings|activity-logs|hr|checks|payables|receivables|oasis|build)(/|$)":
+  "^/(auth|login|logout|change-password|business-state|business-files|dashboard|account|profile|team|activity|archives|deleted|reports|users|settings|activity-logs|hr|checks|payables|receivables|oasis|build)(/|$)":
     {
       target: "http://127.0.0.1:8000",
       changeOrigin: false,
@@ -13,7 +13,7 @@ const proxy = {
         if (
           req.method === "GET" &&
           req.headers.accept?.includes("text/html") &&
-          !/^\/(auth|login|logout|change-password|oasis|build)(\/|$)/.test(req.url ?? "")
+          !/^\/(auth|login|logout|change-password|business-state|business-files|oasis|build)(\/|$)/.test(req.url ?? "")
         )
           return "/index.html";
       },

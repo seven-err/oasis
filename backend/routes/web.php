@@ -3,6 +3,7 @@
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\ApplicationController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BusinessStateController;
 use App\Http\Controllers\SystemController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -18,6 +19,10 @@ Route::middleware('private.pages')->group(function () {
         Route::get('/change-password', [AccountController::class, 'editPassword'])->name('password.edit');
         Route::put('/change-password', [AccountController::class, 'updatePassword'])->middleware('throttle:6,1')->name('password.update');
         Route::get('/auth/session', [ApplicationController::class, 'session'])->name('auth.session');
+        Route::get('/business-state', [BusinessStateController::class, 'index']);
+        Route::put('/business-state/{module}', [BusinessStateController::class, 'update'])->middleware('throttle:120,1');
+        Route::post('/business-files/{module}', [BusinessStateController::class, 'upload'])->middleware('throttle:30,1');
+        Route::get('/business-files/{module}/{file}', [BusinessStateController::class, 'download'])->where('file', '[A-Za-z0-9._-]+');
         Route::get('/dashboard', [ApplicationController::class, 'show'])->middleware('can:dashboard')->name('dashboard');
         Route::get('/oasis/{file}', [ApplicationController::class, 'asset'])
             ->where('file', '(assets/[A-Za-z0-9._/-]+|favicon\.png)')->name('application.asset');

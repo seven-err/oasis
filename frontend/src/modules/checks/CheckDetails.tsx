@@ -12,7 +12,7 @@ import {
   RotateCcw,
   Trash2,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePrintReport } from "@/components/usePrintReport";
 import { checkService } from "./store";
 import type { CheckAttachment, CheckRecord } from "./types";
@@ -39,6 +39,7 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
   const [archiving, setArchiving] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const [attachments, setAttachments] = useState(() => checkService.attachmentsFor(record.id));
+  useEffect(() => setAttachments(checkService.attachmentsFor(record.id)), [record]);
   const activity = useMemo(() => checkService.activityFor(record.id), [record]);
 
   const refreshAttachments = () => setAttachments(checkService.attachmentsFor(record.id));
@@ -81,7 +82,9 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
   const onUpload = async (files: FileList | null) => {
     if (!files?.length) return;
     for (const file of Array.from(files)) {
-      const result = await checkService.addAttachment(record.id, file);
+      let result;
+      try { result = await checkService.addAttachment(record.id, file); }
+      catch { notify("Attachment could not be uploaded. Please try again."); return; }
       if (!result.ok) {
         notify(result.errors.attachments ?? "Upload failed.");
         return;

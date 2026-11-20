@@ -26,6 +26,8 @@ test("development page navigation loads editable React while account requests re
     "/login",
     "/logout",
     "/change-password",
+    "/business-state",
+    "/business-files/checks/receipt.pdf",
     "/oasis/assets/app.js",
     "/build/assets/app.css",
   ]) {

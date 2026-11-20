@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useViewHistory } from "@/hooks/useViewHistory";
+import { useBusinessRefresh } from "@/hooks/useBusinessRefresh";
 import { PayableDetails } from "./PayableDetails";
 import { PayableForm } from "./PayableForm";
 import { PayableRegister } from "./PayableRegister";
@@ -33,6 +34,7 @@ export function PayableMonitoring({
     setRecords(next);
     onRecordsChange?.(next);
   }, [onRecordsChange]);
+  useBusinessRefresh("payables", refresh);
 
   useEffect(() => {
     if (createSignal > 0) setView({ mode: "create" });

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useViewHistory } from "@/hooks/useViewHistory";
+import { useBusinessRefresh } from "@/hooks/useBusinessRefresh";
 import { ReceivableDetails } from "./ReceivableDetails";
 import { ReceivableForm } from "./ReceivableForm";
 import { ReceivableRegister } from "./ReceivableRegister";
@@ -33,6 +34,7 @@ export function ReceivableMonitoring({
     setRecords(next);
     onRecordsChange?.(next);
   }, [onRecordsChange]);
+  useBusinessRefresh("receivables", refresh);
 
   useEffect(() => {
     if (createSignal > 0) setView({ mode: "create" });

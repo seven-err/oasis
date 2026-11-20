@@ -95,6 +95,11 @@ export function ReceivableDetails({
   const [attachments, setAttachments] = useState(() =>
     receivableService.attachmentsFor(record.id),
   );
+  useEffect(() => {
+    setCollections(receivableService.collectionsFor(record.id));
+    setFollowUps(receivableService.followUpsFor(record.id));
+    setAttachments(receivableService.attachmentsFor(record.id));
+  }, [record]);
   const activity = useMemo(
     () => receivableService.activityFor(record.id),
     [record, collections, followUps, attachments],
