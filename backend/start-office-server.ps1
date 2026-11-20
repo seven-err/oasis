@@ -92,8 +92,8 @@ if ($LASTEXITCODE -ne 0) { throw 'Caddy configuration validation failed.' }
 
 $services = @()
 try {
-    $services += Start-Process -FilePath $PhpCgiPath -ArgumentList '-b 127.0.0.1:9001 -d cgi.force_redirect=0 -d expose_php=Off' -WorkingDirectory (Split-Path $PhpCgiPath -Parent) -WindowStyle Hidden -PassThru
-    $services += Start-Process -FilePath $caddy -ArgumentList @('run', '--config', ('"' + (Join-Path $backendRoot 'Caddyfile') + '"'), '--adapter', 'caddyfile') -WorkingDirectory $backendRoot -WindowStyle Hidden -PassThru -RedirectStandardError (Join-Path $runtimeRoot 'caddy.log')
+    $services += Start-Process -FilePath $PhpCgiPath -ArgumentList '-b 127.0.0.1:9001 -d cgi.force_redirect=0 -d expose_php=Off' -WorkingDirectory (Split-Path $PhpCgiPath -Parent) -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $runtimeRoot 'php-cgi.out.log') -RedirectStandardError (Join-Path $runtimeRoot 'php-cgi.err.log')
+    $services += Start-Process -FilePath $caddy -ArgumentList @('run', '--config', ('"' + (Join-Path $backendRoot 'Caddyfile') + '"'), '--adapter', 'caddyfile') -WorkingDirectory $backendRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $runtimeRoot 'caddy.out.log') -RedirectStandardError (Join-Path $runtimeRoot 'caddy.log')
     $ready = $false
     for ($attempt = 0; $attempt -lt 20; $attempt++) {
         try {
@@ -102,7 +102,7 @@ try {
         } catch { Start-Sleep -Milliseconds 500 }
     }
     if (-not $ready) { throw 'The production web server did not pass its login-page check.' }
-    $services += Start-Process -FilePath $ngrok -ArgumentList @('http', 'http://127.0.0.1:8081', ('--url=' + $PublicUrl), '--inspect=false', '--config', ('"' + $configFile + '"'), '--log', ('"' + (Join-Path $runtimeRoot 'ngrok.log') + '"'), '--log-format=json') -WindowStyle Hidden -PassThru
+    $services += Start-Process -FilePath $ngrok -ArgumentList @('http', 'http://127.0.0.1:8081', ('--url=' + $PublicUrl), '--inspect=false', '--config', ('"' + $configFile + '"'), '--log', ('"' + (Join-Path $runtimeRoot 'ngrok.log') + '"'), '--log-format=json') -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $runtimeRoot 'ngrok.out.log') -RedirectStandardError (Join-Path $runtimeRoot 'ngrok.err.log')
     $online = $false
     for ($attempt = 0; $attempt -lt 30; $attempt++) {
         try {

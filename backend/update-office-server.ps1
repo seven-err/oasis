@@ -18,6 +18,12 @@ function Invoke-Checked([string] $Command, [string[]] $Arguments) {
     if ($LASTEXITCODE -ne 0) { throw "$Command failed (exit $LASTEXITCODE). Deployment stopped; fix the error and rerun this updater." }
 }
 
+foreach ($command in @('git', 'php', 'composer', 'npm', 'npx', 'powershell.exe')) {
+    if (-not (Get-Command $command -ErrorAction SilentlyContinue)) {
+        throw "Required command '$command' was not found. Install the README prerequisites and reopen PowerShell. The server was left alone."
+    }
+}
+
 New-Item -ItemType Directory -Path $runtimeRoot -Force | Out-Null
 # One updater owns the shared server, even if a second terminal is opened.
 $lock = [IO.File]::Open((Join-Path $runtimeRoot 'update.lock'), 'OpenOrCreate', 'ReadWrite', 'None')
@@ -71,8 +77,8 @@ try {
 
                 Push-Location (Join-Path $repoRoot 'frontend')
                 try {
-                    Invoke-Checked 'pnpm' @('install', '--frozen-lockfile')
-                    Invoke-Checked 'pnpm' @('build')
+                    Invoke-Checked 'npx' @('--yes', 'pnpm@10.34.3', 'install', '--frozen-lockfile')
+                    Invoke-Checked 'npx' @('--yes', 'pnpm@10.34.3', 'build')
                 }
                 finally { Pop-Location }
 
