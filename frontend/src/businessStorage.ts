@@ -185,7 +185,11 @@ export async function refreshBusinessStorage(): Promise<void> {
 }
 
 export async function initializeBusinessStorage(): Promise<void> {
-  const result = await apiRequest<{ modules: Partial<Record<Module, State>> }>("/business-state");
+  const signal = AbortSignal.timeout(8_000);
+  const result = await apiRequest<{ modules: Partial<Record<Module, State>> }>("/business-state", { signal }).catch((failure) => {
+    if (signal.aborted) throw new Error("OASIS took too long to load your records. Check the server connection and try again.");
+    throw failure;
+  });
   for (const [module, remote] of Object.entries(result.modules) as [Module, State][]) {
     let data = remote.data;
     if (!data) {

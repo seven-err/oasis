@@ -18,7 +18,7 @@ type ValidationErrors = Record<string, string[]>;
 
 const date = (value: string | null) => (value ? new Date(value).toLocaleString() : "Never");
 
-export function UserManagement({ notify }: { notify: (message: string) => void }) {
+export function UserManagement({ notify, onOpenReports }: { notify: (message: string) => void; onOpenReports: () => void }) {
   const [path, setPath] = useState(() => window.location.pathname + window.location.search);
   const url = new URL(path, window.location.origin);
   const match = url.pathname.match(/^\/users\/(\d+)(\/edit)?\/?$/);
@@ -40,6 +40,7 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
   function navigate(next: string) {
     window.history.pushState({}, "", next);
     setCredentials(null);
+    setSearch(new URL(next, window.location.origin).searchParams.get("search") ?? "");
     setPath(next);
     window.scrollTo({ top: 0 });
   }
@@ -48,11 +49,25 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
   useEffect(() => {
     const back = () => {
       setCredentials(null);
+      setSearch(new URLSearchParams(window.location.search).get("search") ?? "");
       setPath(window.location.pathname + window.location.search);
     };
     window.addEventListener("popstate", back);
     return () => window.removeEventListener("popstate", back);
   }, []);
+
+  useEffect(() => {
+    if (form || details || credentials || search === (url.searchParams.get("search") ?? "")) return;
+    const timer = window.setTimeout(() => {
+      if (search) url.searchParams.set("search", search);
+      else url.searchParams.delete("search");
+      url.searchParams.delete("page");
+      const next = url.pathname + url.search;
+      window.history.replaceState({}, "", next);
+      setPath(next);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [search, path, form, details, credentials]);
 
   useEffect(() => {
     let active = true;
@@ -165,7 +180,7 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
             Done
           </button>
         </div>
-      ) : loading ? (
+      ) : loading && (form || details || !list) ? (
         <p role="status" className="p-5 text-sm text-[#777]">
           Loading accounts…
         </p>
@@ -346,9 +361,62 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
               <Plus size={15} /> Add user
             </button>
           </div>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <div className="relative min-w-0 flex-1">
+            <Search size={16} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-[#888]" />
+            <input
+              className="input pl-10 pr-10"
+              aria-label="Search users by name or email"
+              placeholder="Search name or email…"
+              value={search}
+              maxLength={255}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+            {search && (
+              <button type="button" aria-label="Clear search"
+                className="absolute right-2 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded text-[#777] hover:bg-[#e7f3fb] hover:text-[#222] focus-visible:outline-2 focus-visible:outline-[#1f6ea6]"
+                onClick={(event) => { setSearch(""); event.currentTarget.parentElement?.querySelector("input")?.focus(); }}>
+                <X size={16} aria-hidden="true" />
+              </button>
+            )}
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button type="button" className="secondary-btn w-full sm:w-auto" aria-expanded={showFilters} aria-controls="user-filter-panel" onClick={() => setShowFilters((visible) => !visible)}>
+              <SlidersHorizontal size={15} aria-hidden="true" /> {showFilters ? "Hide filters" : "More filters"}
+            </button>
+            <button type="button" className="secondary-btn w-full sm:w-auto" aria-label="Sort users by name alphabetically" onClick={() => {
+              url.searchParams.set("sort", sort === "asc" ? "desc" : "asc");
+              if (search) url.searchParams.set("search", search); else url.searchParams.delete("search");
+              url.searchParams.delete("page");
+              navigate(url.pathname + url.search);
+            }}>
+              <ArrowUpDown size={15} aria-hidden="true" /> {sort === "asc" ? "A-Z" : "Z-A"}
+            </button>
+            <button type="button" className="secondary-btn w-full sm:w-auto" onClick={onOpenReports}>
+              <FileText size={15} aria-hidden="true" /> Reports
+            </button>
+          </div>
+          </div>
+          <ActiveFilters
+            filters={{ search, role: url.searchParams.get("role") ?? "", status: url.searchParams.get("status") ?? "" }}
+            defaults={{ search: "", role: "", status: "" }} matched={list.total} total={list.total}
+            valueLabels={{ role: { "super-admin": "Super Admin", hr: "HR", finance: "Finance" }, status: { active: "Active", inactive: "Inactive" } }}
+            onRemove={(key) => {
+              if (key === "search") setSearch("");
+              else {
+                url.searchParams.delete(key);
+                url.searchParams.delete("page");
+                if (search) url.searchParams.set("search", search); else url.searchParams.delete("search");
+                navigate(url.pathname + url.search);
+              }
+            }}
+            onClear={() => { setSearch(""); navigate("/users"); }}
+          />
+          {showFilters && (
           <form
             key={path}
-            className="panel grid items-end gap-4 p-5 sm:grid-cols-2 xl:grid-cols-[2fr_1fr_1fr_auto]"
+            id="user-filter-panel"
+            className="grid items-end gap-4 rounded-lg border border-[#d0e3ef] bg-[#f4f9fd] p-4 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_auto]"
             onSubmit={(event) => {
               event.preventDefault();
               const query = new URLSearchParams(
@@ -357,18 +425,11 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
                   String(value),
                 ]),
               );
+              if (search) query.set("search", search);
+              if (sort === "desc") query.set("sort", sort);
               navigate("/users?" + query.toString());
             }}
           >
-            <label>
-              <span className="field-label">Search name or email</span>
-              <input
-                className="input mt-2"
-                name="search"
-                defaultValue={url.searchParams.get("search") ?? ""}
-                maxLength={255}
-              />
-            </label>
             <label>
               <span className="field-label">Role</span>
               <select

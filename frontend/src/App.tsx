@@ -905,7 +905,7 @@ function App() {
               notify={notify}
             />
           )}
-          {page === "users" && <UserManagement notify={notify} />}
+          {page === "users" && <UserManagement notify={notify} onOpenReports={() => go("reports")} />}
           {page === "archives" && (
             <ArchivedRecords
               checks={checks}
