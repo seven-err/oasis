@@ -101,7 +101,7 @@ class BusinessStateController extends Controller
         abort_unless(in_array($module, ['checks', 'receivables'], true), 404);
         Gate::authorize($module);
         $request->validate(['file' => ['required', 'file', 'max:10240']]);
-        $path = $request->file('file')->store('business-files/'.$module, 'local');
+        $path = $request->file('file')->store($module, 'business');
         abort_unless($path, 500);
 
         return response()->json(['storageKey' => $path, 'previewDataUrl' => '/business-files/'.$module.'/'.basename($path)], 201);
@@ -111,9 +111,9 @@ class BusinessStateController extends Controller
     {
         abort_unless(in_array($module, ['checks', 'receivables'], true), 404);
         Gate::authorize($module);
-        $path = 'business-files/'.$module.'/'.$file;
-        abort_unless(Storage::disk('local')->exists($path), 404);
+        $path = $module.'/'.$file;
+        abort_unless(Storage::disk('business')->exists($path), 404);
 
-        return Storage::disk('local')->download($path, headers: ['X-Content-Type-Options' => 'nosniff', 'Cache-Control' => 'no-store, private']);
+        return Storage::disk('business')->download($path, headers: ['X-Content-Type-Options' => 'nosniff', 'Cache-Control' => 'no-store, private']);
     }
 }

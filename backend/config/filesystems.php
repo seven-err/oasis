@@ -30,6 +30,12 @@ return [
 
     'disks' => [
 
+        'business' => [
+            'driver' => 'local',
+            'root' => env('OASIS_BUSINESS_FILES_PATH') ?: storage_path('app/private/business-files'),
+            'throw' => true,
+        ],
+
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),

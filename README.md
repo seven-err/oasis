@@ -225,7 +225,13 @@ require reloading rather than silently overwriting another person's changes.
 Other visible browsers check for updates every 30 seconds and on focus, while
 open edit forms keep their draft. Polling and uploads count against ngrok limits.
 Module snapshots are limited to 6 MB; uploaded attachments are limited to 10 MB.
-Back up the MySQL database and `backend/storage/app/private/business-files`.
+When the public host uses a separate checkout on the same PC, set
+`OASIS_BUSINESS_FILES_PATH` in both private `backend/.env` files to the same
+absolute directory outside the repositories. This shares uploaded files as well
+as database records. Without this setting, files use each checkout's
+`backend/storage/app/private/business-files`. Copy existing files into the shared
+directory before switching paths; keep the originals until verified.
+Back up the MySQL database and the private business-file directory.
 
 ## Making changes
 
