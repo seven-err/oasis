@@ -197,6 +197,28 @@ class UserManagementTest extends TestCase
         $this->get('/users?search=%27%20OR%201%3D1--')->assertOk()->assertDontSee('Excluded User');
     }
 
+    public function test_user_list_search_accepts_zero(): void
+    {
+        $admin = User::factory()->withRole('super-admin')->create(['name' => 'Admin', 'email' => 'admin@example.com']);
+        $target = User::factory()->withRole('hr')->create(['name' => 'User 0', 'email' => 'zero@example.com']);
+        $this->signIn($admin);
+
+        $this->getJson('/users?search=0')->assertOk()->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $target->id);
+    }
+
+    public function test_user_list_sorts_all_matching_accounts_by_name(): void
+    {
+        $admin = User::factory()->withRole('super-admin')->create(['name' => 'Middle']);
+        $first = User::factory()->withRole('hr')->create(['name' => 'Alpha']);
+        $last = User::factory()->withRole('hr')->create(['name' => 'Zulu']);
+        $this->signIn($admin);
+
+        $this->getJson('/users')->assertOk()->assertJsonPath('data.0.id', $first->id);
+        $this->getJson('/users?sort=desc')->assertOk()->assertJsonPath('data.0.id', $last->id);
+        $this->getJson('/users?sort=invalid')->assertUnprocessable()->assertJsonValidationErrors('sort');
+    }
+
     public function test_user_pages_share_the_monitoring_application_shell(): void
     {
         $admin = User::factory()->withRole('super-admin')->create();

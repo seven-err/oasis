@@ -26,16 +26,17 @@ class UserController extends Controller
             'search' => ['nullable', 'string', 'max:255'],
             'role' => ['nullable', Rule::in(array_keys(Role::ACCESS))],
             'status' => ['nullable', Rule::in(['active', 'inactive'])],
+            'sort' => ['nullable', Rule::in(['asc', 'desc'])],
         ]);
         if (! $request->expectsJson()) {
             return app(ApplicationController::class)->show($request, 'users');
         }
         $users = User::with('role')
-            ->when($filters['search'] ?? null, fn ($query, $search) => $query->where(fn ($query) => $query
-                ->where('name', 'like', '%'.$search.'%')->orWhere('email', 'like', '%'.$search.'%')))
+            ->when(isset($filters['search']) && $filters['search'] !== '', fn ($query) => $query->where(fn ($query) => $query
+                ->where('name', 'like', '%'.$filters['search'].'%')->orWhere('email', 'like', '%'.$filters['search'].'%')))
             ->when($filters['role'] ?? null, fn ($query, $role) => $query->whereHas('role', fn ($query) => $query->where('slug', $role)))
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('is_active', $status === 'active'))
-            ->orderByDesc('id')->paginate(20)->withQueryString();
+            ->orderBy('name', $filters['sort'] ?? 'asc')->orderBy('id')->paginate(20)->withQueryString();
 
         return response()->json($users);
     }

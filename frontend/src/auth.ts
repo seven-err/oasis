@@ -58,7 +58,12 @@ export function moduleUser<T extends string>(page: string, permissions: T[]) {
 }
 
 export async function readSession(): Promise<AuthSession | null> {
-  const response = await fetch("/auth/session", { credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" } });
+  let response: Response;
+  try {
+    response = await fetch("/auth/session", { credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" }, signal: AbortSignal.timeout(8_000) });
+  } catch {
+    throw new Error("Cannot connect to the sign-in service. Check that the server and database are running, then try again.");
+  }
   if (response.status === 401) return null;
   if (!response.ok || !response.headers.get("content-type")?.includes("application/json")) throw new Error("Cannot connect to the sign-in service. Please try again.");
   return response.json();
