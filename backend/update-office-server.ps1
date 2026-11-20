@@ -30,6 +30,7 @@ New-Item -ItemType Directory -Path $runtimeRoot -Force | Out-Null
 $lock = [IO.File]::Open((Join-Path $runtimeRoot 'update.lock'), 'OpenOrCreate', 'ReadWrite', 'None')
 Push-Location $repoRoot
 try {
+    $rejectedRevision = ''
     Write-Output 'Updating the office server from origin/main. Keep this checkout for hosting only.'
     do {
         $branch = & git branch --show-current
@@ -50,7 +51,46 @@ try {
         if ($LASTEXITCODE -ne 0) { throw 'The office checkout has diverged from origin/main. Resolve it manually; nothing was overwritten.' }
 
         $deployed = if (Test-Path -LiteralPath $revisionFile) { (Get-Content -LiteralPath $revisionFile -Raw).Trim() } else { '' }
+        if ($revision -eq $rejectedRevision) {
+            Start-Sleep -Seconds 30
+            continue
+        }
         if ($deployed -ne "$repoRoot|$PublicUrl|$revision" -or -not (Test-Path -LiteralPath (Join-Path $runtimeRoot 'state.json'))) {
+            $candidate = Join-Path $runtimeRoot ('build-check-' + [guid]::NewGuid())
+            $previousCi = $env:CI
+            $previousTeamUrl = $env:VITE_TEAM_URL
+            try {
+                Invoke-Checked 'git' @('worktree', 'add', '--detach', $candidate, $revision)
+                $env:CI = 'true'
+                $env:VITE_TEAM_URL = ''
+                Push-Location (Join-Path $candidate 'frontend')
+                try {
+                    Invoke-Checked 'npx' @('--yes', 'pnpm@10.34.3', 'install', '--frozen-lockfile')
+                    Invoke-Checked 'npx' @('--yes', 'pnpm@10.34.3', 'exec', 'tsc', '--noEmit')
+                    Invoke-Checked 'npx' @('--yes', 'pnpm@10.34.3', 'build')
+                }
+                finally { Pop-Location }
+            }
+            catch {
+                if (-not $Watch) { throw }
+                $rejectedRevision = $revision
+                Write-Warning "Preflight failed for $revision. The live site was left alone. $($_.Exception.Message)"
+                Start-Sleep -Seconds 30
+                continue
+            }
+            finally {
+                $env:CI = $previousCi
+                $env:VITE_TEAM_URL = $previousTeamUrl
+                $resolvedCandidate = [IO.Path]::GetFullPath($candidate)
+                $runtimePrefix = [IO.Path]::GetFullPath($runtimeRoot).TrimEnd('\') + '\'
+                if ($resolvedCandidate.StartsWith($runtimePrefix, [StringComparison]::OrdinalIgnoreCase) -and (Test-Path -LiteralPath $resolvedCandidate)) {
+                    & git -c core.longpaths=true worktree remove --force $resolvedCandidate
+                    if ($LASTEXITCODE -ne 0 -and (Test-Path -LiteralPath $resolvedCandidate)) {
+                        try { Remove-Item -LiteralPath $resolvedCandidate -Recurse -Force }
+                        catch { Write-Warning "Could not remove the preflight checkout at $candidate." }
+                    }
+                }
+            }
             Invoke-Checked 'powershell.exe' @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $launcher, '-Stop')
             Invoke-Checked 'git' @('merge', '--ff-only', $revision)
 
