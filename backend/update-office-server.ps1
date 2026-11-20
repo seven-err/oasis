@@ -66,6 +66,7 @@ try {
                 Push-Location (Join-Path $candidate 'frontend')
                 try {
                     Invoke-Checked 'npx' @('--yes', 'pnpm@10.34.3', 'install', '--frozen-lockfile')
+                    Invoke-Checked 'npx' @('--yes', 'pnpm@10.34.3', 'exec', 'tsc', '--noEmit')
                     Invoke-Checked 'npx' @('--yes', 'pnpm@10.34.3', 'build')
                 }
                 finally { Pop-Location }
