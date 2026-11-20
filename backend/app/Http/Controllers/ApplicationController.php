@@ -26,6 +26,18 @@ class ApplicationController extends Controller
         return response()->json($this->sessionData($request));
     }
 
+    public function editPassword(Request $request): View
+    {
+        if ($request->user()->must_change_password) {
+            return view('account.password');
+        }
+
+        return view('application', [
+            'session' => $this->sessionData($request),
+            'initialPage' => 'password',
+        ]);
+    }
+
     private function sessionData(Request $request): array
     {
         $user = $request->user();

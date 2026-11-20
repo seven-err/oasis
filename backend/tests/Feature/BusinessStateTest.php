@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Http\Controllers\BusinessStateController;
+use App\Models\Permission;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
@@ -35,7 +36,9 @@ class BusinessStateTest extends TestCase
 
     public function test_departments_can_only_read_and_write_their_permitted_modules(): void
     {
-        $this->signIn(User::factory()->withRole('hr')->create());
+        $hr = User::factory()->withRole('hr')->create();
+        $hr->role->permissions()->sync(Permission::whereIn('slug', ['dashboard', 'hr', 'account'])->pluck('id'));
+        $this->signIn($hr);
         $this->getJson('/business-state')->assertOk()->assertJsonCount(1, 'modules')->assertJsonPath('modules.hr.version', 0);
         $this->putJson('/business-state/checks', ['version' => 0, 'data' => $this->checks()])->assertForbidden();
         $this->signIn(User::factory()->withRole('finance')->create());
@@ -131,7 +134,10 @@ class BusinessStateTest extends TestCase
         config(['filesystems.disks.business.root' => $sharedDisk->path('')]);
         Storage::forgetDisk('business');
         $this->get($uploaded['previewDataUrl'])->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff');
-        $this->signIn(User::factory()->withRole('hr')->create());
+        $hr = User::factory()->withRole('hr')->create();
+        $this->signIn($hr);
+        $this->get($uploaded['previewDataUrl'])->assertOk();
+        $hr->role->permissions()->detach(Permission::where('slug', 'checks')->firstOrFail()->id);
         $this->get($uploaded['previewDataUrl'])->assertForbidden();
         $this->post('/business-files/checks', ['file' => UploadedFile::fake()->create('file.pdf')])->assertForbidden();
         $this->signIn(User::factory()->withRole('finance')->create());

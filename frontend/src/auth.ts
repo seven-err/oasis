@@ -22,6 +22,7 @@ export const pagePaths: Record<string, string> = {
   users: "/team",
   activity: "/activity",
   profile: "/profile",
+  password: "/change-password",
   archives: "/archives",
   deleted: "/deleted",
   reports: "/reports",
@@ -37,6 +38,7 @@ export function getSession() {
 
 export function canAccessPage(page: string) {
   if (!session || session.user.mustChangePassword) return false;
+  if (page === "password") return true;
   const permission = { employees: "hr", profile: "account", archives: "users", deleted: "users", reports: "users" }[page] ?? page;
   return session.user.permissions.includes(permission);
 }
