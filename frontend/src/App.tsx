@@ -21,7 +21,6 @@ import {
   Wallet,
   Download,
   FileCheck2,
-  House,
   LogOut,
   Menu,
   MoreHorizontal,
@@ -384,7 +383,6 @@ const nav = [
   {
     section: "Workspace",
     items: [
-      { page: "dashboard" as Page, label: "Home", icon: House },
       { page: "employees" as Page, label: "Employee Alphalist", icon: Users },
       { page: "checks" as Page, label: "Check Monitoring", icon: FileCheck2 },
       { page: "payables" as Page, label: "Payable Monitoring", icon: WalletCards },
@@ -403,16 +401,20 @@ const nav = [
 ];
 
 function App() {
+  const isHr = getSession()?.user.role === "hr";
+  const landingPage = isHr && canAccessPage("employees") ? "employees" : "dashboard";
+  const resolvePage = (requested: Page) =>
+    requested !== "dashboard" && canAccessPage(requested) ? requested : landingPage;
   const [page, setPage] = useState<Page>(() => {
     const requested = (window.__OASIS_PAGE__ ?? initialPage(window.location.pathname)) as Page;
-    return canAccessPage(requested) ? requested : "dashboard";
+    return resolvePage(requested);
   });
   const initials = CURRENT_USER.name.split(" ").filter(Boolean).map((name) => name[0]).slice(0, 2).join("");
-  const visibleNav = nav.map((group) => ({ ...group, items: group.items.filter((item) => canAccessPage(item.page)) })).filter((group) => group.items.length);
+  const visibleNav = nav.map((group) => ({ ...group, items: group.items.filter((item) => (!isHr || item.page === "employees") && canAccessPage(item.page)) })).filter((group) => group.items.length);
   useEffect(() => {
     const onPopState = () => {
       const requested = initialPage(window.location.pathname) as Page;
-      setPage(canAccessPage(requested) ? requested : "dashboard");
+      setPage(resolvePage(requested));
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
@@ -550,6 +552,7 @@ function App() {
   }, []);
 
   const go = (next: Page, notification?: OfficeNotification) => {
+    if (next === "dashboard") next = landingPage;
     if (!canAccessPage(next)) {
       setToast("You do not have access to this area.");
       return;
@@ -793,7 +796,10 @@ function App() {
               <span>{pageMeta[page].title}</span>
             </div>
           ) : (
-            <HeaderBackButton fallback={() => go("dashboard")} />
+            <HeaderBackButton
+              fallback={() => go("dashboard")}
+              currentPage={isHr && page === "employees" ? pageMeta.employees.title : undefined}
+            />
           )}
           <div className="ml-auto flex items-center gap-1">
             <NotificationInbox
@@ -2662,11 +2668,9 @@ function Status({ value }: { value: string }) {
 
 function Empty({ title, action }: { title: string; action: () => void }) {
   return (
-    <div className="grid place-items-center px-5 py-20 text-center">
-      <span className="grid size-12 place-items-center bg-[#e7f3fb] rounded-lg">
-        <Search size={20} />
-      </span>
-      <h3 className="mt-4 text-sm font-bold">{title}</h3>
+    <div className="flex flex-col items-center px-5 py-20 text-center">
+      <Search size={24} aria-hidden="true" />
+      <h3 className="mt-2 text-sm font-bold">{title}</h3>
       <p className="mt-1 text-xs text-[#888]">Adjust the filters or create a new record.</p>
       <button onClick={action} className="primary-btn mt-5">
         <Plus size={15} /> Add record

@@ -1,4 +1,4 @@
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronRight } from "lucide-react";
 import { createContext, useCallback, useContext, useLayoutEffect, useState, type ReactNode } from "react";
 
 type BackAction = { onBack: () => void; disabled: boolean };
@@ -29,8 +29,16 @@ export function useHeaderBack(onBack?: () => void, disabled = false) {
   }, [register, onBack, disabled]);
 }
 
-export function HeaderBackButton({ fallback }: { fallback: () => void }) {
+export function HeaderBackButton({ fallback, currentPage }: { fallback: () => void; currentPage?: string }) {
   const action = useContext(BackActionContext);
+  if (!action && currentPage) {
+    return (
+      <span className="inline-flex min-h-10 items-center gap-2 text-sm font-medium text-[#16344d]">
+        <ChevronRight size={16} aria-hidden="true" /> {currentPage}
+      </span>
+    );
+  }
+
   return (
     <button
       type="button"

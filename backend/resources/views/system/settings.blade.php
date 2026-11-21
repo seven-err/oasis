@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('title', 'System Settings')
 @section('content')
-<div class="panel"><h2>Role permissions</h2><p class="muted">Choose module access for each role. HR can be granted selected monitoring modules. Finance cannot receive HR access. Dashboard and personal account access are always retained. Super Admin access is fixed.</p></div>
+<div class="panel"><h2>Role permissions</h2><p class="muted">Restrict module access within each role. HR can access all monitoring modules. Finance access is limited to financial monitoring. Dashboard and personal account access are always retained. Super Admin access is fixed.</p></div>
 <div class="card-grid">
     @foreach($roles as $role)
         <section class="panel">
