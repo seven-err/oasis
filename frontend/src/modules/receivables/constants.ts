@@ -56,8 +56,6 @@ export const EMPTY_FILTERS: ReceivableFilters = {
   customerId: "All",
   invoiceDateFrom: "",
   invoiceDateTo: "",
-  transactionDateFrom: "",
-  transactionDateTo: "",
   dueDateFrom: "",
   dueDateTo: "",
   collectionStatus: "All",

@@ -292,15 +292,6 @@ export function ReceivableForm({ mode, record, onCancel, onSaved }: Props) {
                 placeholder="Internal AR reference"
               />
               <FormInput
-                label="Transaction date"
-                name="transactionDate"
-                type="date"
-                required
-                value={values.transactionDate}
-                onChange={set("transactionDate")}
-                error={errors.transactionDate}
-              />
-              <FormInput
                 label="Invoice date"
                 name="invoiceDate"
                 type="date"

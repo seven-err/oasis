@@ -134,7 +134,6 @@ function receivableExportRows(rows: ReceivableViewModel[]) {
     ClientID: r.clientId,
     ContactNumber: r.contactNumber,
     Email: r.emailAddress,
-    TransactionDate: r.transactionDate,
     InvoiceDate: r.invoiceDate,
     DueDate: r.dueDate,
     TotalReceivable: r.totalReceivableAmount.toFixed(2),

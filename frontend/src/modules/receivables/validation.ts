@@ -90,7 +90,7 @@ export function validateReceivablePayload(
     errors.emailAddress = "Enter a valid email address.";
   if (!values.billingAddress.trim()) errors.billingAddress = "Billing address is required.";
 
-  if (!values.transactionDate || !isValidIsoDate(values.transactionDate)) {
+  if (values.transactionDate && !isValidIsoDate(values.transactionDate)) {
     errors.transactionDate = "Enter a valid transaction date.";
   }
   if (!values.invoiceDate || !isValidIsoDate(values.invoiceDate)) {
