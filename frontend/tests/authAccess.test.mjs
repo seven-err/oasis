@@ -61,10 +61,10 @@ test("existing page navigation follows server permissions and rejects unknown pa
   assert.equal(initialPage("/users-unrelated"), "dashboard");
 });
 
-test("HR monitoring navigation and actions follow the selected server permissions", () => {
+test("HR monitoring access and actions follow the selected server permissions", () => {
   for (const selected of ["checks", "payables", "receivables"]) {
     const session = sessionFor("hr");
-    session.user.permissions = [...session.user.permissions, selected];
+    session.user.permissions = ["dashboard", "hr", "account", selected];
     setSession(session);
     for (const module of ["checks", "payables", "receivables"]) {
       assert.equal(canAccessPage(module), module === selected);

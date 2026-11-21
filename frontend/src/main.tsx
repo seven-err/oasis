@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { getSession, readSession, setSession, type AuthSession } from "./auth";
+import oasisLogo from "./assets/report-logo-transparent.png";
 import "./index.css";
 import { initializeBusinessStorage } from "./businessStorage";
 
@@ -15,9 +16,18 @@ const root = ReactDOM.createRoot(document.getElementById("root")!);
 
 async function start() {
   root.render(
-    <main className="mx-auto mt-24 max-w-md rounded-xl border border-[#d0e3ef] bg-white p-8 text-[#16344d]">
-      <h1 className="text-xl font-semibold">OASIS</h1>
-      <p role="status" className="my-4">Connecting to OASIS…</p>
+    <main className="grid min-h-dvh place-items-center bg-[#eff6fa] px-6 py-10 text-[#16344d]">
+      <div className="flex w-full flex-col items-center gap-8">
+        <img
+          src={oasisLogo}
+          alt="OASIS Diagnostic & Laboratory Center"
+          className="h-auto w-full max-w-80 object-contain"
+        />
+        <p role="status" className="flex items-center gap-3 text-sm">
+          <span aria-hidden="true" className="size-5 rounded-full border-2 border-[#d0e3ef] border-t-[#2879ae] motion-safe:animate-spin" />
+          Loading OASIS…
+        </p>
+      </div>
     </main>,
   );
   try {
