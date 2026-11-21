@@ -139,7 +139,6 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
       "Deposit date": formatDate(record.depositDate),
       "Clearing date": formatDate(record.clearingDate),
       "Check status": checkStatusLabel(record.checkStatus),
-      Remarks: record.remarks,
       "Prepared by": record.preparedByName,
       Created: formatDateTime(record.createdAt),
       "Last updated": formatDateTime(record.updatedAt),
@@ -260,26 +259,15 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
         />
       </SectionCard>
 
-      <SectionCard title="4. Dates and monitoring">
-        <DetailGrid
-          items={[
-            { label: "Due date", value: formatDate(record.dueDate) },
-            { label: "Deposit date", value: formatDate(record.depositDate) },
-            { label: "Clearing date", value: formatDate(record.clearingDate) },
-          ]}
-        />
-      </SectionCard>
-
-      <SectionCard title="5. Status and remarks">
+      <SectionCard title="4. Status">
         <DetailGrid
           items={[
             { label: "Check status", value: <StatusBadge value={record.checkStatus} /> },
-            { label: "Remarks", value: record.remarks || "—" },
           ]}
         />
       </SectionCard>
 
-      <SectionCard title="6. Attachments">
+      <SectionCard title="5. Attachments">
         {user.permissions.manageAttachments && (
           <label className="mb-4 block">
             <span className="secondary-btn inline-flex cursor-pointer">
@@ -341,7 +329,7 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
         )}
       </SectionCard>
 
-      <SectionCard title="7. Preparation and audit information">
+      <SectionCard title="6. Preparation and audit information">
         <DetailGrid
           items={[
             { label: "Prepared by", value: record.preparedByName },

@@ -4,11 +4,7 @@ import {
   CHECK_TYPES,
   MAX_ATTACHMENT_BYTES,
 } from "./constants";
-import {
-  canTransitionStatus,
-  requiresClearingDate,
-  requiresDepositDate,
-} from "./statusTransitions";
+import { canTransitionStatus } from "./statusTransitions";
 import type {
   CheckFormValues,
   CheckRecord,
@@ -135,29 +131,6 @@ export function validateCheckPayload(
   if (values.clearingDate && values.depositDate && values.clearingDate < values.depositDate) {
     errors.clearingDate = "Clearing date cannot be earlier than the deposit date.";
   }
-  if (
-    values.clearingDate &&
-    !values.depositDate &&
-    type === "Received Check" &&
-    status === "Cleared"
-  ) {
-    errors.depositDate = "Deposit date is required before clearing a received check.";
-  }
-  if (type && status && requiresDepositDate(status, type) && !values.depositDate) {
-    errors.depositDate = "Deposit date is required for this status.";
-  }
-  if (status && requiresClearingDate(status) && !values.clearingDate) {
-    errors.clearingDate = "Clearing date is required when status is Cleared.";
-  }
-  if (
-    values.clearingDate &&
-    status &&
-    status !== "Cleared" &&
-    !["Bounced", "Cancelled", "Voided"].includes(status)
-  ) {
-    errors.clearingDate = "Clearing date should only be set when the check is cleared.";
-  }
-
   // Uniqueness: check number + bank + type (provisional OASIS rule)
   if (checkNumber && type) {
     const duplicate = options.existing.find(

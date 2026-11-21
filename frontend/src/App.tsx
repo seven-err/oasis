@@ -1,7 +1,9 @@
+import { PasswordInput } from "./components/PasswordInput";
 import { apiRequest, canAccessPage, getSession, initialPage, logout, pagePaths, setSession } from "./auth";
 import { loadActivityLogs, type ActivityLog } from "./activityLogs";
 import { readBusinessJson, writeBusinessJson } from "./businessStorage";
 import { BusinessSyncStatus } from "./components/BusinessSyncStatus";
+import { StatusBadge as Status } from "./components/StatusBadge";
 import { UserManagement } from "./components/UserManagement";
 import { DateInput, RequirementStatusSelect } from "@/components/FormPopovers";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -21,6 +23,7 @@ import {
   Download,
   FileCheck2,
   House,
+  FileText,
   LogOut,
   Menu,
   MoreHorizontal,
@@ -39,7 +42,7 @@ import {
   WalletCards,
   X,
 } from "lucide-react";
-import oasisLogo from "../Oasis-Logo.png";
+import oasisLogo from "./assets/report-logo-transparent.png";
 import {
   getOfficeNotifications,
   NotificationInbox,
@@ -54,6 +57,8 @@ import { deletionDaysLeft, isDeletionExpired } from "@/components/deletedRecordR
 import { usePrintReport } from "@/components/usePrintReport";
 import { HeaderBackButton, HeaderBackProvider, useHeaderBack } from "@/components/HeaderBack";
 import { useViewHistory } from "@/hooks/useViewHistory";
+import { confirmLeavingUnsavedForm, useUnsavedForm } from "@/hooks/useUnsavedForm";
+import { fieldError, focusFirstError } from "@/components/formValidation";
 import { recordRowClick } from "@/components/recordRowClick";
 import {
   CheckMonitoring,
@@ -88,7 +93,8 @@ type Page =
   | "archives"
   | "deleted"
   | "profile"
-  | "password";
+  | "password"
+  | "settings";
 
 type ArchiveModule = "Checks" | "Payables" | "Receivables" | "Employees";
 
@@ -366,6 +372,11 @@ const pageMeta: Record<Page, { eyebrow: string; title: string; description: stri
     title: "My Profile",
     description: "Manage your personal information and security preferences.",
   },
+  settings: {
+    eyebrow: "Administration",
+    title: "System Settings",
+    description: "Manage role permissions and module access.",
+  },
   password: {
     eyebrow: "Account",
     title: "Change Password",
@@ -396,16 +407,20 @@ const nav = [
 ];
 
 function App() {
+  const isHr = getSession()?.user.role === "hr";
+  const landingPage = isHr && canAccessPage("employees") ? "employees" : "dashboard";
+  const resolvePage = (requested: Page) =>
+    requested !== "dashboard" && canAccessPage(requested) ? requested : landingPage;
   const [page, setPage] = useState<Page>(() => {
     const requested = (window.__OASIS_PAGE__ ?? initialPage(window.location.pathname)) as Page;
-    return canAccessPage(requested) ? requested : "dashboard";
+    return resolvePage(requested);
   });
   const initials = CURRENT_USER.name.split(" ").filter(Boolean).map((name) => name[0]).slice(0, 2).join("");
-  const visibleNav = nav.map((group) => ({ ...group, items: group.items.filter((item) => canAccessPage(item.page)) })).filter((group) => group.items.length);
+  const visibleNav = nav.map((group) => ({ ...group, items: group.items.filter((item) => (!isHr || item.page === "employees") && canAccessPage(item.page)) })).filter((group) => group.items.length);
   useEffect(() => {
     const onPopState = () => {
       const requested = initialPage(window.location.pathname) as Page;
-      setPage(canAccessPage(requested) ? requested : "dashboard");
+      setPage(resolvePage(requested));
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
@@ -543,10 +558,12 @@ function App() {
   }, []);
 
   const go = (next: Page, notification?: OfficeNotification) => {
+    if (next === "dashboard") next = landingPage;
     if (!canAccessPage(next)) {
       setToast("You do not have access to this area.");
       return;
     }
+    if ((next !== page || notification) && !confirmLeavingUnsavedForm()) return;
     if (next !== page) window.history.pushState({ ...window.history.state, oasisPage: next }, "", pagePaths[next]);
     setPage(next);
     setNotificationTarget((previous) =>
@@ -621,6 +638,7 @@ function App() {
   };
 
   const requestAdd = () => {
+    if (!confirmLeavingUnsavedForm()) return;
     if (page === "checks") {
       setCheckCreateSignal((n) => n + 1);
       return;
@@ -661,30 +679,16 @@ function App() {
             onClick={() => go("dashboard")}
             className="flex min-w-0 items-center overflow-hidden"
           >
-            <img
-              src={oasisLogo}
-              alt=""
-              className="size-14 shrink-0 object-contain"
-            />
-            <span aria-hidden="true" className="sidebar-brand grid shrink-0 grid-rows-[1fr_auto_1fr] self-stretch whitespace-nowrap text-left">
-              <svg
-                aria-hidden="true"
-                className="row-start-2 h-[13px] w-auto justify-self-start text-[#ed0000]"
-                viewBox="0 0 354 64"
-              >
-                <g fill="none" stroke="currentColor" strokeWidth="12" strokeLinecap="round">
-                  <path d="M6 56 40 10 Q46 2 52 10 L86 56" />
-                  <path d="M201 10 H128 A12 12 0 0 0 128 34 H191 A11 11 0 0 1 191 56 H112" />
-                  <path d="M229 10 V56" />
-                  <path d="M344 10 H271 A12 12 0 0 0 271 34 H334 A11 11 0 0 1 334 56 H255" />
-                </g>
-                <circle cx="46" cy="48" r="8" fill="currentColor" />
-              </svg>
-              <span className="row-start-3 pt-1 text-[9px] leading-[11px] tracking-[.04em] text-[#5c7890]">
-                Diagnostic & Laboratory Center
-              </span>
-            </span>
-          </button>
+            <span data-sidebar-logo className={`block shrink-0 overflow-hidden lg:-ml-2 ${compactMenu ? "w-56 lg:w-[60px]" : "w-56"}`}>
+              <img
+                data-loading-logo-target
+                src={oasisLogo}
+                alt=""
+                width={2172}
+                height={724}
+                className="block h-auto w-56 max-w-none"
+              />
+            </span>          </button>
           <button
             className="ml-auto shrink-0 text-[#5c7890] hover:text-[#16344d] lg:hidden"
             onClick={() => setSidebarOpen(false)}
@@ -735,6 +739,7 @@ function App() {
               </button>
               <button
                 onClick={() => {
+                  if (!confirmLeavingUnsavedForm()) return;
                   setProfileOpen(false);
                   void logout().catch((error) => notify(error.message));
                 }}
@@ -786,7 +791,10 @@ function App() {
               <span>{pageMeta[page].title}</span>
             </div>
           ) : (
-            <HeaderBackButton fallback={() => go("dashboard")} />
+            <HeaderBackButton
+              fallback={() => go("dashboard")}
+              currentPage={isHr && page === "employees" ? pageMeta.employees.title : undefined}
+            />
           )}
           <div className="ml-auto flex items-center gap-1">
             <NotificationInbox
@@ -1010,6 +1018,7 @@ function App() {
           {page === "activity" && <ActivityLogs />}
           {page === "profile" && <Profile notify={notify} />}
           {page === "password" && <ChangePassword />}
+          {page === "settings" && <SystemSettings onClose={() => go("profile")} />}
         </main>
       </div>
 
@@ -1579,6 +1588,7 @@ function RegisterTools({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="input pl-10 pr-10"
+          aria-label="Search employees"
           placeholder={placeholder}
         />
         {query.length > 0 && (
@@ -1608,7 +1618,7 @@ function RegisterTools({
         <ArrowUpDown size={15} /> {sortDirection === "asc" ? "A-Z" : "Z-A"}
       </button>
         <button type="button" className="secondary-btn w-full sm:w-auto" aria-expanded={showReports} aria-controls="employee-report-panel" onClick={() => setShowReports((visible) => !visible)}>
-          <FileCheck2 size={15} /> Reports
+          <FileText size={15} /> Reports
         </button>
       </div>
     </div>
@@ -1847,6 +1857,8 @@ function EmployeeRecordPanel({
   onDelete: (id: number) => void;
   saveEmployee: (record: Omit<Employee, "id" | "number">) => void;
 }) {
+  const { markDirty, markSaved } = useUnsavedForm(view.mode !== "details");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const record = view.mode === "create" ? undefined : employees.find((employee) => employee.id === view.id);
   const [contactDigits, setContactDigits] = useState(() => getContactDigits(record?.contactNumber ?? ""));
   const [checkedRequirements, setCheckedRequirements] = useState(record?.requirements ?? []);
@@ -1882,11 +1894,22 @@ function EmployeeRecordPanel({
     const fullName = text("party");
     const pieces = fullName.split(/\s+/);
     const employmentStatus = employmentStatuses.find((status) => status === text("employmentStatus"));
-    if (!fullName || (requiresEmploymentStatus && !employmentStatus)) return;
     const enteredAmount = text("cashAdvanceAmount");
     const cashAdvanceAmount = enteredAmount ? Number(enteredAmount) : undefined;
-    if (cashAdvanceAmount !== undefined && (!Number.isFinite(cashAdvanceAmount) || cashAdvanceAmount <= 0)) return;
-    if (contactDigits && !contactSubscriberRegex.test(contactDigits)) return;
+    const nextErrors: Record<string, string> = {};
+    for (const field of e.currentTarget.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("input[name], select[name], textarea[name]")) {
+      const error = fieldError(field);
+      if (error) nextErrors[field.name] = error;
+    }
+    if (!fullName) nextErrors.party = "Enter the employee's full name.";
+    if (requiresEmploymentStatus && !employmentStatus) nextErrors.employmentStatus = "Select an employment status.";
+    if (cashAdvanceAmount !== undefined && (!Number.isFinite(cashAdvanceAmount) || cashAdvanceAmount <= 0)) nextErrors.cashAdvanceAmount = "Enter an amount greater than zero.";
+    if (contactDigits && !contactSubscriberRegex.test(contactDigits)) nextErrors.contactNumber = "Enter 10 digits starting with 9.";
+    if (Object.keys(nextErrors).length) {
+      setFieldErrors(nextErrors);
+      focusFirstError(e.currentTarget, nextErrors);
+      return;
+    }
     const status =
       record && currentEmploymentStatus === employmentStatus
         ? record.status
@@ -1909,6 +1932,7 @@ function EmployeeRecordPanel({
       if (attachment) requirementAttachments[item] = attachment;
     }
 
+    markSaved();
     saveEmployee({
       ...personalAndContractFields,
       contactNumber: contactDigits ? contactCountryCode + contactDigits : "",
@@ -1940,15 +1964,20 @@ function EmployeeRecordPanel({
         subtitle="Employee information and requirements"
         onBack={close}
       />
-      <form onSubmit={onSubmit} className="p-5 md:p-6">
+      <form onSubmit={onSubmit} onChangeCapture={(event) => {
+        markDirty();
+        const field = event.nativeEvent.target;
+        if (!(field instanceof HTMLInputElement || field instanceof HTMLSelectElement || field instanceof HTMLTextAreaElement)) return;
+        if (fieldErrors[field.name]) setFieldErrors((current) => ({ ...current, [field.name]: fieldError(field) }));
+      }} className="p-5 md:p-6" noValidate>
         <div className="space-y-6">
           <fieldset className="grid gap-4 sm:grid-cols-2">
             <legend className="mb-4 text-[10px] font-bold uppercase tracking-[.14em] text-[#1f6ea6]">Employee information</legend>
-            <FormField label="Full Name (Surname, First name)" name="party" defaultValue={record?.name} required />
-            <FormField label="Email Address" name="email" defaultValue={record?.email} type="email" required />
-            <FormField label="Date Hired" name="date" defaultValue={record?.dateHired} type="date" required />
-            <FormField label="Department" name="department" defaultValue={record?.department} required />
-            <FormField label="Position" name="position" defaultValue={record?.position} required />
+            <FormField label="Full Name (Surname, First name)" name="party" defaultValue={record?.name} required error={fieldErrors.party} />
+            <FormField label="Email Address" name="email" defaultValue={record?.email} type="email" required error={fieldErrors.email} />
+            <FormField label="Date Hired" name="date" defaultValue={record?.dateHired} type="date" required error={fieldErrors.date} />
+            <FormField label="Department" name="department" defaultValue={record?.department} required error={fieldErrors.department} />
+            <FormField label="Position" name="position" defaultValue={record?.position} required error={fieldErrors.position} />
             <label className="block">
               <span className="field-label">
                 Employment Status {requiresEmploymentStatus && <span className="text-red-700">*</span>}
@@ -1956,12 +1985,15 @@ function EmployeeRecordPanel({
               <select
                 name="employmentStatus"
                 required={requiresEmploymentStatus}
+                aria-invalid={fieldErrors.employmentStatus ? true : undefined}
+                aria-describedby={fieldErrors.employmentStatus ? "employmentStatus-error" : undefined}
                 defaultValue={currentEmploymentStatus ?? ""}
                 className="input select-input mt-2"
               >
                 <option value="" disabled={requiresEmploymentStatus}>Select employment status</option>
                 {employmentStatuses.map((status) => <option key={status}>{status}</option>)}
               </select>
+              {fieldErrors.employmentStatus && <p id="employmentStatus-error" className="mt-1.5 text-[11px] text-red-700">{fieldErrors.employmentStatus}</p>}
             </label>
             <FormField
               label="Cash Advance Amount (PHP)"
@@ -1969,6 +2001,7 @@ function EmployeeRecordPanel({
               type="number"
               min={0.01}
               defaultValue={record?.cashAdvanceAmount}
+              error={fieldErrors.cashAdvanceAmount}
             />
           </fieldset>
           {employeeFieldGroups.map(({ title, fields }) => (
@@ -1989,6 +2022,8 @@ function EmployeeRecordPanel({
                           autoComplete="tel-national"
                           pattern={contactSubscriberPattern}
                           title="Enter 10 digits starting with 9."
+                          aria-invalid={fieldErrors.contactNumber ? true : undefined}
+                          aria-describedby={fieldErrors.contactNumber ? "contactNumber-error" : undefined}
                           value={contactDigits}
                           onChange={(event) => {
                             const digits = getContactDigits(event.currentTarget.value);
@@ -1999,6 +2034,7 @@ function EmployeeRecordPanel({
                           className="input pl-11"
                         />
                       </div>
+                      {fieldErrors.contactNumber && <p id="contactNumber-error" className="mt-1.5 text-[11px] text-red-700">{fieldErrors.contactNumber}</p>}
                     </label>
                   );
                 }
@@ -2029,6 +2065,7 @@ function EmployeeRecordPanel({
                     defaultValue={record?.[name]}
                     type={"type" in field ? field.type : undefined}
                     min={name === "yearsOfService" ? 0 : undefined}
+                    error={fieldErrors[name]}
                   />
                 );
               })}
@@ -2060,7 +2097,7 @@ function EmployeeRecordPanel({
               <RequirementStatusSelect
                 value={allRequirementsChecked ? requirementStatus : "Incomplete"}
                 allowComplete={allRequirementsChecked}
-                onChange={(value) => setRequirementStatus(value === "Complete" && allRequirementsChecked ? "Complete" : "Incomplete")}
+                onChange={(value) => { if (value !== requirementStatus) markDirty(); setRequirementStatus(value === "Complete" && allRequirementsChecked ? "Complete" : "Incomplete"); }}
               />
               {!allRequirementsChecked && (
                 <p className="mt-2 text-[11px] text-[#777]">Check every requirement and laboratory requirement before selecting Complete.</p>
@@ -2075,7 +2112,7 @@ function EmployeeRecordPanel({
           </div>
         </div>
         <div className="mt-7 flex justify-end gap-2 border-t border-[#e1eef6] pt-5">
-          <button className="primary-btn">{record ? "Save changes" : "Save record"}</button>
+          <button className="primary-btn">{record ? "Save changes" : "Save employee"}</button>
         </div>
       </form>
     </section>
@@ -2245,7 +2282,7 @@ function Reports({ checks, payables, receivables, employees, notify }: any) {
   const { printReport, printSheet } = usePrintReport();
   const activeChecks = (checks as CheckRecord[]).filter((x) => !x.archivedAt);
   const payableRows = (payables as PayableViewModel[]).filter(
-    (x) => !x.archivedAt && x.approvalStatus === "Approved" && x.remainingBalance > 0,
+    (x) => !x.archivedAt && x.remainingBalance > 0,
   );
   const reports = [
     {
@@ -2276,7 +2313,6 @@ function Reports({ checks, payables, receivables, employees, notify }: any) {
         Paid: x.amountPaid,
         Remaining: x.remainingBalance,
         PaymentStatus: x.paymentStatus,
-        ApprovalStatus: x.approvalStatus,
       })),
     },
     {
@@ -2416,15 +2452,15 @@ function ChangePassword({ onClose }: { onClose?: () => void }) {
         {success && <p role="status" className="text-sm text-green-700">{success}</p>}
         <label className="block">
           <span className="field-label">Current password <span className="text-red-700">*</span></span>
-          <input className="input mt-2" type="password" name="current_password" autoComplete="current-password" required />
+          <PasswordInput className="mt-2" name="current_password" autoComplete="current-password" required />
         </label>
         <label className="block">
           <span className="field-label">New password <span className="text-red-700">*</span></span>
-          <input className="input mt-2" type="password" name="password" autoComplete="new-password" minLength={12} maxLength={1024} required />
+          <PasswordInput className="mt-2" name="password" autoComplete="new-password" minLength={12} maxLength={1024} required />
         </label>
         <label className="block">
           <span className="field-label">Confirm new password <span className="text-red-700">*</span></span>
-          <input className="input mt-2" type="password" name="password_confirmation" autoComplete="new-password" minLength={12} maxLength={1024} required />
+          <PasswordInput className="mt-2" name="password_confirmation" autoComplete="new-password" minLength={12} maxLength={1024} required />
         </label>
         <div className="flex flex-wrap justify-end gap-3 border-t border-[#e1eef6] pt-5">
           {onClose
@@ -2460,7 +2496,7 @@ function SystemSettings({ onClose }: { onClose: () => void }) {
     <section className="panel">
       <PanelTitle title="System settings" subtitle="Manage role permissions" />
       <div className="grid gap-5 p-6">
-        <p className="text-xs text-[#777]">Restrict module access within each role. HR can access all monitoring modules. Finance access is limited to financial monitoring. Dashboard and personal account access are always retained. Super Admin access is fixed.</p>
+        <p className="text-xs text-[#777]">Choose module access for each role. HR can be granted selected monitoring modules. Finance access is limited to financial monitoring. Dashboard and personal account access are always retained. Super Admin access is fixed.</p>
         {loading && <p role="status" className="text-sm">Loading settings…</p>}
         {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
         {success && <p role="status" className="text-sm text-green-700">{success}</p>}
@@ -2495,7 +2531,7 @@ function SystemSettings({ onClose }: { onClose: () => void }) {
             ))}
             <label className="block">
               <span className="field-label">Confirm your administrator password <span className="text-red-700">*</span></span>
-              <input className="input mt-2" type="password" name="current_password" autoComplete="current-password" required />
+              <PasswordInput className="mt-2" name="current_password" autoComplete="current-password" required />
             </label>
             <div className="flex justify-end">
               <button className="primary-btn" type="submit" disabled={saving}>Save {role.name} permissions</button>
@@ -2607,8 +2643,9 @@ function FormField({
   min,
   max,
   defaultValue,
+  error,
 }: any) {
-  const Input = type === "date" ? DateInput : "input";
+  const Input = type === "date" ? DateInput : type === "password" ? PasswordInput : "input";
   return (
     <label className="block">
       <span className="field-label">
@@ -2617,6 +2654,8 @@ function FormField({
       </span>
       <Input
         name={name}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${name}-error` : undefined}
         type={type}
         required={required}
         value={value}
@@ -2625,32 +2664,11 @@ function FormField({
         max={max}
         step={type === "number" ? "0.01" : undefined}
         defaultValue={defaultValue}
-        className="input mt-2"
+        className={type === "password" ? "mt-2" : "input mt-2"}
       />
+      {error && <p id={`${name}-error`} className="mt-1.5 text-[11px] text-red-700">{error}</p>}
     </label>
   );
-}
-
-function Status({ value }: { value: string }) {
-  const tone = [
-    "Paid",
-    "Collected",
-    "Cleared",
-    "Active",
-    "Administrator",
-    "Deposited",
-    "Approved",
-    "Complete",
-  ].includes(value)
-    ? "status-good"
-    : ["Overdue", "Cancelled", "Voided", "Bounced", "Inactive", "Rejected", "Incomplete"].includes(value)
-      ? "status-alert"
-      : ["Partial", "Partially Collected", "Partially Paid", "For Deposit", "For Clearing"].includes(
-            value,
-          )
-        ? "status-partial"
-        : "status-neutral";
-  return <span className={`status ${tone}`}>{value === "Bounced" ? "Returned" : value}</span>;
 }
 
 function Empty({ title, action }: { title: string; action: () => void }) {

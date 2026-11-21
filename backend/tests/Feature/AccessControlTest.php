@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\BusinessStateController;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
@@ -88,7 +89,8 @@ class AccessControlTest extends TestCase
     {
         $this->signIn(User::factory()->withRole('hr')->create());
 
-        $response = $this->get('/dashboard')->assertOk()->assertViewIs('application');
+        $this->get('/dashboard')->assertRedirect(route('modules.hr'));
+        $response = $this->get('/hr/alphalist')->assertOk()->assertViewIs('application')->assertViewHas('initialPage', 'employees');
         $this->assertSame(['dashboard', 'hr', 'checks', 'payables', 'receivables', 'account'], $response->viewData('session')['user']['permissions']);
     }
 
@@ -218,6 +220,6 @@ class AccessControlTest extends TestCase
 
         $this->assertDatabaseHas('users', ['id' => $user->id, 'email' => 'new@example.com', 'auth_version' => 1, 'email_verified_at' => null]);
         $this->assertNotSame($oldRememberToken, $user->fresh()->remember_token);
-        $this->get('/dashboard')->assertOk();
+        $this->get('/hr/alphalist')->assertOk();
     }
 }

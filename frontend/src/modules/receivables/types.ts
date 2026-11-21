@@ -209,8 +209,6 @@ export type ReceivableFilters = {
   customerId: number | "All";
   invoiceDateFrom: string;
   invoiceDateTo: string;
-  transactionDateFrom: string;
-  transactionDateTo: string;
   dueDateFrom: string;
   dueDateTo: string;
   collectionStatus: CollectionStatus | "All";
@@ -226,7 +224,6 @@ export type ReceivableSortKey =
   | "invoiceNumber"
   | "customerName"
   | "clientId"
-  | "transactionDate"
   | "invoiceDate"
   | "dueDate"
   | "totalReceivableAmount"

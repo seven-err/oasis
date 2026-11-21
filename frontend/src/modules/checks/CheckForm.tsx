@@ -4,10 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { CHECK_TYPES } from "./constants";
 import { allowedStatusesForType, defaultStatusForType } from "./statusTransitions";
 import { checkService } from "./store";
-import { validateAttachmentFile } from "./validation";
+import { validateAttachmentFile, validateCheckPayload } from "./validation";
 import type { CheckFormValues, CheckRecord, ValidationResult } from "./types";
-import { FieldError, FieldLabel, FormInput, FormSelect, FormTextarea, PanelTitle } from "./ui";
+import { FieldError, FieldLabel, FormInput, FormSelect, PanelTitle } from "./ui";
 import { emptyFormValues, recordToFormValues } from "./utils";
+import { useUnsavedForm } from "@/hooks/useUnsavedForm";
+import { focusFirstError, updateVisibleErrors } from "@/components/formValidation";
 
 type Props = {
   mode: "create" | "edit";
@@ -17,6 +19,7 @@ type Props = {
 };
 
 export function CheckForm({ mode, record, onCancel, onSaved }: Props) {
+  const { markDirty, markSaved } = useUnsavedForm();
   const user = checkService.getUser();
   const [values, setValues] = useState<CheckFormValues>(() =>
     record
@@ -45,6 +48,12 @@ export function CheckForm({ mode, record, onCancel, onSaved }: Props) {
     }
   }, [values.checkType, values.checkStatus, statuses]);
 
+  useEffect(() => {
+    setErrors((current) => Object.values(current).some(Boolean)
+      ? updateVisibleErrors(current, validateCheckPayload(values, { existing: checkService.list(), editingId: record?.id, previousStatus: record?.checkStatus }).errors)
+      : current);
+  }, [values, record]);
+
   const set =
     (key: keyof CheckFormValues) =>
     (value: string) => {
@@ -60,15 +69,15 @@ export function CheckForm({ mode, record, onCancel, onSaved }: Props) {
         }
         return next;
       });
-      setErrors((e) => ({ ...e, [key]: undefined, form: undefined }));
     };
 
-  const onSubmit = async (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (user.permissions.manageAttachments) {
       const invalidFile = pendingFiles.find((file) => validateAttachmentFile(file));
       if (invalidFile) {
         setAttachmentError(`${invalidFile.name}: ${validateAttachmentFile(invalidFile)}`);
+        focusFirstError(e.currentTarget, { attachments: true });
         return;
       }
     }
@@ -81,6 +90,7 @@ export function CheckForm({ mode, record, onCancel, onSaved }: Props) {
 
     if (!result.ok) {
       setErrors(result.errors);
+      focusFirstError(e.currentTarget, result.errors);
       setSaving(false);
       return;
     }
@@ -91,6 +101,7 @@ export function CheckForm({ mode, record, onCancel, onSaved }: Props) {
         if (!att.ok) {
           setAttachmentError(att.errors.attachments ?? "Attachment upload failed.");
           setSaving(false);
+          markSaved();
           onSaved(result.data);
           return;
         }
@@ -98,6 +109,7 @@ export function CheckForm({ mode, record, onCancel, onSaved }: Props) {
     }
 
     setSaving(false);
+    markSaved();
     onSaved(result.data);
   };
 
@@ -109,9 +121,9 @@ export function CheckForm({ mode, record, onCancel, onSaved }: Props) {
         title={mode === "create" ? "Add check" : "Edit check"}
         subtitle="All required fields must be completed. Prepared By is set to the authenticated user."
       />
-      <form onSubmit={onSubmit} className="p-5 md:p-6" noValidate>
+      <form onSubmit={onSubmit} onChangeCapture={markDirty} className="p-5 md:p-6" noValidate>
         {errors.form && (
-          <div className="mb-5 border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800">
+          <div role="alert" tabIndex={-1} className="mb-5 border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800">
             {errors.form}
           </div>
         )}
@@ -266,61 +278,15 @@ export function CheckForm({ mode, record, onCancel, onSaved }: Props) {
 
           <fieldset>
             <legend className="mb-4 text-[10px] font-bold uppercase tracking-[.14em] text-[#1f6ea6]">
-              Dates and monitoring
-            </legend>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <FormInput
-                label="Due date"
-                name="dueDate"
-                type="date"
-                value={values.dueDate}
-                onChange={set("dueDate")}
-                error={errors.dueDate}
-              />
-              <FormInput
-                label="Deposit date"
-                name="depositDate"
-                type="date"
-                value={values.depositDate}
-                onChange={set("depositDate")}
-                error={errors.depositDate}
-              />
-              <FormInput
-                label="Clearing date"
-                name="clearingDate"
-                type="date"
-                value={values.clearingDate}
-                onChange={set("clearingDate")}
-                error={errors.clearingDate}
-              />
-            </div>
-            <p className="mt-3 text-[11px] text-[#888]">
-              Deposit dates are not required for issued checks unless OASIS management confirms
-              otherwise. Checks are never auto-cleared by date.
-            </p>
-          </fieldset>
-
-          <fieldset>
-            <legend className="mb-4 text-[10px] font-bold uppercase tracking-[.14em] text-[#1f6ea6]">
-              Status and remarks
-            </legend>
-            <FormTextarea
-              label="Remarks"
-              name="remarks"
-              value={values.remarks}
-              onChange={set("remarks")}
-              error={errors.remarks}
-            />
-          </fieldset>
-
-          <fieldset>
-            <legend className="mb-4 text-[10px] font-bold uppercase tracking-[.14em] text-[#1f6ea6]">
               Attachments
             </legend>
             <label className="block">
               <FieldLabel>Upload scanned checks or supporting documents</FieldLabel>
               <input
                 type="file"
+                name="attachments"
+                aria-invalid={attachmentError || errors.attachments ? true : undefined}
+                aria-describedby={attachmentError || errors.attachments ? "check-attachments-error" : undefined}
                 multiple
                 accept={ATTACHMENT_ACCEPT}
                 className="input mt-2 h-auto py-2 file:mr-3 file:border-0 file:bg-[#e7f3fb] file:px-3 file:py-1.5 file:text-[11px] file:font-semibold"
@@ -334,7 +300,7 @@ export function CheckForm({ mode, record, onCancel, onSaved }: Props) {
               <p className="mt-2 text-[11px] text-[#888]">
                 {ATTACHMENT_FORMATS} · Max 5 MB each · Stored privately (not public URLs)
               </p>
-              <FieldError message={attachmentError || errors.attachments} />
+              <FieldError id="check-attachments-error" message={attachmentError || errors.attachments} />
               {pendingFiles.length > 0 && (
                 <ul className="mt-3 space-y-1 text-[11px] text-[#555]">
                   {pendingFiles.map((f) => (
@@ -373,7 +339,7 @@ export function CheckForm({ mode, record, onCancel, onSaved }: Props) {
 
         <div className="mt-8 flex flex-wrap justify-end gap-2 border-t border-[#e1eef6] pt-5">
           <button type="submit" className="primary-btn" disabled={saving}>
-            {saving ? "Saving…" : "Save check"}
+            {saving ? "Saving…" : mode === "edit" ? "Save changes" : "Save check"}
           </button>
         </div>
       </form>

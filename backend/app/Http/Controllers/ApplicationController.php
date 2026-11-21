@@ -5,15 +5,25 @@ namespace App\Http\Controllers;
 use App\Models\Role;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ApplicationController extends Controller
 {
+    public function dashboard(Request $request): View|RedirectResponse
+    {
+        if ($request->user()->role->slug === 'hr' && $request->user()->can('hr')) {
+            return redirect()->route('modules.hr');
+        }
+
+        return $this->show($request);
+    }
+
     public function show(Request $request, ?string $page = null): View
     {
-        Gate::authorize($page === 'users' ? 'users' : ($request->route()->defaults['permission'] ?? 'dashboard'));
+        Gate::authorize(in_array($page, ['users', 'activity', 'settings'], true) ? $page : ($request->route()->defaults['permission'] ?? 'dashboard'));
 
         return view('application', [
             'session' => $this->sessionData($request),

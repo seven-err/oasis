@@ -1,5 +1,6 @@
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronRight } from "lucide-react";
 import { createContext, useCallback, useContext, useLayoutEffect, useState, type ReactNode } from "react";
+import { confirmLeavingUnsavedForm } from "@/hooks/useUnsavedForm";
 
 type BackAction = { onBack: () => void; disabled: boolean };
 type RegisterBack = (action: BackAction) => () => void;
@@ -29,12 +30,20 @@ export function useHeaderBack(onBack?: () => void, disabled = false) {
   }, [register, onBack, disabled]);
 }
 
-export function HeaderBackButton({ fallback }: { fallback: () => void }) {
+export function HeaderBackButton({ fallback, currentPage }: { fallback: () => void; currentPage?: string }) {
   const action = useContext(BackActionContext);
+  if (!action && currentPage) {
+    return (
+      <span className="inline-flex min-h-10 items-center gap-2 text-sm font-medium text-[#16344d]">
+        <ChevronRight size={16} aria-hidden="true" /> {currentPage}
+      </span>
+    );
+  }
+
   return (
     <button
       type="button"
-      onClick={action?.onBack ?? fallback}
+      onClick={() => { if (confirmLeavingUnsavedForm()) (action?.onBack ?? fallback)(); }}
       disabled={action?.disabled ?? false}
       className="inline-flex min-h-10 items-center gap-2 border-0 bg-transparent px-0 text-sm font-medium text-[#16344d] shadow-none transition-[color,scale] duration-300 ease-out motion-reduce:transition-none hover:text-[#1f6ea6] disabled:cursor-not-allowed disabled:opacity-50"
     >

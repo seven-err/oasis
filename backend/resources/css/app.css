@@ -17,7 +17,7 @@
     a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid #2278b0; outline-offset: 3px; }
     label { font-weight: 500; font-size: .875rem; }
     input:not([type='checkbox']), select { width: 100%; border: 1px solid #bac6cf; border-radius: .4rem; padding: .65rem .8rem; background: white; min-height: 44px; }
-    input[aria-invalid='true'] { border-color: #b42318; }
+    input[aria-invalid='true'], select[aria-invalid='true'], textarea[aria-invalid='true'] { border-color: #b42318; box-shadow: 0 0 0 1px #b42318; }
     input[type='checkbox'] { width: 1rem; height: 1rem; accent-color: #1f6ea6; }
     select:disabled { background: #f1f3f5; color: #536373; }
     small { color: #536373; }
@@ -51,7 +51,7 @@
     .field-error { color: #b42318; }
     .input-group { display: flex; position: relative; }
     .input-group:has(.password-toggle) input { padding-right: 4.25rem; }
-    .password-toggle { position: absolute; right: .5rem; top: .45rem; min-height: 30px; padding: 0 .4rem; color: #1f6ea6; font-size: .8rem; }
+    .password-toggle { display: inline-flex; align-items: center; justify-content: center; position: absolute; right: .5rem; top: .45rem; min-height: 30px; padding: 0 .4rem; color: #1f6ea6; font-size: .8rem; }
     .button { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; padding: .65rem 1rem; min-height: 44px; border: 1px solid transparent; border-radius: .4rem; background: #1f6ea6; color: white; font-weight: 600; font-size: .875rem; text-align: center; }
     .button:hover { background: #185985; }
     .button.secondary { background: white; border-color: #bac6cf; color: #294c66; }
@@ -214,14 +214,11 @@
     .login-description { margin-bottom: 34px; color: #536373; font-size: 14px; text-align: center; }
     .login-form { display: grid; gap: 22px; }
     .login-form .field { gap: 8px; }
-    .login-form .field-error { display: none; }
-    .login-form .field label { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-    .login-form input:not([type='checkbox']) { min-height: 48px; padding: 12px 16px 12px 46px; border: 1px solid transparent; border-radius: 999px; background-color: #f1f2f4; background-position: 17px center; background-size: 18px; background-repeat: no-repeat; color: #17232e; font-size: 14px; }
-    .login-form #email { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23818b94' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='12' cy='8' r='4'/%3E%3Cpath d='M4.5 20a7.5 7.5 0 0 1 15 0'/%3E%3C/svg%3E"); }
-    .login-form #password { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23818b94' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5' y='10' width='14' height='11' rx='2'/%3E%3Cpath d='M8 10V7a4 4 0 1 1 8 0v3m-4 4v3'/%3E%3C/svg%3E"); }
-    .login-form input::placeholder { color: #737e88; opacity: 1; }
+    .login-form .field label { color: #777; font-size: 9px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+    .login-form input:not([type='checkbox']) { min-height: 44px; padding: 11px 12px; border-color: #c5dced; border-radius: 8px; color: #111; font-size: 12px; }
+    .login-form input::placeholder { color: #999; }
     .login-form input:focus { border-color: #1f6ea6; outline: none; box-shadow: 0 0 0 2px rgb(31 110 166 / 16%); }
-    .login-form input[aria-invalid='true'] { border-color: #b42318; }
+    .login-form input[aria-invalid='true'] { border-color: #b42318; box-shadow: 0 0 0 1px #b42318; }
     .login-form .input-group:has(.password-toggle) input { padding-right: 58px; }
     .login-form .password-toggle { top: 9px; right: 12px; color: #1f6ea6; font-size: 12px; }
     .login-remember { gap: 8px; color: #536373; font-size: 13px; font-weight: 400; }

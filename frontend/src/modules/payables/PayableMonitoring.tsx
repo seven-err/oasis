@@ -55,7 +55,6 @@ export function PayableMonitoring({
           onEdit={(id) => setView({ mode: "edit", id })}
           onRecordPayment={(id) => setView({ mode: "details", id, focus: "payments" })}
           onPaymentHistory={(id) => setView({ mode: "details", id, focus: "payment-history" })}
-          onApprove={(id) => setView({ mode: "details", id, focus: "approve" })}
           onOpenReports={() => setView({ mode: "reports" })}
           onChanged={refresh}
           notify={notify}

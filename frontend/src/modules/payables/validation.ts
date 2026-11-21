@@ -95,11 +95,6 @@ export function validatePaymentPayload(
 ): ValidationResult {
   const errors: ValidationResult["errors"] = {};
 
-  if (options.payable.approvalStatus !== "Approved") {
-    errors.form =
-      "Payments can only be recorded against approved payables under the normal workflow.";
-  }
-
   if (options.payable.archivedAt) {
     errors.form = "Cannot record payments against an archived payable.";
   }
@@ -140,14 +135,6 @@ export function validatePaymentPayload(
     }
   }
 
-  return { ok: Object.keys(errors).length === 0, errors };
-}
-
-export function validateRejection(reason: string): ValidationResult {
-  const errors: ValidationResult["errors"] = {};
-  if (!reason.trim()) {
-    errors.rejectionReason = "A rejection reason is required.";
-  }
   return { ok: Object.keys(errors).length === 0, errors };
 }
 

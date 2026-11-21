@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { getSession, readSession, setSession, type AuthSession } from "./auth";
+import oasisLogo from "./assets/report-logo-transparent.png";
 import "./index.css";
 import { initializeBusinessStorage } from "./businessStorage";
 
@@ -13,13 +14,89 @@ declare global {
 
 const root = ReactDOM.createRoot(document.getElementById("root")!);
 
-async function start() {
-  root.render(
-    <main className="mx-auto mt-24 max-w-md rounded-xl border border-[#d0e3ef] bg-white p-8 text-[#16344d]">
-      <h1 className="text-xl font-semibold">OASIS</h1>
-      <p role="status" className="my-4">Connecting to OASIS…</p>
-    </main>,
+function AppLaunch({ App }: { App?: React.ComponentType }) {
+  const [loading, setLoading] = React.useState(true);
+  const overlay = React.useRef<HTMLElement>(null);
+  const backdrop = React.useRef<HTMLDivElement>(null);
+  const logo = React.useRef<HTMLImageElement>(null);
+
+  React.useLayoutEffect(() => {
+    if (!App || !overlay.current || !backdrop.current || !logo.current) return;
+    const image = logo.current;
+    if (document.hidden || matchMedia("(prefers-reduced-motion: reduce)").matches || !image.animate) {
+      setLoading(false);
+      return;
+    }
+
+    const start = getComputedStyle(image).transform;
+    image.style.animation = "none";
+    const box = image.getBoundingClientRect();
+    if (!box.width || !box.height) {
+      setLoading(false);
+      return;
+    }
+
+    const target = document.querySelector("[data-loading-logo-target]")?.getBoundingClientRect();
+    const frame = document.querySelector("[data-sidebar-logo]")?.getBoundingClientRect();
+    const visible = target && frame && frame.left >= 0 && frame.width > 0;
+    const x = visible ? target.left - box.left : 0;
+    const y = visible ? target.top - box.top : 0;
+    const scale = visible ? target.width / box.width : 1;
+    const crop = visible ? Math.max(0, target.right - frame.right) / scale : 0;
+    const duration = 680;
+    const flight = image.animate(
+      [
+        { transform: start, clipPath: "inset(0 0px 0 0)", opacity: 1 },
+        { transform: `translate(${x}px, ${y}px) scale(${scale})`, clipPath: `inset(0 ${crop}px 0 0)`, opacity: visible ? 1 : 0 },
+      ],
+      { duration, easing: "cubic-bezier(.22,.8,.3,1)", fill: "forwards" },
+    );
+    const reveal = backdrop.current.animate(
+      [{ opacity: 1 }, { opacity: 0 }],
+      { duration, fill: "forwards" },
+    );
+    void flight.finished.then(() => setLoading(false), () => {});
+    return () => {
+      flight.cancel();
+      reveal.cancel();
+    };
+  }, [App]);
+
+  return (
+    <>
+      {App && (
+        <div inert={loading} data-launching={loading}>
+          <React.StrictMode>
+            <App />
+          </React.StrictMode>
+        </div>
+      )}
+      {loading && (
+        <main ref={overlay} className="fixed inset-0 z-[100] grid place-items-center overflow-hidden px-6 py-10 text-[#16344d]">
+          <div ref={backdrop} className="absolute inset-0 bg-[#eff6fa]" />
+          <div className="relative w-full max-w-80">
+            {/* Account for the transparent right margin so the visible Medical Center brand is centered. */}
+            <img
+              ref={logo}
+              src={oasisLogo}
+              alt="OASIS Medical Center"
+              width={2172}
+              height={724}
+              className="block h-auto w-[157.4%] max-w-none origin-top-left object-contain motion-safe:animate-[loading-logo-float_1.8s_ease-in-out_infinite]"
+            />
+            <p role="status" className={`absolute left-1/2 top-full mt-8 flex -translate-x-1/2 items-center gap-3 whitespace-nowrap text-sm ${App ? "invisible" : ""}`}>
+              <span aria-hidden="true" className="size-5 rounded-full border-2 border-[#d0e3ef] border-t-[#2879ae] motion-safe:animate-spin" />
+              Loading OASIS…
+            </p>
+          </div>
+        </main>
+      )}
+    </>
   );
+}
+
+async function start() {
+  root.render(<AppLaunch />);
   try {
     if (import.meta.env.VITE_TEAM_URL) {
       const teamLogin = new URL("/login", import.meta.env.VITE_TEAM_URL);
@@ -42,11 +119,7 @@ async function start() {
     setSession(session);
     await initializeBusinessStorage();
     const { default: App } = await import("./App");
-    root.render(
-      <React.StrictMode>
-        <App />
-      </React.StrictMode>,
-    );
+    root.render(<AppLaunch App={App} />);
 
     let checking = false;
     const checkSession = async () => {

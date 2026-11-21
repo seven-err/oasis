@@ -12,6 +12,10 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePrintReport } from "@/components/usePrintReport";
+import { confirmLeavingUnsavedForm, useUnsavedForm } from "@/hooks/useUnsavedForm";
+import { focusFirstError, updateVisibleErrors } from "@/components/formValidation";
+import { checkService } from "@/modules/checks/store";
+import { validateCollectionPayload, validateFollowUpPayload } from "./validation";
 import { ArchiveConfirmationDialog } from "@/components/ArchiveConfirmationDialog";
 import { ATTACHMENT_KINDS, PAYMENT_METHODS } from "./constants";
 import { receivableService } from "./store";
@@ -111,6 +115,8 @@ export function ReceivableDetails({
 
   const [showCollectionForm, setShowCollectionForm] = useState(focus === "collections");
   const [showFollowUpForm, setShowFollowUpForm] = useState(focus === "followups");
+  const collectionDraft = useUnsavedForm(showCollectionForm);
+  const followUpDraft = useUnsavedForm(showFollowUpForm);
   const [showAttachmentForm, setShowAttachmentForm] = useState(false);
   const [collectionValues, setCollectionValues] =
     useState<CollectionFormValues>(emptyCollection);
@@ -120,6 +126,19 @@ export function ReceivableDetails({
   const [attachmentKind, setAttachmentKind] = useState<AttachmentKind>("invoice_copy");
   const [attachmentError, setAttachmentError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const receivable = receivableService.get(record.id);
+    if (!receivable) return;
+    setCollectionErrors((current) => Object.values(current).some(Boolean)
+      ? updateVisibleErrors(current, validateCollectionPayload(collectionValues, { receivable, collections, checkExists: (id) => checkService.list().some((check) => check.id === id && !check.archivedAt) }).errors)
+      : current);
+  }, [collectionValues, record, collections]);
+  useEffect(() => {
+    setFollowUpErrors((current) => Object.values(current).some(Boolean)
+      ? updateVisibleErrors(current, validateFollowUpPayload(followUpValues).errors)
+      : current);
+  }, [followUpValues]);
 
   useEffect(() => {
     if (focus === "collections") setShowCollectionForm(true);
@@ -155,14 +174,12 @@ export function ReceivableDetails({
     (key: keyof CollectionFormValues) =>
     (value: string) => {
       setCollectionValues((prev) => ({ ...prev, [key]: value }));
-      setCollectionErrors((e) => ({ ...e, [key]: undefined, form: undefined }));
     };
 
   const setFu =
     (key: keyof FollowUpFormValues) =>
     (value: string) => {
       setFollowUpValues((prev) => ({ ...prev, [key]: value }));
-      setFollowUpErrors((e) => ({ ...e, [key]: undefined, form: undefined }));
     };
 
   const onArchive = () => {
@@ -194,16 +211,18 @@ export function ReceivableDetails({
     onChanged();
   };
 
-  const onRecordCollection = (e: React.FormEvent) => {
+  const onRecordCollection = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSaving(true);
     const result = receivableService.recordCollection(record.id, collectionValues);
     if (!result.ok) {
       setCollectionErrors(result.errors);
+      focusFirstError(e.currentTarget, result.errors);
       setSaving(false);
       return;
     }
     setSaving(false);
+    collectionDraft.markSaved();
     setCollectionValues(emptyCollection());
     setShowCollectionForm(false);
     refreshRelated();
@@ -223,8 +242,7 @@ export function ReceivableDetails({
     ) {
       return;
     }
-    const remarks = window.prompt("Optional reversal remarks:", "") ?? undefined;
-    const result = receivableService.reverseCollection(collection.id, remarks || undefined);
+    const result = receivableService.reverseCollection(collection.id);
     if (!result.ok) {
       notify(result.errors.form ?? "Unable to reverse collection.");
       return;
@@ -234,16 +252,18 @@ export function ReceivableDetails({
     onChanged();
   };
 
-  const onRecordFollowUp = (e: React.FormEvent) => {
+  const onRecordFollowUp = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSaving(true);
     const result = receivableService.recordFollowUp(record.id, followUpValues);
     if (!result.ok) {
       setFollowUpErrors(result.errors);
+      focusFirstError(e.currentTarget, result.errors);
       setSaving(false);
       return;
     }
     setSaving(false);
+    followUpDraft.markSaved();
     setFollowUpValues(emptyFollowUp());
     setShowFollowUpForm(false);
     refreshRelated();
@@ -252,6 +272,7 @@ export function ReceivableDetails({
   };
 
   const onUploadAttachment = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.currentTarget;
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
@@ -261,6 +282,7 @@ export function ReceivableDetails({
     setSaving(false);
     if (!result.ok) {
       setAttachmentError(result.errors.file ?? result.errors.form ?? "Upload failed.");
+      input.focus();
       return;
     }
     refreshRelated();
@@ -299,11 +321,9 @@ export function ReceivableDetails({
       "Billing address": record.billingAddress,
       "Invoice number": record.invoiceNumber,
       "Reference number": record.referenceNumber,
-      "Transaction date": formatDate(record.transactionDate),
       "Invoice date": formatDate(record.invoiceDate),
       "Due date": formatDate(record.dueDate),
       Description: record.description,
-      Remarks: record.remarks,
       "Total receivable amount": peso.format(record.totalReceivableAmount),
       "Amount paid": peso.format(record.amountPaid),
       "Remaining balance": peso.format(record.remainingBalance),
@@ -371,7 +391,7 @@ export function ReceivableDetails({
           action={
             <div className="flex flex-wrap gap-2">
               {user.permissions.editReceivables && !record.archivedAt && !isCancelled && (
-                <button onClick={onEdit} className="primary-btn">
+                <button onClick={() => { if (confirmLeavingUnsavedForm()) onEdit(); }} className="primary-btn">
                   <Pencil size={15} /> Edit
                 </button>
               )}
@@ -434,9 +454,9 @@ export function ReceivableDetails({
             title="Record collection"
             subtitle={`Remaining balance ${peso.format(record.remainingBalance)}. Overcollections are not allowed.`}
           />
-          <form onSubmit={onRecordCollection} className="space-y-4 p-5" noValidate>
+          <form onSubmit={onRecordCollection} onChangeCapture={collectionDraft.markDirty} className="space-y-4 p-5" noValidate>
             {collectionErrors.form && (
-              <div className="border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800">
+              <div role="alert" tabIndex={-1} className="border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800">
                 {collectionErrors.form}
               </div>
             )}
@@ -524,20 +544,12 @@ export function ReceivableDetails({
                   </p>
                 </>
               )}
-              <div className="sm:col-span-2 lg:col-span-3">
-                <FormTextarea
-                  label="Remarks"
-                  name="remarks"
-                  value={collectionValues.remarks}
-                  onChange={setCol("remarks")}
-                />
-              </div>
             </div>
             <div className="flex justify-end gap-2 border-t border-[#e1eef6] pt-4">
               <button
                 type="button"
                 className="secondary-btn"
-                onClick={() => setShowCollectionForm(false)}
+                onClick={() => { if (collectionDraft.confirmDiscard()) { setCollectionValues(emptyCollection()); setCollectionErrors({}); setShowCollectionForm(false); } }}
               >
                 Cancel
               </button>
@@ -562,9 +574,9 @@ export function ReceivableDetails({
             title="Record collection follow-up"
             subtitle="Previous follow-up notes are preserved as history."
           />
-          <form onSubmit={onRecordFollowUp} className="space-y-4 p-5" noValidate>
+          <form onSubmit={onRecordFollowUp} onChangeCapture={followUpDraft.markDirty} className="space-y-4 p-5" noValidate>
             {followUpErrors.form && (
-              <div className="border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800">
+              <div role="alert" tabIndex={-1} className="border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800">
                 {followUpErrors.form}
               </div>
             )}
@@ -610,7 +622,7 @@ export function ReceivableDetails({
               <button
                 type="button"
                 className="secondary-btn"
-                onClick={() => setShowFollowUpForm(false)}
+                onClick={() => { if (followUpDraft.confirmDiscard()) { setFollowUpValues(emptyFollowUp()); setFollowUpErrors({}); setShowFollowUpForm(false); } }}
               >
                 Cancel
               </button>
@@ -628,7 +640,6 @@ export function ReceivableDetails({
         <DetailGrid
           items={[
             { label: "Customer name", value: record.customerName },
-            { label: "Client ID", value: record.clientId },
             { label: "Contact number", value: record.contactNumber },
             { label: "Email address", value: record.emailAddress },
             { label: "Billing address", value: record.billingAddress },
@@ -641,11 +652,9 @@ export function ReceivableDetails({
           items={[
             { label: "Invoice number", value: record.invoiceNumber },
             { label: "Reference number", value: record.referenceNumber },
-            { label: "Transaction date", value: formatDate(record.transactionDate) },
             { label: "Invoice date", value: formatDate(record.invoiceDate) },
             { label: "Due date", value: formatDate(record.dueDate) },
             { label: "Description", value: record.description },
-            { label: "Remarks", value: record.remarks ?? "—" },
           ]}
         />
       </SectionCard>
@@ -789,13 +798,15 @@ export function ReceivableDetails({
                   <span className="field-label">File (PDF / image, max 5 MB)</span>
                   <input
                     type="file"
+                    aria-invalid={attachmentError ? true : undefined}
+                    aria-describedby={attachmentError ? "receivable-attachment-error" : undefined}
                     accept={ATTACHMENT_ACCEPT}
                     className="input mt-2"
                     onChange={onUploadAttachment}
                     disabled={saving}
                   />
                   {attachmentError && (
-                    <p className="mt-1.5 text-[11px] text-red-700">{attachmentError}</p>
+                    <p id="receivable-attachment-error" className="mt-1.5 text-[11px] text-red-700">{attachmentError}</p>
                   )}
                 </label>
               </div>

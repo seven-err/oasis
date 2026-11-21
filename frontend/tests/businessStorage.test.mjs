@@ -21,7 +21,7 @@ async function browser(t, { remote = null, legacy, version = 0, extra = {}, draf
     setItem: (key, value) => values.set(key, value),
     removeItem: (key) => values.delete(key),
   };
-  const backend = { data: remote, version, writes: [], fail: false };
+  const backend = { data: remote, version, writes: [], fail: false, readFail: false };
   globalThis.fetch = async (url, options = {}) => {
     if (options.method === "PUT") {
       const body = JSON.parse(options.body);
@@ -36,6 +36,7 @@ async function browser(t, { remote = null, legacy, version = 0, extra = {}, draf
       destination.data = structuredClone(body.data);
       return Response.json({ version: ++destination.version });
     }
+    if (backend.readFail) throw new Error("Network unavailable");
     return Response.json({
       modules: { hr: { version: backend.version, data: backend.data }, ...extra },
     });
@@ -157,6 +158,26 @@ test("remote refresh never replaces an open edit form", async (t) => {
   backend.data = { "oasis.employees.v2": { employees: [{ id: 5 }], deletedEmployees: [] } };
   document.querySelector = () => ({});
   await storage.refreshBusinessStorage();
+  assert.deepEqual(storage.readBusinessJson("oasis.employees.v2", null).employees, []);
+  document.querySelector = () => null;
+  await storage.refreshBusinessStorage();
+  assert.equal(storage.readBusinessJson("oasis.employees.v2", null).employees[0].id, 5);
+});
+
+test("connection failures are visible and retry preserves an open form", async (t) => {
+  const { storage, backend } = await browser(t, {
+    remote: { "oasis.employees.v2": { employees: [], deletedEmployees: [] } },
+    version: 1,
+  });
+  backend.readFail = true;
+  await storage.refreshBusinessStorage();
+  assert.equal(storage.businessSyncStatus(), "Connection issue");
+  backend.readFail = false;
+  backend.version = 2;
+  backend.data = { "oasis.employees.v2": { employees: [{ id: 5 }], deletedEmployees: [] } };
+  document.querySelector = () => ({});
+  await storage.refreshBusinessStorage(true);
+  assert.equal(storage.businessSyncStatus(), "All changes saved");
   assert.deepEqual(storage.readBusinessJson("oasis.employees.v2", null).employees, []);
   document.querySelector = () => null;
   await storage.refreshBusinessStorage();

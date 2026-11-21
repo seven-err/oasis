@@ -1,23 +1,14 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
-@theme {
-  --text-xs: 0.8125rem;
-  --text-sm: 0.9375rem;
+[data-launching="true"] [data-sidebar-logo] {
+  visibility: hidden;
 }
 
-/* Dashboard copy previously used 9–11px text in several modules. Keep the
-   existing hierarchy while lifting those sizes to a readable baseline. */
-.text-\[9px\] {
-  font-size: 11px;
-}
-
-.text-\[10px\] {
-  font-size: 12px;
-}
-
-.text-\[11px\] {
-  font-size: 13px;
+@keyframes loading-logo-float {
+  50% {
+    transform: translateY(-6px);
+  }
 }
 
 /* Keep interface icons black even when their controls use colored text. */
@@ -693,6 +684,11 @@
     outline: none;
   }
 
+  .input[aria-invalid="true"] {
+    border-color: #b42318;
+    box-shadow: 0 0 0 1px #b42318;
+  }
+
   .field-label {
     color: #526a7c;
     font-size: 11px;
@@ -732,22 +728,22 @@
   }
 
   .status-good {
-    color: #3f9a62;
+    color: #166534;
     background: #eef8f1;
   }
 
   .status-partial {
-    color: #d4895c;
+    color: #92400e;
     background: #fdf3ea;
   }
 
   .status-alert {
-    color: #e15d5d;
+    color: #b42318;
     background: #fdeeee;
   }
 
   .status-neutral {
-    color: #8a8a8a;
+    color: #475569;
     background: #f6f6f6;
   }
 

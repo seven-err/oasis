@@ -305,11 +305,6 @@ export function filterReceivables(
 
     if (!inRange(r.invoiceDate, filters.invoiceDateFrom, filters.invoiceDateTo))
       return false;
-    if (
-      !inRange(r.transactionDate, filters.transactionDateFrom, filters.transactionDateTo)
-    ) {
-      return false;
-    }
     if (!inRange(r.dueDate, filters.dueDateFrom, filters.dueDateTo)) return false;
     if (
       !inRange(

@@ -1,9 +1,12 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PAYMENT_METHODS } from "./constants";
 import { payableService } from "./store";
 import type { PayableFormValues, PayableRecord, ValidationResult } from "./types";
-import { FieldError, FormInput, FormSelect, FormTextarea, PanelTitle } from "./ui";
+import { FormInput, FormSelect, FormTextarea, PanelTitle } from "./ui";
 import { emptyFormValues, recordToFormValues } from "./utils";
+import { useUnsavedForm } from "@/hooks/useUnsavedForm";
+import { focusFirstError, updateVisibleErrors } from "@/components/formValidation";
+import { validatePayablePayload } from "./validation";
 
 type Props = {
   mode: "create" | "edit";
@@ -13,6 +16,7 @@ type Props = {
 };
 
 export function PayableForm({ mode, record, onCancel, onSaved }: Props) {
+  const { markDirty, markSaved } = useUnsavedForm();
   const categories = useMemo(() => payableService.categories(true), []);
   const [values, setValues] = useState<PayableFormValues>(() =>
     record
@@ -25,14 +29,19 @@ export function PayableForm({ mode, record, onCancel, onSaved }: Props) {
   const [errors, setErrors] = useState<ValidationResult["errors"]>({});
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    setErrors((current) => Object.values(current).some(Boolean)
+      ? updateVisibleErrors(current, validatePayablePayload(values, { existing: payableService.list(), categories, editingId: record?.id }).errors)
+      : current);
+  }, [values, categories, record]);
+
   const set =
     (key: keyof PayableFormValues) =>
     (value: string) => {
       setValues((prev) => ({ ...prev, [key]: value }));
-      setErrors((e) => ({ ...e, [key]: undefined, form: undefined }));
     };
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSaving(true);
     const result =
@@ -42,10 +51,12 @@ export function PayableForm({ mode, record, onCancel, onSaved }: Props) {
 
     if (!result.ok) {
       setErrors(result.errors);
+      focusFirstError(e.currentTarget, result.errors);
       setSaving(false);
       return;
     }
     setSaving(false);
+    markSaved();
     onSaved(result.data);
   };
 
@@ -55,11 +66,11 @@ export function PayableForm({ mode, record, onCancel, onSaved }: Props) {
         onBack={onCancel}
         backDisabled={saving}
         title={mode === "create" ? "Add payable" : "Edit payable"}
-        subtitle="New payables default to Pending approval. Amount paid and remaining balance are calculated from payment history."
+        subtitle="Amount paid and remaining balance are calculated from payment history."
       />
-      <form onSubmit={onSubmit} className="p-5 md:p-6" noValidate>
+      <form onSubmit={onSubmit} onChangeCapture={markDirty} className="p-5 md:p-6" noValidate>
         {errors.form && (
-          <div className="mb-5 border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800">
+          <div role="alert" tabIndex={-1} className="mb-5 border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800">
             {errors.form}
           </div>
         )}
@@ -165,26 +176,11 @@ export function PayableForm({ mode, record, onCancel, onSaved }: Props) {
             </div>
           </fieldset>
 
-          {mode === "create" && (
-            <p className="text-[11px] text-[#777]">
-              Approval status will be set to <strong>Pending</strong>. Payment status is derived
-              automatically after payments are recorded.
-            </p>
-          )}
-          {mode === "edit" && record && (
-            <div className="rounded-lg border border-[#d0e3ef] bg-[#f4f9fd] p-4 text-[11px] text-[#666]">
-              <p>
-                Approval status: <strong>{record.approvalStatus}</strong> (managed separately —
-                use Approve / Reject on the detail view).
-              </p>
-              <FieldError message={errors.form} />
-            </div>
-          )}
         </div>
 
         <div className="mt-7 flex justify-end gap-2 border-t border-[#e1eef6] pt-5">
           <button className="primary-btn" disabled={saving}>
-            {saving ? "Saving…" : "Save payable"}
+            {saving ? "Saving…" : mode === "edit" ? "Save changes" : "Save payable"}
           </button>
         </div>
       </form>
