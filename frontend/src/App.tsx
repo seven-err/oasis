@@ -40,7 +40,7 @@ import {
   WalletCards,
   X,
 } from "lucide-react";
-import oasisLogo from "../Oasis-Logo.png";
+import oasisLogo from "./assets/report-logo-transparent.png";
 import {
   getOfficeNotifications,
   NotificationInbox,
@@ -670,31 +670,16 @@ function App() {
             onClick={() => go("dashboard")}
             className="flex min-w-0 items-center overflow-hidden"
           >
-            <img
-              data-loading-logo-target
-              src={oasisLogo}
-              alt=""
-              className="size-14 shrink-0 object-contain"
-            />
-            <span aria-hidden="true" className="sidebar-brand grid shrink-0 grid-rows-[1fr_auto_1fr] self-stretch whitespace-nowrap text-left">
-              <svg
-                aria-hidden="true"
-                className="row-start-2 h-[13px] w-auto justify-self-start text-[#ed0000]"
-                viewBox="0 0 354 64"
-              >
-                <g fill="none" stroke="currentColor" strokeWidth="12" strokeLinecap="round">
-                  <path d="M6 56 40 10 Q46 2 52 10 L86 56" />
-                  <path d="M201 10 H128 A12 12 0 0 0 128 34 H191 A11 11 0 0 1 191 56 H112" />
-                  <path d="M229 10 V56" />
-                  <path d="M344 10 H271 A12 12 0 0 0 271 34 H334 A11 11 0 0 1 334 56 H255" />
-                </g>
-                <circle cx="46" cy="48" r="8" fill="currentColor" />
-              </svg>
-              <span className="row-start-3 pt-1 text-[9px] leading-[11px] tracking-[.04em] text-[#5c7890]">
-                Diagnostic & Laboratory Center
-              </span>
-            </span>
-          </button>
+            <span data-sidebar-logo className={`block shrink-0 overflow-hidden ${compactMenu ? "w-56 lg:w-14" : "w-56"}`}>
+              <img
+                data-loading-logo-target
+                src={oasisLogo}
+                alt=""
+                width={2172}
+                height={724}
+                className="block h-auto w-56 max-w-none"
+              />
+            </span>          </button>
           <button
             className="ml-auto shrink-0 text-[#5c7890] hover:text-[#16344d] lg:hidden"
             onClick={() => setSidebarOpen(false)}
