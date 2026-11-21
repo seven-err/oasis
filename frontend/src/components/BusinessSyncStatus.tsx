@@ -1,10 +1,12 @@
 import { useEffect, useRef, useSyncExternalStore } from "react";
+import { CheckCircle2, CloudOff, LoaderCircle } from "lucide-react";
 import {
   businessSyncError,
   businessSyncStatus,
   discardBusinessDraft,
   downloadBusinessDraft,
   hasBusinessConflict,
+  refreshBusinessStorage,
   retryBusinessSave,
   subscribeBusinessSync,
 } from "../businessStorage";
@@ -49,11 +51,16 @@ export function BusinessSyncStatus() {
       </dialog>
     );
   return status ? (
-    <div
-      role="status"
-      className="fixed bottom-2 left-2 z-[60] rounded border border-[#c5dced] bg-white px-3 py-1 text-[10px] text-[#5c7890]"
-    >
-      {status}
+    <div className={`fixed bottom-4 right-4 z-[60] flex max-w-[calc(100%-2rem)] flex-wrap items-center gap-3 rounded-lg border px-4 py-3 text-sm shadow-md ${status === "Connection issue" ? "border-amber-300 bg-amber-50 text-amber-900" : "border-[#c5dced] bg-white text-[#16344d]"}`}>
+      <span role="status" className="flex items-center gap-2">
+        {status === "All changes saved" ? <CheckCircle2 size={17} aria-hidden="true" className="text-green-700" /> : status === "Connection issue" ? <CloudOff size={17} aria-hidden="true" /> : <LoaderCircle size={17} aria-hidden="true" className="motion-safe:animate-spin" />}
+        {status === "Connection issue" ? "Connection issue — shared records may not sync" : status === "All changes saved" ? "Shared records saved" : status === "Saving changes…" ? "Saving shared records…" : status}
+      </span>
+      {status === "Connection issue" && (
+        <button type="button" className="font-semibold underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2" onClick={() => void refreshBusinessStorage(true)}>
+          Retry connection
+        </button>
+      )}
     </div>
   ) : null;
 }

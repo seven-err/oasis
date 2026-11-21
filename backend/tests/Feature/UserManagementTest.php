@@ -133,6 +133,17 @@ class UserManagementTest extends TestCase
         $this->assertSame(0, $target->fresh()->auth_version);
     }
 
+    public function test_confirmation_errors_explain_exactly_what_to_type(): void
+    {
+        $this->signIn(User::factory()->withRole('super-admin')->create());
+        $target = User::factory()->withRole('finance')->create();
+
+        $this->postJson(route('users.reset-password', $target), ['current_password' => 'password', 'confirmation' => 'wrong'])
+            ->assertUnprocessable()->assertJsonPath('errors.confirmation.0', 'Type RESET exactly to confirm.');
+        $this->putJson(route('users.update', $target), $this->payload($target, ['is_active' => 0, 'confirmation' => 'wrong']))
+            ->assertUnprocessable()->assertJsonPath('errors.confirmation.0', 'Type DEACTIVATE exactly to confirm.');
+    }
+
     public function test_admin_can_demote_another_admin_when_one_active_admin_remains(): void
     {
         $admin = User::factory()->withRole('super-admin')->create();
@@ -217,6 +228,26 @@ class UserManagementTest extends TestCase
         $this->getJson('/users')->assertOk()->assertJsonPath('data.0.id', $first->id);
         $this->getJson('/users?sort=desc')->assertOk()->assertJsonPath('data.0.id', $last->id);
         $this->getJson('/users?sort=invalid')->assertUnprocessable()->assertJsonValidationErrors('sort');
+    }
+
+    public function test_account_report_returns_all_filtered_accounts_without_sensitive_fields(): void
+    {
+        $admin = User::factory()->withRole('super-admin')->create();
+        User::factory()->count(25)->withRole('hr')->create(['name' => 'Report Match', 'last_login_at' => '2026-01-02 03:04:05']);
+        User::factory()->withRole('hr')->create(['name' => 'Report Match', 'is_active' => false]);
+        User::factory()->withRole('finance')->create(['name' => 'Report Match']);
+        $this->signIn($admin);
+
+        $response = $this->getJson('/users/report?search=Report%20Match&role=hr&status=active&sort=desc')
+            ->assertOk()->assertJsonCount(25, 'data')
+            ->assertJsonPath('data.0.role', 'HR')->assertJsonPath('data.0.status', 'Active')
+            ->assertJsonPath('data.0.last_login_at', '2026-01-02T03:04:05.000000Z');
+        $this->assertSame(['name', 'email', 'role', 'status', 'last_login_at'], array_keys($response->json('data.0')));
+        $response->assertJsonMissingPath('data.0.password')->assertJsonMissingPath('data.0.remember_token')
+            ->assertJsonMissingPath('data.0.auth_version');
+
+        $this->signIn(User::factory()->withRole('finance')->create());
+        $this->getJson('/users/report')->assertForbidden();
     }
 
     public function test_user_pages_share_the_monitoring_application_shell(): void

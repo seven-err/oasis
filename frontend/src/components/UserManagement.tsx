@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { ArrowUpDown, FileText, Plus, Search, SlidersHorizontal, X } from "lucide-react";
+import { ArrowUpDown, Download, FileText, Plus, Printer, Search, SlidersHorizontal, X } from "lucide-react";
 import { apiRequest, getSession } from "../auth";
 import { PaginationBar } from "../modules/checks/ui";
 import { ActiveFilters } from "./ActiveFilters";
@@ -42,13 +42,31 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
   const [errors, setErrors] = useState<ValidationErrors>({});
 
   function navigate(next: string) {
+    if (!confirmLeavingUnsavedForm()) return;
     window.history.pushState({}, "", next);
     setCredentials(null);
     setSearch(new URL(next, window.location.origin).searchParams.get("search") ?? "");
     setPath(next);
     window.scrollTo({ top: 0 });
   }
-  useHeaderBack(form || details || credentials ? () => navigate("/users") : undefined, saving);
+  function setListFilter(key: "role" | "status", value: string) {
+    if (value) url.searchParams.set(key, value); else url.searchParams.delete(key);
+    if (search) url.searchParams.set("search", search); else url.searchParams.delete("search");
+    url.searchParams.delete("page");
+    navigate(url.pathname + url.search);
+  }
+  useHeaderBack(reportFilters !== null ? () => setReportFilters(null) : form || details || credentials ? () => navigate("/users") : undefined, saving);
+
+  useEffect(() => {
+    if (reportFilters === null) return;
+    let active = true;
+    setReportAccounts(null);
+    setReportError("");
+    void apiRequest<{ data: AccountReportEntry[] }>(`/users/report?${reportFilters}`)
+      .then((result) => { if (active) setReportAccounts(result.data); })
+      .catch((failure: Error) => { if (active) setReportError(failure.message); });
+    return () => { active = false; };
+  }, [reportFilters, reportAttempt]);
 
   useEffect(() => {
     const back = () => {
@@ -89,6 +107,7 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
         if (!active) return;
         if (!form && !details && result.data) cacheUserList(endpoint, result);
         setList(result.data ? result : null);
+        if (result.data) setListPath(path);
         setUser(result.user ?? null);
         setRoles(result.roles ?? []);
       })
@@ -110,7 +129,22 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
   async function save(event: FormEvent<HTMLFormElement>, reset = false) {
     event.preventDefault();
     if (saving) return;
-    const payload = Object.fromEntries(new FormData(event.currentTarget));
+    const formElement = event.currentTarget;
+    const validation: ValidationErrors = {};
+    for (const field of formElement.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("input[name], select[name], textarea[name]")) {
+      const message = fieldError(field);
+      if (message) validation[field.name] = [message];
+    }
+    const fields = new FormData(formElement);
+    const confirmation = reset ? "RESET" : editing && user?.is_active && fields.get("is_active") === "0" ? "DEACTIVATE" : "";
+    if (confirmation && fields.get("confirmation") !== confirmation) validation.confirmation = [`Type ${confirmation} exactly to confirm.`];
+    if (Object.keys(validation).length) {
+      setErrors(validation);
+      setError("Please correct the highlighted fields and try again.");
+      focusFirstError(formElement, validation);
+      return;
+    }
+    const payload = Object.fromEntries(fields);
     setSaving(true);
     setError("");
     setErrors({});
@@ -135,8 +169,31 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
       const problem = failure as Error & { errors?: ValidationErrors };
       setError(problem.message);
       setErrors(problem.errors ?? {});
+      if (problem.errors) focusFirstError(formElement, problem.errors);
     } finally {
       setSaving(false);
+    }
+  }
+
+  function updateField(event: React.FormEvent<HTMLFormElement>) {
+    markDirty();
+    const field = event.nativeEvent.target;
+    if (!(field instanceof HTMLInputElement || field instanceof HTMLSelectElement || field instanceof HTMLTextAreaElement)) return;
+    const name = field.name;
+    if (errors[name]) {
+      const confirmation = details ? "RESET" : editing && user?.is_active && new FormData(event.currentTarget).get("is_active") === "0" ? "DEACTIVATE" : "";
+      const message = name === "confirmation" && confirmation && field.value !== confirmation ? `Type ${confirmation} exactly to confirm.` : fieldError(field);
+      setErrors((current) => { const next = { ...current }; if (message) next[name] = [message]; else delete next[name]; return next; });
+      setError("");
+    }
+    if (name === "is_active" && errors.confirmation) {
+      const value = new FormData(event.currentTarget).get("confirmation");
+      setErrors((current) => {
+        const next = { ...current };
+        if (user?.is_active && field.value === "0" && value !== "DEACTIVATE") next.confirmation = ["Type DEACTIVATE exactly to confirm."];
+        else delete next.confirmation;
+        return next;
+      });
     }
   }
 
@@ -148,8 +205,9 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
         ? "Edit account"
         : "Account details";
   return (
-    <section className="space-y-4" aria-busy={loading || saving}>
-      {error && (
+    <section className="space-y-4" aria-busy={loading || saving || (reportFilters !== null && !reportAccounts && !reportError)}>
+      {printSheet}
+      {error && reportFilters === null && (
         <div
           role="alert"
           className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800"
@@ -185,9 +243,11 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
           </button>
         </div>
       ) : loading && (form || details || !list) ? (
-        <p role="status" className="p-5 text-sm text-[#777]">
-          Loading accounts…
-        </p>
+        form || details ? (
+          <p role="status" className="p-5 text-sm text-[#777]">Loading account…</p>
+        ) : (
+          <UserListSkeleton />
+        )
       ) : form && (creating || user) ? (
         <div className="panel mx-auto w-full max-w-2xl p-5 sm:p-8">
           <h2 className="mb-6 text-center text-lg font-semibold">{heading}</h2>
@@ -290,6 +350,9 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
               >
                 Cancel
               </button>
+              <button className="primary-btn" disabled={saving}>
+                {saving ? "Saving…" : creating ? "Create account" : "Save changes"}
+              </button>
             </div>
           </form>
         </div>
@@ -306,11 +369,7 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
                     {user.role?.name ?? "Unassigned"} account
                   </p>
                 </div>
-                <span
-                  className={`rounded-full px-3 py-1 text-xs ${user.is_active ? "bg-green-50 text-green-800" : "bg-gray-100 text-gray-600"}`}
-                >
-                  {user.is_active ? "Active" : "Inactive"}
-                </span>
+                <StatusBadge value={user.is_active ? "Active" : "Inactive"} />
               </header>
               <dl className="grid grid-cols-1 gap-x-5 gap-y-3 text-sm sm:grid-cols-[1fr_1.3fr]">
                 <dt className="text-[#777]">User ID</dt>
@@ -343,7 +402,7 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
                 This replaces the current password, signs out existing sessions, and requires a
                 password change on the next login.
               </p>
-              <form className="space-y-5" onSubmit={(event) => void save(event, true)}>
+              <form className="space-y-5" onChangeCapture={updateField} onSubmit={(event) => void save(event, true)} noValidate>
                 <UserField name="confirmation" label="Type RESET to confirm" errors={errors} />
                 <UserField
                   name="current_password"
@@ -415,29 +474,17 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
             onClear={() => { setSearch(""); navigate("/users"); }}
           />
           {showFilters && (
-          <form
-            key={path}
+          <div
             id="user-filter-panel"
-            className="grid items-end gap-4 rounded-lg border border-[#d0e3ef] bg-[#f4f9fd] p-4 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_auto]"
-            onSubmit={(event) => {
-              event.preventDefault();
-              const query = new URLSearchParams(
-                Array.from(new FormData(event.currentTarget), ([name, value]) => [
-                  name,
-                  String(value),
-                ]),
-              );
-              if (search) query.set("search", search);
-              if (sort === "desc") query.set("sort", sort);
-              navigate("/users?" + query.toString());
-            }}
+            className="grid gap-3 rounded-lg border border-[#d0e3ef] bg-[#f4f9fd] p-4 md:grid-cols-2"
           >
             <label>
               <span className="field-label">Role</span>
               <select
                 className="input mt-2"
                 name="role"
-                defaultValue={url.searchParams.get("role") ?? ""}
+                value={url.searchParams.get("role") ?? ""}
+                onChange={(event) => setListFilter("role", event.target.value)}
               >
                 <option value="">All roles</option>
                 <option value="super-admin">Super Admin</option>
@@ -450,7 +497,8 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
               <select
                 className="input mt-2"
                 name="status"
-                defaultValue={url.searchParams.get("status") ?? ""}
+                value={url.searchParams.get("status") ?? ""}
+                onChange={(event) => setListFilter("status", event.target.value)}
               >
                 <option value="">All statuses</option>
                 <option value="active">Active</option>
@@ -519,6 +567,46 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
         </>
       ) : null}
     </section>
+  );
+}
+
+function UserListSkeleton() {
+  return (
+    <div role="status" aria-label="Loading accounts" className="space-y-4">
+      <span className="sr-only">Loading accounts…</span>
+      <div aria-hidden="true" className="space-y-4 motion-safe:animate-pulse">
+        <div className="flex items-center justify-between gap-3">
+          <div className="h-4 w-36 rounded bg-[#dcebf5]" />
+          <div className="h-11 w-28 rounded-lg bg-[#dcebf5]" />
+        </div>
+        <div className="flex gap-3">
+          <div className="h-11 min-w-0 flex-1 rounded-lg border border-[#d0e3ef] bg-white" />
+          <div className="hidden h-11 w-32 rounded-lg bg-[#dcebf5] sm:block" />
+          <div className="hidden h-11 w-20 rounded-lg bg-[#dcebf5] sm:block" />
+        </div>
+        <div className="space-y-3 md:hidden">
+          {Array.from({ length: 3 }, (_, index) => (
+            <div key={index} className="panel space-y-4 p-4">
+              <div className="h-4 w-32 max-w-full rounded bg-[#dcebf5]" />
+              <div className="h-3 w-48 max-w-full rounded bg-[#e7f3fb]" />
+              <div className="h-3 w-36 max-w-full rounded bg-[#e7f3fb]" />
+              <div className="h-10 w-full rounded-lg bg-[#e7f3fb]" />
+            </div>
+          ))}
+        </div>
+        <div className="panel hidden overflow-hidden md:block">
+          <div className="grid grid-cols-6 gap-4 border-b border-[#d0e3ef] bg-[#f4f9fd] px-5 py-4">
+            {Array.from({ length: 6 }, (_, index) => <div key={index} className="h-3 w-16 max-w-full rounded bg-[#dcebf5]" />)}
+          </div>
+          {Array.from({ length: 3 }, (_, row) => (
+            <div key={row} className="grid grid-cols-6 gap-4 border-b border-[#e1eef6] px-5 py-7 last:border-0">
+              {Array.from({ length: 6 }, (_, index) => <div key={index} className="h-3 w-24 max-w-full rounded bg-[#e7f3fb]" />)}
+            </div>
+          ))}
+        </div>
+        <div className="ml-auto h-11 w-56 max-w-full rounded-lg bg-[#dcebf5]" />
+      </div>
+    </div>
   );
 }
 

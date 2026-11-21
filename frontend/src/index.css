@@ -674,6 +674,11 @@
     outline: none;
   }
 
+  .input[aria-invalid="true"] {
+    border-color: #b42318;
+    box-shadow: 0 0 0 1px #b42318;
+  }
+
   .field-label {
     color: #777;
     font-size: 9px;
@@ -713,22 +718,22 @@
   }
 
   .status-good {
-    color: #3f9a62;
+    color: #166534;
     background: #eef8f1;
   }
 
   .status-partial {
-    color: #d4895c;
+    color: #92400e;
     background: #fdf3ea;
   }
 
   .status-alert {
-    color: #e15d5d;
+    color: #b42318;
     background: #fdeeee;
   }
 
   .status-neutral {
-    color: #8a8a8a;
+    color: #475569;
     background: #f6f6f6;
   }
 
