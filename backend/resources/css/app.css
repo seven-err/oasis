@@ -122,131 +122,114 @@
 
 @layer components {
     .login-page {
-        background: #edf5f8;
-        color: #172f42;
+        background: #fff;
+        color: #344054;
         font-family: 'Inter', Arial, sans-serif;
     }
 
+    .login-shell::before,
+    .login-shell::after {
+        position: absolute;
+        z-index: 0;
+        inset: -6px;
+        content: '';
+        background: url('../images/oasis-building.jpg') left top / cover no-repeat;
+        pointer-events: none;
+    }
+
+    .login-shell::before {
+        filter: blur(2px);
+    }
+
+    .login-shell::after {
+        mask-image: radial-gradient(ellipse 25% 19% at 21% 12%, #000 55%, transparent 100%);
+        filter: brightness(1.12) contrast(1.12);
+    }
+
     .login-shell {
+        position: relative;
+        isolation: isolate;
+        overflow: hidden;
         display: flex;
-        min-height: 100svh;
-        flex-direction: column;
+        width: min(calc(100% - 48px), 1920px);
+        min-height: calc(100svh - 48px);
+        margin: 24px auto;
+        border-radius: 24px;
         align-items: center;
         justify-content: center;
-        padding: 32px 20px;
+        padding: 24px 20px;
     }
 
     .login-card {
+        position: relative;
+        z-index: 1;
         width: 100%;
-        max-width: 1100px;
-        min-height: 550px;
-        overflow: hidden;
-        border: 0;
-        border-radius: 20px;
+        max-width: 680px;
+        padding: 48px 54px 42px;
+        border-radius: 32px;
         background: #fff;
-        box-shadow: 0 18px 50px rgb(22 52 77 / 12%);
-        display: grid;
-        grid-template-columns: 46% 54%;
+        box-shadow: 0 16px 48px rgb(0 0 0 / 22%);
     }
 
-    .login-brand {
-        position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 0;
-        grid-row: 1 / span 2;
-        background: #e3f1f7;
-    }
-
-    .login-brand::before {
-        position: absolute;
-        inset: 0;
-        content: '';
-        background: radial-gradient(ellipse 60% 24% at 50% 50%, rgb(35 60 78 / 38%), transparent 100%), linear-gradient(rgb(46 75 97 / 15%), rgb(46 75 97 / 15%)), url('../images/oasis-building.jpg') 30% center / cover no-repeat;
-    }
-
-    .login-brand-identity {
-        position: relative;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        width: min(90%, 520px);
-        padding: 16px 20px;
-    }
-
-    .login-logo {
-        position: relative;
-        container-type: inline-size;
-        display: block;
-        width: min(100%, 480px);
-        aspect-ratio: 3 / 1;
-        flex-shrink: 0;
-        border-radius: 8px;
-    }
-
-    .login-logo::before {
-        position: absolute;
-        inset: 0;
-        content: '';
-        background: url('../images/oasis-logo.png') center / contain no-repeat;
-        clip-path: polygon(0 0, 100% 0, 100% 59%, 25% 59%, 25% 100%, 0 100%);
-        transform: translateX(19%);
-        filter: drop-shadow(0 3px 4px rgb(0 0 0 / 65%));
-    }
-
-    .login-logo span {
-        position: absolute;
-        top: 63%;
-        left: 47%;
-        width: 29.6%;
-        color: white;
-        font-size: 3.9cqw;
-        font-weight: 600;
+    .login-content h1 {
+        margin-bottom: 10px;
+        color: #000;
+        font-size: clamp(32px, 4vw, 46px);
+        font-weight: 700;
         line-height: 1.2;
-        white-space: nowrap;
-        text-align: left;
-        text-shadow: 0 1px 2px #000, 0 2px 5px rgb(0 0 0 / 80%);
+        letter-spacing: -.03em;
+        text-align: center;
     }
 
-    .login-content { grid-column: 2; align-self: center; padding: 58px 50px 26px 34px; }
-    .login-content h1 { margin-bottom: 10px; color: #173b55; font-size: 28px; font-weight: 600; text-align: center; }
-    .login-description { margin-bottom: 34px; color: #536373; font-size: 14px; text-align: center; }
-    .login-form { display: grid; gap: 22px; }
-    .login-form .field { gap: 8px; }
-    .login-form .field label { color: #777; font-size: 9px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
-    .login-form input:not([type='checkbox']) { min-height: 44px; padding: 11px 12px; border-color: #c5dced; border-radius: 8px; color: #111; font-size: 12px; }
-    .login-form input::placeholder { color: #999; }
-    .login-form input:focus { border-color: #1f6ea6; outline: none; box-shadow: 0 0 0 2px rgb(31 110 166 / 16%); }
-    .login-form input[aria-invalid='true'] { border-color: #b42318; box-shadow: 0 0 0 1px #b42318; }
-    .login-form .input-group:has(.password-toggle) input { padding-right: 58px; }
-    .login-form .password-toggle { top: 50%; right: 12px; transform: translateY(-50%); font-size: 12px; }
-    .login-remember { gap: 8px; color: #536373; font-size: 13px; font-weight: 400; }
-    .login-remember input { width: 16px; height: 16px; accent-color: #1f6ea6; }
-    .login-submit { width: 150px; min-height: 44px; justify-self: center; border-radius: 999px; background: #1f6ea6; font-size: 14px; font-weight: 600; transition: background-color 160ms ease; }
-    .login-submit:hover { background: #1a5f90; }
-    .login-help { grid-column: 2; padding: 0 50px 32px 34px; color: #536373; text-align: center; font-size: 12px; line-height: 1.8; }
-    .login-help strong { color: #5c7890; font-weight: 500; }
-    .login-password-note { max-width: 350px; margin: 17px 10px 0; color: #435363; text-align: center; font-size: 11px; line-height: 1.7; }
-    .login-content .errors, .login-content .notice { padding: 12px; border-radius: 8px; font-size: 11px; }
+    .login-description { margin-bottom: 40px; color: #475569; font-size: 21px; text-align: center; }
+    .login-form { display: grid; gap: 24px; }
+    .login-form .field { gap: 7px; }
+    .login-form .field label { color: #3d4654; font-size: 16px; font-weight: 700; letter-spacing: .01em; text-transform: uppercase; }
+    .login-form .field-error:empty { display: none; }
+    .login-form input:not([type='checkbox']) { min-height: 60px; padding: 15px 20px; border: 1px solid #cbd5e1; border-radius: 11px; background: #fff; color: #17232e; font-size: 19px; }
+    .login-form input::placeholder { color: #68717e; opacity: 1; }
+    .login-form input:focus { border-color: #0861b5; outline: none; box-shadow: 0 0 0 3px rgb(8 97 181 / 14%); }
+    .login-form input[aria-invalid='true'] { border-color: #b42318; }
+    .login-form .input-group:has(.password-toggle) input { padding-right: 54px; }
+    .login-form .password-toggle { display: grid; place-items: center; width: 44px; height: 44px; top: 8px; right: 10px; padding: 0; color: #808080; }
+    .login-form .password-toggle svg { width: 22px; height: 22px; }
+    .login-remember { gap: 9px; color: #344054; font-size: 18px; font-weight: 400; }
+    .login-remember input { width: 20px; height: 20px; flex-shrink: 0; accent-color: #0759ad; }
+    .login-submit { width: min(100%, 365px); min-height: 68px; justify-self: center; margin-top: 6px; border-radius: 999px; background: #0757b3; color: #fff; font-size: 24px; font-weight: 700; }
+    .login-submit:hover { background: #06498d; }
+    .login-help { margin-top: 30px; color: #4a5565; text-align: center; font-size: 20px; line-height: 1.7; }
+    .login-help strong { color: #0056c7; font-weight: 500; }
+    .login-content .errors, .login-content .notice { padding: 12px; border-radius: 8px; font-size: 14px; }
     .login-content .errors ul { padding-left: 0; list-style: none; }
     .login-content .errors li + li { margin-top: 5px; }
 
-    @media (max-width: 700px) {
-        .login-shell { padding: 24px 16px; }
-        .login-card { display: block; max-width: 432px; min-height: 0; }
-        .login-brand { min-height: 340px; grid-row: auto; }
-        .login-brand::before { background-position: center, center, 30% 35%; }
-        .login-brand-identity { padding: 12px 16px; }
-        .login-content { grid-column: auto; padding: 30px 28px 24px; }
-        .login-help { grid-column: auto; padding: 0 28px 28px; }
+    @media (min-width: 601px) and (max-height: 850px) {
+        .login-card { padding: 28px 48px; }
+        .login-content h1 { font-size: 38px; }
+        .login-description { margin-bottom: 26px; font-size: 18px; }
+        .login-form { gap: 18px; }
+        .login-form input:not([type='checkbox']) { min-height: 54px; padding-block: 12px; font-size: 17px; }
+        .login-form .password-toggle { top: 5px; }
+        .login-submit { min-height: 56px; font-size: 22px; }
+        .login-help { margin-top: 22px; font-size: 17px; }
     }
 
-    @media (max-width: 480px) {
-        .login-form input:not([type='checkbox']) { font-size: 16px; }
+    @media (max-width: 900px) {
+        .login-card { max-width: 600px; padding: 40px; }
+        .login-content h1 { font-size: 38px; }
+        .login-description { font-size: 18px; }
     }
 
-    @media (prefers-reduced-motion: reduce) {
-        .login-submit { transition: none; }
+    @media (max-width: 600px) {
+        .login-shell { width: calc(100% - 24px); min-height: 0; margin: 12px auto; padding: 32px 16px; border-radius: 20px; }
+        .login-card { padding: 32px 24px; border-radius: 24px; }
+        .login-content h1 { font-size: 30px; }
+        .login-description { margin-bottom: 28px; font-size: 16px; }
+        .login-form { gap: 20px; }
+        .login-form .field label { font-size: 13px; }
+        .login-form input:not([type='checkbox']) { min-height: 54px; font-size: 16px; }
+        .login-form .password-toggle { top: 5px; }
+        .login-remember, .login-help { font-size: 14px; }
+        .login-submit { min-height: 52px; font-size: 19px; }
     }
 }
