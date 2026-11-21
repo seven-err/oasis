@@ -220,7 +220,7 @@
     .login-form input:focus { border-color: #1f6ea6; outline: none; box-shadow: 0 0 0 2px rgb(31 110 166 / 16%); }
     .login-form input[aria-invalid='true'] { border-color: #b42318; box-shadow: 0 0 0 1px #b42318; }
     .login-form .input-group:has(.password-toggle) input { padding-right: 58px; }
-    .login-form .password-toggle { top: 9px; right: 12px; color: #1f6ea6; font-size: 12px; }
+    .login-form .password-toggle { top: 50%; right: 12px; transform: translateY(-50%); font-size: 12px; }
     .login-remember { gap: 8px; color: #536373; font-size: 13px; font-weight: 400; }
     .login-remember input { width: 16px; height: 16px; accent-color: #1f6ea6; }
     .login-submit { width: 150px; min-height: 44px; justify-self: center; border-radius: 999px; background: #1f6ea6; font-size: 14px; font-weight: 600; transition: background-color 160ms ease; }

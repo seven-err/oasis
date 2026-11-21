@@ -16,11 +16,7 @@
   color: #000;
 }
 
-.lucide-eye,
-.lucide-eye-off {
-  color: #999;
-}
-
+.password-toggle .lucide,
 .sidebar-nav-item .lucide {
   color: inherit;
 }
