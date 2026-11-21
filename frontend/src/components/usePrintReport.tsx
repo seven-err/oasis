@@ -67,7 +67,7 @@ export function usePrintReport({ emphasizeSubtitle = false }: { emphasizeSubtitl
     >
       <div className={`report-print-heading${emphasizeSubtitle && report.subtitle ? " report-print-record-heading" : ""}`}>
         <div className="report-print-brand-row">
-          <img ref={logoRef} src={reportLogo} alt="OASIS Diagnostic & Laboratory Center" className="report-print-logo" />
+          <img ref={logoRef} src={reportLogo} alt="OASIS Medical Center" className="report-print-logo" />
           <p className="report-print-date">Printed {report.printedAt}<br />(Philippine time)</p>
         </div>
         <h1>{report.title}</h1>

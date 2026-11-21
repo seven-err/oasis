@@ -78,7 +78,7 @@ function AppLaunch({ App }: { App?: React.ComponentType }) {
             <img
               ref={logo}
               src={oasisLogo}
-              alt="OASIS Diagnostic & Laboratory Center"
+              alt="OASIS Medical Center"
               width={2172}
               height={724}
               className="h-auto w-full max-w-80 origin-top-left object-contain motion-safe:animate-[loading-logo-float_1.8s_ease-in-out_infinite]"

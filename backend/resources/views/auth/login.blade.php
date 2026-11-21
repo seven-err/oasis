@@ -22,7 +22,7 @@
                         </g>
                         <circle cx="46" cy="48" r="8" fill="currentColor" />
                     </svg>
-                    <span>Diagnostic &amp; Laboratory Center</span>
+                    <span>Medical Center</span>
                 </div>
             </header>
 
