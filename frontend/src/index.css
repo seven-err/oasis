@@ -1,6 +1,12 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
+@keyframes loading-logo-float {
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
 /* Keep interface icons black even when their controls use colored text. */
 .lucide {
   color: #000;

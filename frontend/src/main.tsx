@@ -21,7 +21,7 @@ async function start() {
         <img
           src={oasisLogo}
           alt="OASIS Diagnostic & Laboratory Center"
-          className="h-auto w-full max-w-80 object-contain"
+          className="h-auto w-full max-w-80 object-contain motion-safe:animate-[loading-logo-float_1.8s_ease-in-out_infinite]"
         />
         <p role="status" className="flex items-center gap-3 text-sm">
           <span aria-hidden="true" className="size-5 rounded-full border-2 border-[#d0e3ef] border-t-[#2879ae] motion-safe:animate-spin" />
