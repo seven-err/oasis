@@ -10,12 +10,6 @@
 <body class="login-page">
     <main class="login-shell">
         <section class="login-card" aria-labelledby="login-title">
-            <header class="login-brand">
-                <div class="login-brand-identity">
-                    <span class="login-logo" role="img" aria-label="OASIS Medical Center"><span aria-hidden="true">Medical Center</span></span>
-                </div>
-            </header>
-
             <div class="login-content">
                 <h1 id="login-title">Welcome back</h1>
                 <p class="login-description">Sign in to your OASIS account.</p>
@@ -44,7 +38,6 @@
                 <strong>Contact your Super Admin.</strong>
             </footer>
         </section>
-        <p class="login-password-note">Already changed your temporary password? Use your new password.</p>
     </main>
 </body>
 </html>
