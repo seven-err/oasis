@@ -3,6 +3,7 @@ import { loadActivityLogs, type ActivityLog } from "./activityLogs";
 import { readBusinessJson, writeBusinessJson } from "./businessStorage";
 import { BusinessSyncStatus } from "./components/BusinessSyncStatus";
 import { UserManagement } from "./components/UserManagement";
+import { PasswordField } from "./components/PasswordField";
 import { DateInput, RequirementStatusSelect } from "@/components/FormPopovers";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
@@ -2419,18 +2420,9 @@ function ChangePassword({ onClose }: { onClose?: () => void }) {
       }}>
         {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
         {success && <p role="status" className="text-sm text-green-700">{success}</p>}
-        <label className="block">
-          <span className="field-label">Current password <span className="text-red-700">*</span></span>
-          <input className="input mt-2" type="password" name="current_password" autoComplete="current-password" required />
-        </label>
-        <label className="block">
-          <span className="field-label">New password <span className="text-red-700">*</span></span>
-          <input className="input mt-2" type="password" name="password" autoComplete="new-password" minLength={12} maxLength={1024} required />
-        </label>
-        <label className="block">
-          <span className="field-label">Confirm new password <span className="text-red-700">*</span></span>
-          <input className="input mt-2" type="password" name="password_confirmation" autoComplete="new-password" minLength={12} maxLength={1024} required />
-        </label>
+        <PasswordField label="Current password" name="current_password" autoComplete="current-password" required />
+        <PasswordField label="New password" name="password" autoComplete="new-password" minLength={12} maxLength={1024} required />
+        <PasswordField label="Confirm new password" name="password_confirmation" autoComplete="new-password" minLength={12} maxLength={1024} required />
         <div className="flex flex-wrap justify-end gap-3 border-t border-[#e1eef6] pt-5">
           {onClose
             ? <button className="secondary-btn" type="button" disabled={saving} onClick={onClose}>Close</button>
@@ -2498,10 +2490,7 @@ function SystemSettings({ onClose }: { onClose: () => void }) {
                 {permission.name}
               </label>
             ))}
-            <label className="block">
-              <span className="field-label">Confirm your administrator password <span className="text-red-700">*</span></span>
-              <input className="input mt-2" type="password" name="current_password" autoComplete="current-password" required />
-            </label>
+            <PasswordField label="Confirm your administrator password" name="current_password" autoComplete="current-password" required />
             <div className="flex justify-end">
               <button className="primary-btn" type="submit" disabled={saving}>Save {role.name} permissions</button>
             </div>

@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { ArrowUpDown, FileText, Plus, Search, SlidersHorizontal, X } from "lucide-react";
+import { ArrowUpDown, Eye, EyeOff, FileText, Plus, Search, SlidersHorizontal, X } from "lucide-react";
 import { apiRequest, getSession } from "../auth";
 import { PaginationBar } from "../modules/checks/ui";
 import { ActiveFilters } from "./ActiveFilters";
@@ -551,7 +551,7 @@ function UserField({
       </label>
       <div className="relative mt-2">
         <input
-          className={`input ${type === "password" ? "pr-16" : ""}`}
+          className={`input ${type === "password" ? "pr-12" : ""}`}
           id={name}
           name={name}
           type={visible ? "text" : type}
@@ -565,13 +565,13 @@ function UserField({
         {type === "password" && (
           <button
             type="button"
-            className="absolute inset-y-0 right-3 text-xs text-[#1f6ea6]"
+            className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-[#1f6ea6] focus-visible:outline-2 focus-visible:outline-[#1f6ea6]"
             onClick={() => setVisible(!visible)}
             aria-label={`${visible ? "Hide" : "Show"} ${label.toLowerCase()}`}
             aria-pressed={visible}
             aria-controls={name}
           >
-            {visible ? "Hide" : "Show"}
+            {visible ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
           </button>
         )}
       </div>
