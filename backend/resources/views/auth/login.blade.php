@@ -27,7 +27,6 @@
             </header>
 
             <div class="login-content">
-                <p class="login-eyebrow">Office Management System</p>
                 <h1 id="login-title">Welcome back</h1>
                 <p class="login-description">Sign in to your OASIS account.</p>
 
