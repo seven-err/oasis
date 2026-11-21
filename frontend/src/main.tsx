@@ -72,18 +72,19 @@ function AppLaunch({ App }: { App?: React.ComponentType }) {
         </div>
       )}
       {loading && (
-        <main ref={overlay} className="fixed inset-0 z-[100] grid place-items-center px-6 py-10 text-[#16344d]">
+        <main ref={overlay} className="fixed inset-0 z-[100] grid place-items-center overflow-hidden px-6 py-10 text-[#16344d]">
           <div ref={backdrop} className="absolute inset-0 bg-[#eff6fa]" />
-          <div className="relative flex w-full flex-col items-center gap-8">
+          <div className="relative w-full max-w-80">
+            {/* Account for the transparent right margin so the visible Medical Center brand is centered. */}
             <img
               ref={logo}
               src={oasisLogo}
               alt="OASIS Medical Center"
               width={2172}
               height={724}
-              className="h-auto w-full max-w-80 origin-top-left object-contain motion-safe:animate-[loading-logo-float_1.8s_ease-in-out_infinite]"
+              className="block h-auto w-[157.4%] max-w-none origin-top-left object-contain motion-safe:animate-[loading-logo-float_1.8s_ease-in-out_infinite]"
             />
-            <p role="status" className={`flex items-center gap-3 text-sm ${App ? "invisible" : ""}`}>
+            <p role="status" className={`absolute left-1/2 top-full mt-8 flex -translate-x-1/2 items-center gap-3 whitespace-nowrap text-sm ${App ? "invisible" : ""}`}>
               <span aria-hidden="true" className="size-5 rounded-full border-2 border-[#d0e3ef] border-t-[#2879ae] motion-safe:animate-spin" />
               Loading OASIS…
             </p>
