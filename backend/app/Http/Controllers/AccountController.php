@@ -59,12 +59,7 @@ class AccountController extends Controller
             : back()->with('status', 'Account updated.');
     }
 
-    public function editPassword(): View
-    {
-        return view('account.password');
-    }
-
-    public function updatePassword(Request $request): RedirectResponse
+    public function updatePassword(Request $request): RedirectResponse|JsonResponse
     {
         $data = $request->validate([
             'current_password' => ['required', 'current_password'],
@@ -85,6 +80,8 @@ class AccountController extends Controller
         $request->session()->regenerate(true);
         $request->session()->put('auth_version', $user->auth_version);
 
-        return redirect()->route('dashboard')->with('status', 'Password changed. Other sessions have been signed out.');
+        return $request->expectsJson()
+            ? response()->json(['message' => 'Password changed. Other sessions have been signed out.', 'csrfToken' => csrf_token()])
+            : redirect()->route('dashboard')->with('status', 'Password changed. Other sessions have been signed out.');
     }
 }

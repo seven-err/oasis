@@ -1,4 +1,4 @@
-import { apiRequest, canAccessPage, getSession, initialPage, logout, pagePaths } from "./auth";
+import { apiRequest, canAccessPage, getSession, initialPage, logout, pagePaths, setSession } from "./auth";
 import { loadActivityLogs, type ActivityLog } from "./activityLogs";
 import { readBusinessJson, writeBusinessJson } from "./businessStorage";
 import { BusinessSyncStatus } from "./components/BusinessSyncStatus";
@@ -20,7 +20,6 @@ import {
   Wallet,
   Download,
   FileCheck2,
-  House,
   LogOut,
   Menu,
   MoreHorizontal,
@@ -87,7 +86,8 @@ type Page =
   | "activity"
   | "archives"
   | "deleted"
-  | "profile";
+  | "profile"
+  | "password";
 
 type ArchiveModule = "Checks" | "Payables" | "Receivables" | "Employees";
 
@@ -365,13 +365,17 @@ const pageMeta: Record<Page, { eyebrow: string; title: string; description: stri
     title: "My Profile",
     description: "Manage your personal information and security preferences.",
   },
+  password: {
+    eyebrow: "Account",
+    title: "Change Password",
+    description: "Update your password to keep your account secure.",
+  },
 };
 
 const nav = [
   {
     section: "Workspace",
     items: [
-      { page: "dashboard" as Page, label: "Home", icon: House },
       { page: "employees" as Page, label: "Employee Alphalist", icon: Users },
       { page: "checks" as Page, label: "Check Monitoring", icon: FileCheck2 },
       { page: "payables" as Page, label: "Payable Monitoring", icon: WalletCards },
@@ -390,16 +394,20 @@ const nav = [
 ];
 
 function App() {
+  const isHr = getSession()?.user.role === "hr";
+  const landingPage = isHr && canAccessPage("employees") ? "employees" : "dashboard";
+  const resolvePage = (requested: Page) =>
+    requested !== "dashboard" && canAccessPage(requested) ? requested : landingPage;
   const [page, setPage] = useState<Page>(() => {
     const requested = (window.__OASIS_PAGE__ ?? initialPage(window.location.pathname)) as Page;
-    return canAccessPage(requested) ? requested : "dashboard";
+    return resolvePage(requested);
   });
   const initials = CURRENT_USER.name.split(" ").filter(Boolean).map((name) => name[0]).slice(0, 2).join("");
-  const visibleNav = nav.map((group) => ({ ...group, items: group.items.filter((item) => canAccessPage(item.page)) })).filter((group) => group.items.length);
+  const visibleNav = nav.map((group) => ({ ...group, items: group.items.filter((item) => (!isHr || item.page === "employees") && canAccessPage(item.page)) })).filter((group) => group.items.length);
   useEffect(() => {
     const onPopState = () => {
       const requested = initialPage(window.location.pathname) as Page;
-      setPage(canAccessPage(requested) ? requested : "dashboard");
+      setPage(resolvePage(requested));
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
@@ -537,6 +545,7 @@ function App() {
   }, []);
 
   const go = (next: Page, notification?: OfficeNotification) => {
+    if (next === "dashboard") next = landingPage;
     if (!canAccessPage(next)) {
       setToast("You do not have access to this area.");
       return;
@@ -780,7 +789,10 @@ function App() {
               <span>{pageMeta[page].title}</span>
             </div>
           ) : (
-            <HeaderBackButton fallback={() => go("dashboard")} />
+            <HeaderBackButton
+              fallback={() => go("dashboard")}
+              currentPage={isHr && page === "employees" ? pageMeta.employees.title : undefined}
+            />
           )}
           <div className="ml-auto flex items-center gap-1">
             <NotificationInbox
@@ -1003,6 +1015,7 @@ function App() {
           )}
           {page === "activity" && <ActivityLogs />}
           {page === "profile" && <Profile notify={notify} />}
+          {page === "password" && <ChangePassword />}
         </main>
       </div>
 
@@ -2379,36 +2392,185 @@ function ActivityLogs() {
   );
 }
 
+function ChangePassword({ onClose }: { onClose?: () => void }) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  return (
+    <section className="panel max-w-2xl">
+      <PanelTitle title="Password security" subtitle="Use at least 12 characters, with uppercase and lowercase letters, a number, and a symbol." />
+      <form className="grid gap-5 p-6" onSubmit={async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const fields = new FormData(form);
+        setSaving(true);
+        setError("");
+        setSuccess("");
+        try {
+          const result = await apiRequest<{ message: string; csrfToken: string }>("/change-password", { method: "PUT", body: JSON.stringify(Object.fromEntries(fields)) });
+          setSession({ ...getSession()!, csrfToken: result.csrfToken });
+          form.reset();
+          setSuccess(result.message);
+        } catch (error) {
+          setError(error instanceof Error ? error.message : "Unable to change your password.");
+        } finally {
+          setSaving(false);
+        }
+      }}>
+        {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+        {success && <p role="status" className="text-sm text-green-700">{success}</p>}
+        <label className="block">
+          <span className="field-label">Current password <span className="text-red-700">*</span></span>
+          <input className="input mt-2" type="password" name="current_password" autoComplete="current-password" required />
+        </label>
+        <label className="block">
+          <span className="field-label">New password <span className="text-red-700">*</span></span>
+          <input className="input mt-2" type="password" name="password" autoComplete="new-password" minLength={12} maxLength={1024} required />
+        </label>
+        <label className="block">
+          <span className="field-label">Confirm new password <span className="text-red-700">*</span></span>
+          <input className="input mt-2" type="password" name="password_confirmation" autoComplete="new-password" minLength={12} maxLength={1024} required />
+        </label>
+        <div className="flex flex-wrap justify-end gap-3 border-t border-[#e1eef6] pt-5">
+          {onClose
+            ? <button className="secondary-btn" type="button" disabled={saving} onClick={onClose}>Close</button>
+            : <a className="secondary-btn" href="/profile">Back to profile</a>}
+          <button className="primary-btn" type="submit" disabled={saving}>{saving ? "Saving…" : "Save new password"}</button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
+type SettingsRole = {
+  id: number;
+  name: string;
+  permissions: string[];
+  availablePermissions: { slug: string; name: string }[];
+};
+
+function SystemSettings({ onClose }: { onClose: () => void }) {
+  const [roles, setRoles] = useState<SettingsRole[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  useEffect(() => {
+    void apiRequest<{ roles: SettingsRole[] }>("/settings")
+      .then((result) => setRoles(result.roles))
+      .catch((error) => setError(error instanceof Error ? error.message : "Unable to load settings."))
+      .finally(() => setLoading(false));
+  }, []);
+  return (
+    <section className="panel">
+      <PanelTitle title="System settings" subtitle="Manage role permissions" />
+      <div className="grid gap-5 p-6">
+        <p className="text-xs text-[#777]">Restrict module access within each role. HR can access all monitoring modules. Finance access is limited to financial monitoring. Dashboard and personal account access are always retained. Super Admin access is fixed.</p>
+        {loading && <p role="status" className="text-sm">Loading settings…</p>}
+        {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+        {success && <p role="status" className="text-sm text-green-700">{success}</p>}
+        {roles.map((role) => (
+          <form key={role.id} className="grid gap-4 rounded-lg border border-[#e1eef6] p-5" onSubmit={async (event) => {
+            event.preventDefault();
+            const form = event.currentTarget;
+            const fields = new FormData(form);
+            setSaving(true);
+            setError("");
+            setSuccess("");
+            try {
+              const result = await apiRequest<{ message: string }>(`/settings/roles/${role.id}`, {
+                method: "PUT",
+                body: JSON.stringify({ current_password: fields.get("current_password"), permissions: fields.getAll("permissions") }),
+              });
+              const password = form.elements.namedItem("current_password") as HTMLInputElement;
+              password.value = "";
+              setSuccess(result.message);
+            } catch (error) {
+              setError(error instanceof Error ? error.message : "Unable to save permissions.");
+            } finally {
+              setSaving(false);
+            }
+          }}>
+            <h3 className="text-sm font-bold">{role.name}</h3>
+            {role.availablePermissions.map((permission) => (
+              <label key={permission.slug} className="flex min-h-9 items-center gap-3 text-sm">
+                <input type="checkbox" name="permissions" value={permission.slug} defaultChecked={role.permissions.includes(permission.slug)} />
+                {permission.name}
+              </label>
+            ))}
+            <label className="block">
+              <span className="field-label">Confirm your administrator password <span className="text-red-700">*</span></span>
+              <input className="input mt-2" type="password" name="current_password" autoComplete="current-password" required />
+            </label>
+            <div className="flex justify-end">
+              <button className="primary-btn" type="submit" disabled={saving}>Save {role.name} permissions</button>
+            </div>
+          </form>
+        ))}
+        <div className="flex justify-end border-t border-[#e1eef6] pt-5">
+          <button className="secondary-btn" type="button" disabled={saving} onClick={onClose}>Close</button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Profile({ notify }: { notify: (s: string) => void }) {
   const user = getSession()!.user;
+  const [accountView, setAccountView] = useState<"profile" | "password" | "settings">("profile");
   return (
-    <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-      <section className="panel p-7 text-center">
-        <span className="mx-auto grid size-20 place-items-center rounded-full bg-[#1f6ea6] text-xl font-bold text-white">
-          {user.name.split(" ").filter(Boolean).map((name) => name[0]).slice(0, 2).join("")}
-        </span>
-        <h2 className="mt-4 font-bold">{user.name}</h2><p className="mt-1 text-xs text-[#777]">{user.roleName}</p>
-        <div className="mt-6 border-t border-[#e1eef6] pt-5 text-left"><a className="text-link" href="/change-password">Change password</a></div>
-        {canAccessPage("settings") && <a className="text-link mt-4" href="/settings">System settings</a>}
+    <div className="grid items-start gap-6 lg:grid-cols-[320px_1fr]">
+      <section className="panel overflow-hidden">
+        <div className="p-6 text-center">
+          <span className="mx-auto grid size-20 place-items-center rounded-full bg-[#1f6ea6] text-xl font-bold text-white">
+            {user.name.split(" ").filter(Boolean).map((name) => name[0]).slice(0, 2).join("")}
+          </span>
+          <h2 className="mt-4 break-words font-bold">{user.name}</h2>
+          <p className="mt-1 text-xs text-[#777]">{user.roleName}</p>
+        </div>
+        <nav aria-label="Account actions" className="border-t border-[#e1eef6] p-3">
+          <button type="button" aria-expanded={accountView === "password"} aria-controls="profile-password" className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-xs font-semibold text-black hover:bg-[#f3f8fc] focus-visible:outline-2 focus-visible:outline-[#1f6ea6]" onClick={() => setAccountView("password")}>
+            <ShieldCheck size={18} aria-hidden="true" />
+            <span className="flex-1">Change password</span>
+            <ChevronRight size={16} aria-hidden="true" />
+          </button>
+          {canAccessPage("settings") && (
+            <button type="button" aria-expanded={accountView === "settings"} aria-controls="profile-settings" className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-xs font-semibold text-black hover:bg-[#f3f8fc] focus-visible:outline-2 focus-visible:outline-[#1f6ea6]" onClick={() => setAccountView("settings")}>
+              <SlidersHorizontal size={18} aria-hidden="true" />
+              <span className="flex-1">System settings</span>
+              <ChevronRight size={16} aria-hidden="true" />
+            </button>
+          )}
+        </nav>
       </section>
-      <section className="panel">
-        <PanelTitle title="Profile information" subtitle="Your account and contact details" />
-        <form className="grid gap-4 p-6 sm:grid-cols-2" onSubmit={async (event) => {
-          event.preventDefault();
-          const fields = new FormData(event.currentTarget);
-          try {
-            await apiRequest("/account", { method: "PUT", body: JSON.stringify(Object.fromEntries(fields)) });
-            window.location.reload();
-          } catch (error) {
-            notify(error instanceof Error ? error.message : "Unable to save your account.");
-          }
-        }}>
-          <FormField label="Full name" name="name" defaultValue={user.name} required />
-          <FormField label="Email address" name="email" type="email" defaultValue={user.email} required />
-          <FormField label="Confirm your password" name="current_password" type="password" required />
-          <div className="sm:col-span-2 flex justify-end border-t border-[#e1eef6] pt-5"><button className="primary-btn">Save changes</button></div>
-        </form>
-      </section>
+      <div className="grid gap-6">
+        <div id="profile-password" hidden={accountView !== "password"}>
+          {accountView === "password" && <ChangePassword onClose={() => setAccountView("profile")} />}
+        </div>
+        <div id="profile-settings" hidden={accountView !== "settings"}>
+          {accountView === "settings" && canAccessPage("settings") && <SystemSettings onClose={() => setAccountView("profile")} />}
+        </div>
+        <div hidden={accountView !== "profile"}>
+          <section className="panel">
+            <PanelTitle title="Profile information" subtitle="Your account and contact details" />
+            <form className="grid gap-4 p-6 sm:grid-cols-2" onSubmit={async (event) => {
+              event.preventDefault();
+              const fields = new FormData(event.currentTarget);
+              try {
+                await apiRequest("/account", { method: "PUT", body: JSON.stringify(Object.fromEntries(fields)) });
+                window.location.reload();
+              } catch (error) {
+                notify(error instanceof Error ? error.message : "Unable to save your account.");
+              }
+            }}>
+              <FormField label="Full name" name="name" defaultValue={user.name} required />
+              <FormField label="Email address" name="email" type="email" defaultValue={user.email} required />
+              <FormField label="Confirm your password" name="current_password" type="password" required />
+              <div className="sm:col-span-2 flex justify-end border-t border-[#e1eef6] pt-5"><button className="primary-btn">Save changes</button></div>
+            </form>
+          </section>
+        </div>
+      </div>
     </div>
   );
 }
@@ -2498,11 +2660,9 @@ function Status({ value }: { value: string }) {
 
 function Empty({ title, action }: { title: string; action: () => void }) {
   return (
-    <div className="grid place-items-center px-5 py-20 text-center">
-      <span className="grid size-12 place-items-center bg-[#e7f3fb] rounded-lg">
-        <Search size={20} />
-      </span>
-      <h3 className="mt-4 text-sm font-bold">{title}</h3>
+    <div className="flex flex-col items-center px-5 py-20 text-center">
+      <Search size={24} aria-hidden="true" />
+      <h3 className="mt-2 text-sm font-bold">{title}</h3>
       <p className="mt-1 text-xs text-[#888]">Adjust the filters or create a new record.</p>
       <button onClick={action} className="primary-btn mt-5">
         <Plus size={15} /> Add record

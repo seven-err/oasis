@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
 
@@ -60,6 +61,9 @@ class ApplicationAccessTest extends TestCase
     #[TestWith(['finance', '/payables', 'payables'])]
     #[TestWith(['finance', '/receivables', 'receivables'])]
     #[TestWith(['super-admin', '/team', 'users'])]
+    #[TestWith(['hr', '/change-password', 'password'])]
+    #[TestWith(['finance', '/change-password', 'password'])]
+    #[TestWith(['super-admin', '/change-password', 'password'])]
     public function test_direct_route_bootstraps_the_requested_existing_screen(string $role, string $url, string $page): void
     {
         $this->signIn(User::factory()->withRole($role)->create());
@@ -72,7 +76,7 @@ class ApplicationAccessTest extends TestCase
     {
         $this->signIn(User::factory()->withRole('hr')->create(['name' => '</script><script>alert(1)</script>']));
 
-        $this->get('/dashboard')->assertOk()->assertDontSee('</script><script>alert(1)</script>', false);
+        $this->get('/hr/alphalist')->assertOk()->assertDontSee('</script><script>alert(1)</script>', false);
     }
 
     public function test_application_assets_require_login_and_cannot_traverse_directories(): void
@@ -105,6 +109,33 @@ class ApplicationAccessTest extends TestCase
         $this->getJson('/auth/session')->assertUnauthorized();
     }
 
+    public function test_password_form_accepts_json_and_returns_validation_errors(): void
+    {
+        $user = User::factory()->withRole('hr')->create();
+        $this->signIn($user);
+
+        $this->putJson('/change-password', [
+            'current_password' => 'incorrect',
+            'password' => 'Better-Password2026!',
+            'password_confirmation' => 'Better-Password2026!',
+        ])->assertUnprocessable()->assertJsonValidationErrors('current_password');
+
+        $this->putJson('/change-password', [
+            'current_password' => 'password',
+            'password' => 'Better-Password2026!',
+            'password_confirmation' => 'Better-Password2026!',
+        ])->assertOk()->assertJsonPath('message', 'Password changed. Other sessions have been signed out.')
+            ->assertJsonPath('csrfToken', csrf_token());
+
+        $this->assertTrue(Hash::check('Better-Password2026!', $user->fresh()->password));
+        $this->get('/hr/alphalist')->assertOk();
+        $this->putJson('/account', [
+            'name' => $user->name,
+            'email' => $user->email,
+            'current_password' => 'Better-Password2026!',
+        ])->assertOk();
+    }
+
     public function test_login_error_is_displayed_once(): void
     {
         $user = User::factory()->withRole('hr')->create();
@@ -121,7 +152,8 @@ class ApplicationAccessTest extends TestCase
 
         $this->post('/login', ['email' => $user->email, 'password' => 'password'])->assertSessionHasErrors('email');
         $this->assertGuest();
-        $this->post('/login', ['email' => $user->email, 'password' => 'New-Password2026!'])->assertRedirect(route('dashboard'));
+        $this->followingRedirects()->post('/login', ['email' => $user->email, 'password' => 'New-Password2026!'])
+            ->assertOk()->assertViewHas('initialPage', 'employees');
         $this->assertAuthenticatedAs($user);
     }
 }

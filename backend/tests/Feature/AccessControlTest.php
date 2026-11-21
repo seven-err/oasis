@@ -21,7 +21,7 @@ class AccessControlTest extends TestCase
     protected $seeder = RolePermissionSeeder::class;
 
     #[TestWith(['super-admin', ['dashboard', 'hr', 'checks', 'payables', 'receivables', 'users', 'activity', 'settings', 'account']])]
-    #[TestWith(['hr', ['dashboard', 'hr', 'account']])]
+    #[TestWith(['hr', ['dashboard', 'hr', 'checks', 'payables', 'receivables', 'account']])]
     #[TestWith(['finance', ['dashboard', 'checks', 'payables', 'receivables', 'account']])]
     public function test_gate_enforces_the_complete_role_matrix(string $role, array $allowed): void
     {
@@ -32,9 +32,6 @@ class AccessControlTest extends TestCase
         }
     }
 
-    #[TestWith(['hr', '/checks'])]
-    #[TestWith(['hr', '/payables'])]
-    #[TestWith(['hr', '/receivables'])]
     #[TestWith(['hr', '/users'])]
     #[TestWith(['hr', '/users/create'])]
     #[TestWith(['hr', '/activity-logs'])]
@@ -55,6 +52,9 @@ class AccessControlTest extends TestCase
     #[TestWith(['super-admin', '/payables'])]
     #[TestWith(['super-admin', '/receivables'])]
     #[TestWith(['hr', '/hr/alphalist'])]
+    #[TestWith(['hr', '/checks'])]
+    #[TestWith(['hr', '/payables'])]
+    #[TestWith(['hr', '/receivables'])]
     #[TestWith(['finance', '/checks'])]
     #[TestWith(['finance', '/payables'])]
     #[TestWith(['finance', '/receivables'])]
@@ -85,12 +85,13 @@ class AccessControlTest extends TestCase
         $this->get('/settings')->assertOk();
     }
 
-    public function test_hr_navigation_hides_finance_and_administration(): void
+    public function test_hr_navigation_includes_monitoring_and_hides_administration(): void
     {
         $this->signIn(User::factory()->withRole('hr')->create());
 
-        $response = $this->get('/dashboard')->assertOk()->assertViewIs('application');
-        $this->assertSame(['dashboard', 'hr', 'account'], $response->viewData('session')['user']['permissions']);
+        $this->get('/dashboard')->assertRedirect(route('modules.hr'));
+        $response = $this->get('/hr/alphalist')->assertOk()->assertViewIs('application')->assertViewHas('initialPage', 'employees');
+        $this->assertSame(['dashboard', 'hr', 'checks', 'payables', 'receivables', 'account'], $response->viewData('session')['user']['permissions']);
     }
 
     public function test_finance_navigation_hides_hr_and_administration(): void
@@ -132,48 +133,54 @@ class AccessControlTest extends TestCase
         $hr = Role::where('slug', 'hr')->firstOrFail();
         $admin = Role::where('slug', 'super-admin')->firstOrFail();
 
-        $this->put(route('settings.permissions', $hr), ['current_password' => 'password', 'permissions' => ['settings']])
+        $this->put(route('settings.permissions', $hr), ['current_password' => 'password', 'permissions' => ['users']])
             ->assertSessionHasErrors('permissions.0');
         $this->put(route('settings.permissions', $admin), ['current_password' => 'password'])->assertForbidden();
         $this->assertDatabaseMissing('activity_logs', ['action' => 'permissions.updated']);
     }
 
-    #[TestWith(['checks'])]
-    #[TestWith(['payables'])]
-    #[TestWith(['receivables'])]
-    public function test_selected_hr_monitoring_permissions_reach_navigation_routes_and_data(string $module): void
+    public function test_admin_can_grant_all_monitoring_to_an_existing_restricted_hr_role(): void
     {
-        $admin = User::factory()->withRole('super-admin')->create();
-        $hr = User::factory()->withRole('hr')->create();
-        $role = $hr->role;
-        $this->signIn($admin);
-        $this->put(route('settings.permissions', $role), [
-            'current_password' => 'password', 'permissions' => ['hr', $module],
-        ])->assertSessionHasNoErrors()->assertRedirect();
+        $this->signIn(User::factory()->withRole('super-admin')->create());
+        $hr = Role::where('slug', 'hr')->firstOrFail();
+        $hr->permissions()->sync(Permission::whereIn('slug', ['dashboard', 'hr', 'account'])->pluck('id'));
+
+        $this->putJson(route('settings.permissions', $hr), [
+            'current_password' => 'password',
+            'permissions' => ['hr', 'checks', 'payables', 'receivables'],
+        ])->assertOk();
         $this->seed(RolePermissionSeeder::class);
 
-        $this->signIn($hr);
-        $this->getJson('/auth/session')->assertOk()
-            ->assertJsonPath('user.permissions', ['dashboard', 'hr', $module, 'account']);
-        $this->get('/'.$module)->assertOk()->assertViewIs('application');
-        $data = array_fill_keys(BusinessStateController::KEYS[$module], []);
-        $this->putJson('/business-state/'.$module, ['version' => 0, 'data' => $data])->assertOk();
-        $this->getJson('/business-state')->assertOk()->assertJsonCount(2, 'modules')
-            ->assertJsonPath('modules.'.$module.'.version', 1);
-        foreach (array_diff(['checks', 'payables', 'receivables'], [$module]) as $unassigned) {
-            $this->get('/'.$unassigned)->assertForbidden();
+        $this->signIn(User::factory()->withRole('hr')->create());
+        foreach (['checks', 'payables', 'receivables'] as $module) {
+            $this->get('/'.$module)->assertOk()->assertViewIs('application');
         }
+        $this->getJson('/business-state')->assertOk()->assertJsonCount(4, 'modules');
         $this->get('/settings')->assertForbidden();
+    }
 
-        $this->signIn($admin);
-        $this->put(route('settings.permissions', $role), [
-            'current_password' => 'password', 'permissions' => ['hr'],
-        ])->assertSessionHasNoErrors()->assertRedirect();
-        $this->signIn($hr);
-        $this->get('/'.$module)->assertForbidden();
-        $this->putJson('/business-state/'.$module, [])->assertForbidden();
-        $this->getJson('/auth/session')->assertOk()
-            ->assertJsonPath('user.permissions', ['dashboard', 'hr', 'account']);
+    public function test_inline_settings_load_and_save_with_the_same_access_rules(): void
+    {
+        $this->signIn(User::factory()->withRole('super-admin')->create());
+        $hr = Role::where('slug', 'hr')->firstOrFail();
+
+        $response = $this->getJson('/settings')->assertOk()->assertJsonCount(2, 'roles');
+        $hrSettings = collect($response->json('roles'))->firstWhere('id', $hr->id);
+        $this->assertSame(['hr', 'checks', 'payables', 'receivables'], array_column($hrSettings['availablePermissions'], 'slug'));
+        $this->assertContains('hr', $hrSettings['permissions']);
+
+        $this->putJson(route('settings.permissions', $hr), ['current_password' => 'incorrect', 'permissions' => []])
+            ->assertUnprocessable()->assertJsonValidationErrors('current_password');
+        $this->putJson(route('settings.permissions', $hr), ['current_password' => 'password', 'permissions' => ['users']])
+            ->assertUnprocessable()->assertJsonValidationErrors('permissions.0');
+        $this->putJson(route('settings.permissions', $hr), ['current_password' => 'password', 'permissions' => []])
+            ->assertOk()->assertJsonPath('message', $hr->name.' permissions updated.');
+        $this->assertEqualsCanonicalizing(['dashboard', 'account'], $hr->permissions()->pluck('slug')->all());
+
+        $this->signIn(User::factory()->withRole('finance')->create());
+        $this->getJson('/settings')->assertForbidden();
+        $this->putJson(route('settings.permissions', $hr), ['current_password' => 'password', 'permissions' => ['hr']])
+            ->assertForbidden();
     }
 
     public function test_users_cannot_modify_roles_through_personal_settings(): void
@@ -213,6 +220,6 @@ class AccessControlTest extends TestCase
 
         $this->assertDatabaseHas('users', ['id' => $user->id, 'email' => 'new@example.com', 'auth_version' => 1, 'email_verified_at' => null]);
         $this->assertNotSame($oldRememberToken, $user->fresh()->remember_token);
-        $this->get('/dashboard')->assertOk();
+        $this->get('/hr/alphalist')->assertOk();
     }
 }

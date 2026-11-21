@@ -19,6 +19,9 @@ function git {
     $global:LASTEXITCODE = 0
     $command = $args -join ' '
     $calls.Add('git ' + $command)
+    if ($args[0] -eq 'worktree' -and $args[1] -eq 'add') {
+        New-Item -ItemType Directory -Path (Join-Path $args[3] 'frontend') -Force | Out-Null
+    }
     switch ($command) {
         'branch --show-current' { if ($scenario -eq 'branch') { 'feature/ui' } else { 'main' } }
         'status --porcelain' { if ($scenario -eq 'dirty') { ' M frontend/src/App.tsx' } }
@@ -82,6 +85,8 @@ try {
     $failed = $false
     try { & $updater -PublicUrl 'https://oasis-test.ngrok-free.dev' } catch { $failed = $true }
     Assert $failed 'A failed build must stop deployment.'
+    Assert (-not ($calls -match '^launcher .* -Stop$')) 'A failed preflight must leave the running site alone.'
+    Assert (-not ($calls -match '^git merge --ff-only')) 'A failed preflight must leave the live checkout alone.'
     Assert (-not ($calls -match '-PublicUrl')) 'A broken build must not be started.'
     Assert (-not (Test-Path -LiteralPath (Join-Path $runtimeRoot 'deployed-revision.txt'))) 'A failed build must not be marked deployed.'
 
