@@ -76,7 +76,7 @@ class ApplicationAccessTest extends TestCase
     {
         $this->signIn(User::factory()->withRole('hr')->create(['name' => '</script><script>alert(1)</script>']));
 
-        $this->get('/dashboard')->assertOk()->assertDontSee('</script><script>alert(1)</script>', false);
+        $this->get('/hr/alphalist')->assertOk()->assertDontSee('</script><script>alert(1)</script>', false);
     }
 
     public function test_application_assets_require_login_and_cannot_traverse_directories(): void
@@ -128,7 +128,7 @@ class ApplicationAccessTest extends TestCase
             ->assertJsonPath('csrfToken', csrf_token());
 
         $this->assertTrue(Hash::check('Better-Password2026!', $user->fresh()->password));
-        $this->get('/dashboard')->assertOk();
+        $this->get('/hr/alphalist')->assertOk();
         $this->putJson('/account', [
             'name' => $user->name,
             'email' => $user->email,
@@ -152,7 +152,8 @@ class ApplicationAccessTest extends TestCase
 
         $this->post('/login', ['email' => $user->email, 'password' => 'password'])->assertSessionHasErrors('email');
         $this->assertGuest();
-        $this->post('/login', ['email' => $user->email, 'password' => 'New-Password2026!'])->assertRedirect(route('dashboard'));
+        $this->followingRedirects()->post('/login', ['email' => $user->email, 'password' => 'New-Password2026!'])
+            ->assertOk()->assertViewHas('initialPage', 'employees');
         $this->assertAuthenticatedAs($user);
     }
 }
