@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { getSession, readSession, setSession, type AuthSession } from "./auth";
 import "./index.css";
 import { initializeBusinessStorage } from "./businessStorage";
+import oasisLogo from "./assets/report-logo-medical-center.png";
 
 declare global {
   interface Window {
@@ -15,9 +16,8 @@ const root = ReactDOM.createRoot(document.getElementById("root")!);
 
 async function start() {
   root.render(
-    <main className="mx-auto mt-24 max-w-md rounded-xl border border-[#d0e3ef] bg-white p-8 text-[#16344d]">
-      <h1 className="text-xl font-semibold">OASIS</h1>
-      <p role="status" className="my-4">Connecting to OASIS…</p>
+    <main role="status" aria-label="Loading OASIS" className="flex min-h-dvh items-center justify-center p-8">
+      <img src={oasisLogo} alt="OASIS Medical Center" className="startup-logo h-auto w-full max-w-3xl object-contain" />
     </main>,
   );
   try {
