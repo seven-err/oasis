@@ -176,6 +176,30 @@ class AccessControlTest extends TestCase
             ->assertJsonPath('user.permissions', ['dashboard', 'hr', 'account']);
     }
 
+    public function test_inline_settings_load_and_save_with_the_same_access_rules(): void
+    {
+        $this->signIn(User::factory()->withRole('super-admin')->create());
+        $hr = Role::where('slug', 'hr')->firstOrFail();
+
+        $response = $this->getJson('/settings')->assertOk()->assertJsonCount(2, 'roles');
+        $hrSettings = collect($response->json('roles'))->firstWhere('id', $hr->id);
+        $this->assertSame(['hr', 'checks', 'payables', 'receivables'], array_column($hrSettings['availablePermissions'], 'slug'));
+        $this->assertContains('hr', $hrSettings['permissions']);
+
+        $this->putJson(route('settings.permissions', $hr), ['current_password' => 'incorrect', 'permissions' => []])
+            ->assertUnprocessable()->assertJsonValidationErrors('current_password');
+        $this->putJson(route('settings.permissions', $hr), ['current_password' => 'password', 'permissions' => ['users']])
+            ->assertUnprocessable()->assertJsonValidationErrors('permissions.0');
+        $this->putJson(route('settings.permissions', $hr), ['current_password' => 'password', 'permissions' => []])
+            ->assertOk()->assertJsonPath('message', $hr->name.' permissions updated.');
+        $this->assertEqualsCanonicalizing(['dashboard', 'account'], $hr->permissions()->pluck('slug')->all());
+
+        $this->signIn(User::factory()->withRole('finance')->create());
+        $this->getJson('/settings')->assertForbidden();
+        $this->putJson(route('settings.permissions', $hr), ['current_password' => 'password', 'permissions' => ['hr']])
+            ->assertForbidden();
+    }
+
     public function test_users_cannot_modify_roles_through_personal_settings(): void
     {
         $user = User::factory()->withRole('hr')->create();

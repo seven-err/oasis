@@ -22,6 +22,8 @@ export const pagePaths: Record<string, string> = {
   users: "/team",
   activity: "/activity",
   profile: "/profile",
+  password: "/change-password",
+  settings: "/settings",
   archives: "/archives",
   deleted: "/deleted",
   reports: "/reports",
@@ -37,11 +39,13 @@ export function getSession() {
 
 export function canAccessPage(page: string) {
   if (!session || session.user.mustChangePassword) return false;
+  if (page === "password") return true;
   const permission = { employees: "hr", profile: "account", archives: "users", deleted: "users", reports: "users" }[page] ?? page;
   return session.user.permissions.includes(permission);
 }
 
 export function initialPage(pathname: string) {
+  if (pathname === "/activity-logs") return "activity";
   if (/^\/users(?:\/(?:create|\d+(?:\/edit)?))?\/?$/.test(pathname)) return 'users';
   return Object.entries(pagePaths).find(([, path]) => path === pathname)?.[0] ?? "dashboard";
 }

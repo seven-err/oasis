@@ -21,17 +21,28 @@ class SystemController extends Controller
 
         $logs = ActivityLog::with('user')->orderByDesc('id')->paginate(30);
 
-        return $request->expectsJson() ? response()->json($logs) : view('system.activity', compact('logs'));
+        return $request->expectsJson() ? response()->json($logs) : app(ApplicationController::class)->show($request, 'activity');
     }
 
-    public function settings(): View
+    public function settings(Request $request): View|JsonResponse
     {
         Gate::authorize('settings');
 
-        return view('system.settings', ['roles' => Role::with('permissions')->whereIn('slug', ['hr', 'finance'])->get()]);
+        $roles = Role::with('permissions')->whereIn('slug', ['hr', 'finance'])->get();
+        if ($request->expectsJson()) {
+            return response()->json(['roles' => $roles->map(fn (Role $role) => [
+                'id' => $role->id,
+                'name' => $role->name,
+                'permissions' => $role->permissions->pluck('slug'),
+                'availablePermissions' => collect(array_diff(Role::assignablePermissions($role->slug), ['dashboard', 'account']))
+                    ->map(fn (string $slug) => ['slug' => $slug, 'name' => Role::PERMISSIONS[$slug]])->values(),
+            ])]);
+        }
+
+        return app(ApplicationController::class)->show($request, 'settings');
     }
 
-    public function updatePermissions(Request $request, Role $role): RedirectResponse
+    public function updatePermissions(Request $request, Role $role): RedirectResponse|JsonResponse
     {
         Gate::authorize('settings');
         abort_unless(in_array($role->slug, ['hr', 'finance'], true), 403);
@@ -48,6 +59,8 @@ class SystemController extends Controller
             ActivityLog::record($request->user(), 'permissions.updated', "Updated {$role->slug} permissions: ".implode(', ', $permissions).'.');
         });
 
-        return back()->with('status', 'Role permissions updated.');
+        return $request->expectsJson()
+            ? response()->json(['message' => "{$role->name} permissions updated."])
+            : back()->with('status', 'Role permissions updated.');
     }
 }

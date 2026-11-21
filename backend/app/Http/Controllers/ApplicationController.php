@@ -13,7 +13,7 @@ class ApplicationController extends Controller
 {
     public function show(Request $request, ?string $page = null): View
     {
-        Gate::authorize($page === 'users' ? 'users' : ($request->route()->defaults['permission'] ?? 'dashboard'));
+        Gate::authorize(in_array($page, ['users', 'activity', 'settings'], true) ? $page : ($request->route()->defaults['permission'] ?? 'dashboard'));
 
         return view('application', [
             'session' => $this->sessionData($request),
@@ -24,6 +24,18 @@ class ApplicationController extends Controller
     public function session(Request $request): JsonResponse
     {
         return response()->json($this->sessionData($request));
+    }
+
+    public function editPassword(Request $request): View
+    {
+        if ($request->user()->must_change_password) {
+            return view('account.password');
+        }
+
+        return view('application', [
+            'session' => $this->sessionData($request),
+            'initialPage' => 'password',
+        ]);
     }
 
     private function sessionData(Request $request): array

@@ -16,7 +16,7 @@ Route::middleware('private.pages')->group(function () {
     });
     Route::middleware(['auth', 'account.access'])->group(function () {
         Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
-        Route::get('/change-password', [AccountController::class, 'editPassword'])->name('password.edit');
+        Route::get('/change-password', [ApplicationController::class, 'editPassword'])->name('password.edit');
         Route::put('/change-password', [AccountController::class, 'updatePassword'])->middleware('throttle:6,1')->name('password.update');
         Route::get('/auth/session', [ApplicationController::class, 'session'])->name('auth.session');
         Route::get('/business-state', [BusinessStateController::class, 'index']);

@@ -1,3 +1,4 @@
+import { PasswordInput } from "./PasswordInput";
 import { useEffect, useState, type FormEvent } from "react";
 import { ArrowUpDown, FileText, Plus, Search, SlidersHorizontal, X } from "lucide-react";
 import { apiRequest, getSession } from "../auth";
@@ -543,18 +544,18 @@ function UserField({
   maxLength?: number;
   errors: ValidationErrors;
 }) {
-  const [visible, setVisible] = useState(false);
+  const Input = type === "password" ? PasswordInput : "input";
   return (
     <div>
       <label className="field-label" htmlFor={name}>
         {label}
       </label>
       <div className="relative mt-2">
-        <input
-          className={`input ${type === "password" ? "pr-16" : ""}`}
+        <Input
+          className={type === "password" ? "" : "input"}
           id={name}
           name={name}
-          type={visible ? "text" : type}
+          type={type}
           defaultValue={value ?? ""}
           required={required}
           maxLength={maxLength}
@@ -562,18 +563,6 @@ function UserField({
           aria-invalid={Boolean(errors[name])}
           aria-describedby={`${name}-help ${name}-error`}
         />
-        {type === "password" && (
-          <button
-            type="button"
-            className="absolute inset-y-0 right-3 text-xs text-[#1f6ea6]"
-            onClick={() => setVisible(!visible)}
-            aria-label={`${visible ? "Hide" : "Show"} ${label.toLowerCase()}`}
-            aria-pressed={visible}
-            aria-controls={name}
-          >
-            {visible ? "Hide" : "Show"}
-          </button>
-        )}
       </div>
       <small id={`${name}-help`} className="mt-1 block text-[#777]">
         {hint}
