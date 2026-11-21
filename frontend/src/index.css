@@ -1,6 +1,25 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
+@theme {
+  --text-xs: 0.8125rem;
+  --text-sm: 0.9375rem;
+}
+
+/* Dashboard copy previously used 9–11px text in several modules. Keep the
+   existing hierarchy while lifting those sizes to a readable baseline. */
+.text-\[9px\] {
+  font-size: 11px;
+}
+
+.text-\[10px\] {
+  font-size: 12px;
+}
+
+.text-\[11px\] {
+  font-size: 13px;
+}
+
 /* Keep interface icons black even when their controls use colored text. */
 .lucide {
   color: #000;
@@ -443,8 +462,8 @@
     border-bottom: 1px solid #d0e3ef;
     background: #f4f9fd;
     padding: 0 12px;
-    color: #777;
-    font-size: 9px;
+    color: #526a7c;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.11em;
     text-transform: uppercase;
@@ -455,7 +474,7 @@
     height: 58px;
     border-bottom: 1px solid #e1eef6;
     padding: 10px 12px;
-    font-size: 11px;
+    font-size: 13px;
     white-space: nowrap;
   }
 
@@ -584,7 +603,7 @@
     background: #4da3d9;
     padding: 0 16px;
     color: #fff;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 600;
     transition:
       background-color var(--motion-fast) var(--motion-ease),
@@ -617,7 +636,7 @@
     border: 1px solid #c5dced;
     background: #fff;
     padding: 0 14px;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 600;
     white-space: nowrap;
     transition: background-color var(--motion-fast) var(--motion-ease),
@@ -633,7 +652,7 @@
     align-items: center;
     gap: 3px;
     color: #1f6ea6;
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 600;
   }
 
@@ -646,7 +665,7 @@
     padding-left: 12px;
     padding-right: 12px;
     color: #111;
-    font-size: 11px;
+    font-size: 13px;
     transition:
       border-color var(--motion-fast) var(--motion-ease),
       box-shadow var(--motion-fast) var(--motion-ease);
@@ -675,8 +694,8 @@
   }
 
   .field-label {
-    color: #777;
-    font-size: 9px;
+    color: #526a7c;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.09em;
     text-transform: uppercase;
@@ -706,7 +725,7 @@
     border-radius: 999px;
     border: 0;
     padding: 3px 12px;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 500;
     line-height: 1.2;
     white-space: nowrap;

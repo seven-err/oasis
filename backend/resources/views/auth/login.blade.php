@@ -11,23 +11,12 @@
     <main class="login-shell">
         <section class="login-card" aria-labelledby="login-title">
             <header class="login-brand">
-                <span class="login-logo" role="img" aria-label="OASIS logo"></span>
-                <div class="login-brand-copy">
-                    <svg aria-label="OASIS" role="img" viewBox="0 0 354 64">
-                        <g fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round">
-                            <path d="M6 56 40 10 Q46 2 52 10 L86 56" />
-                            <path d="M201 10 H128 A12 12 0 0 0 128 34 H191 A11 11 0 0 1 191 56 H112" />
-                            <path d="M229 10 V56" />
-                            <path d="M344 10 H271 A12 12 0 0 0 271 34 H334 A11 11 0 0 1 334 56 H255" />
-                        </g>
-                        <circle cx="46" cy="48" r="8" fill="currentColor" />
-                    </svg>
-                    <span>Diagnostic &amp; Laboratory Center</span>
+                <div class="login-brand-identity">
+                    <span class="login-logo" role="img" aria-label="OASIS Medical Center"><span aria-hidden="true">Medical Center</span></span>
                 </div>
             </header>
 
             <div class="login-content">
-                <p class="login-eyebrow">Office Management System</p>
                 <h1 id="login-title">Welcome back</h1>
                 <p class="login-description">Sign in to your OASIS account.</p>
 
