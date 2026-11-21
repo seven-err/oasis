@@ -298,7 +298,6 @@ export function ReceivableDetails({
       "Billing address": record.billingAddress,
       "Invoice number": record.invoiceNumber,
       "Reference number": record.referenceNumber,
-      "Transaction date": formatDate(record.transactionDate),
       "Invoice date": formatDate(record.invoiceDate),
       "Due date": formatDate(record.dueDate),
       Description: record.description,
@@ -630,7 +629,6 @@ export function ReceivableDetails({
           items={[
             { label: "Invoice number", value: record.invoiceNumber },
             { label: "Reference number", value: record.referenceNumber },
-            { label: "Transaction date", value: formatDate(record.transactionDate) },
             { label: "Invoice date", value: formatDate(record.invoiceDate) },
             { label: "Due date", value: formatDate(record.dueDate) },
             { label: "Description", value: record.description },

@@ -74,12 +74,3 @@ export function canTransitionStatus(
 export function defaultStatusForType(type: CheckType): CheckStatus {
   return type === "Received Check" ? "Received" : "Issued";
 }
-
-export function requiresDepositDate(status: CheckStatus, type: CheckType): boolean {
-  if (type !== "Received Check") return false;
-  return status === "Deposited" || status === "For Clearing" || status === "Cleared";
-}
-
-export function requiresClearingDate(status: CheckStatus): boolean {
-  return status === "Cleared";
-}
