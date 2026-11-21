@@ -5,6 +5,12 @@ import { PaginationBar } from "../modules/checks/ui";
 import { ActiveFilters } from "./ActiveFilters";
 import { recordRowClick } from "./recordRowClick";
 import { useHeaderBack } from "./HeaderBack";
+import { confirmLeavingUnsavedForm, useUnsavedForm } from "@/hooks/useUnsavedForm";
+import { fieldError, focusFirstError } from "./formValidation";
+import { accountReportRows, safeAccountCsvRows, type AccountReportEntry } from "./accountReport";
+import { usePrintReport } from "./usePrintReport";
+import { downloadCsv } from "@/modules/checks/utils";
+import { StatusBadge } from "./StatusBadge";
 import {
   cacheUserList,
   clearUserListCache,
@@ -30,6 +36,12 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
   const editing = Boolean(match?.[2]);
   const form = creating || editing;
   const details = Boolean(match && !editing);
+  const { markDirty, markSaved } = useUnsavedForm(form || details);
+  const [reportFilters, setReportFilters] = useState<string | null>(null);
+  const [reportAccounts, setReportAccounts] = useState<AccountReportEntry[] | null>(null);
+  const [reportError, setReportError] = useState("");
+  const [reportAttempt, setReportAttempt] = useState(0);
+  const { printReport, printSheet } = usePrintReport();
   const [list, setList] = useState<UserList | null>(() =>
     !form && !details ? getCachedUserList("/users" + url.search) : null,
   );
@@ -107,7 +119,6 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
         if (!active) return;
         if (!form && !details && result.data) cacheUserList(endpoint, result);
         setList(result.data ? result : null);
-        if (result.data) setListPath(path);
         setUser(result.user ?? null);
         setRoles(result.roles ?? []);
       })
@@ -158,6 +169,7 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
         method: editing && !reset ? "PUT" : "POST",
         body: JSON.stringify(payload),
       });
+      markSaved();
       clearUserListCache();
       if (result.temporaryPassword) {
         setCredentials(result);
@@ -215,7 +227,45 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
           {error}
         </div>
       )}
-      {credentials ? (
+      {reportFilters !== null ? (
+        <>
+          <section className="panel p-5 sm:p-6">
+            <h2 className="text-base font-semibold">Account report</h2>
+            <p className="mt-2 text-sm text-[#5c7890]">All accounts matching the current search, role, and status filters. Passwords are excluded.</p>
+            {(() => {
+              const filters = new URLSearchParams(reportFilters);
+              const roles: Record<string, string> = { "super-admin": "Super Admin", hr: "HR", finance: "Finance" };
+              return <p className="mt-2 break-words text-xs text-[#5c7890]">Search: {filters.get("search") || "All"} · Role: {roles[filters.get("role") ?? ""] ?? "All"} · Status: {filters.get("status") === "active" ? "Active" : filters.get("status") === "inactive" ? "Inactive" : "All"}</p>;
+            })()}
+            {reportError ? <p role="alert" className="mt-4 text-sm text-red-700">Could not load the report: {reportError} <button type="button" className="text-link underline" onClick={() => setReportAttempt((attempt) => attempt + 1)}>Try again</button></p>
+              : reportAccounts === null ? <p role="status" className="mt-4 text-sm text-[#777]">Loading account report…</p>
+              : <p className="mt-4 text-sm text-[#777]">{reportAccounts.length} matching accounts</p>}
+            <div className="mt-5 flex flex-wrap gap-2">
+              <button type="button" className="secondary-btn" disabled={!reportAccounts?.length} onClick={() => { if (reportAccounts) printReport("Account report", accountReportRows(reportAccounts)); }}><Printer size={15} aria-hidden="true" /> Print</button>
+              <button type="button" className="primary-btn" disabled={!reportAccounts?.length} onClick={() => { if (reportAccounts) downloadCsv("oasis-account-report.csv", safeAccountCsvRows(accountReportRows(reportAccounts))); }}><Download size={15} aria-hidden="true" /> Export CSV</button>
+            </div>
+          </section>
+          {reportAccounts && (reportAccounts.length ? (
+            <>
+              <ul className="space-y-3 md:hidden" aria-label="Account report">
+                {accountReportRows(reportAccounts).map((row, index) => <li key={index} className="panel p-4 text-sm">
+                  <p className="break-words font-semibold">{row.Name}</p><p className="mt-1 break-all text-xs text-[#5c7890]">{row.Email}</p>
+                  <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-xs">
+                    <dt className="text-[#777]">Role</dt><dd className="break-words">{row.Role}</dd>
+                    <dt className="text-[#777]">Status</dt><dd><StatusBadge value={row.Status} /></dd>
+                    <dt className="text-[#777]">Last login (Philippine time)</dt><dd>{row["Last login (Philippine time)"]}</dd>
+                  </dl>
+                </li>)}
+              </ul>
+              <div className="panel hidden overflow-x-auto md:block"><table>
+                <caption className="sr-only">Account report; last login in Philippine time</caption>
+                <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last login (Philippine time)</th></tr></thead>
+                <tbody>{accountReportRows(reportAccounts).map((row, index) => <tr key={index}><td>{row.Name}</td><td>{row.Email}</td><td>{row.Role}</td><td><StatusBadge value={row.Status} /></td><td>{row["Last login (Philippine time)"]}</td></tr>)}</tbody>
+              </table></div>
+            </>
+          ) : <p className="panel p-5 text-sm">No accounts match these filters. Go back and adjust them to create a report.</p>)}
+        </>
+      ) : credentials ? (
         <div className="panel mx-auto w-full max-w-2xl p-5 sm:p-6">
           <h2 className="text-base font-semibold">{heading}</h2>
           <p className="my-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
@@ -251,7 +301,7 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
       ) : form && (creating || user) ? (
         <div className="panel mx-auto w-full max-w-2xl p-5 sm:p-8">
           <h2 className="mb-6 text-center text-lg font-semibold">{heading}</h2>
-          <form key={path} className="space-y-5" onSubmit={save}>
+          <form key={path} className="space-y-5" onSubmit={save} onChangeCapture={updateField} noValidate>
             <div className="grid gap-5 sm:grid-cols-2">
               <UserField
                 name="name"
@@ -456,6 +506,12 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
             }}>
               <ArrowUpDown size={15} aria-hidden="true" /> {sort === "asc" ? "A-Z" : "Z-A"}
             </button>
+            <button type="button" className="secondary-btn w-full sm:w-auto" onClick={() => {
+              const filters = new URLSearchParams(url.search);
+              if (search) filters.set("search", search); else filters.delete("search");
+              filters.delete("page");
+              setReportFilters(filters.toString());
+            }}><FileText size={15} aria-hidden="true" /> Reports</button>
           </div>
           </div>
           <ActiveFilters
@@ -505,10 +561,7 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
                 <option value="inactive">Inactive</option>
               </select>
             </label>
-            <button className="secondary-btn">
-              <SlidersHorizontal size={15} aria-hidden="true" /> Filter
-            </button>
-          </form>
+          </div>
           )}
           <div className="panel overflow-hidden">
             <div className="overflow-x-auto">

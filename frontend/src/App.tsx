@@ -21,6 +21,7 @@ import {
   Wallet,
   Download,
   FileCheck2,
+  FileText,
   LogOut,
   Menu,
   MoreHorizontal,

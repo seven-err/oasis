@@ -74,6 +74,7 @@ export function PayableDetails({
   const linkableChecks = useMemo(() => payableService.linkableChecks(), [payments]);
 
   const [showPaymentForm, setShowPaymentForm] = useState(focus === "payments");
+  const paymentDraft = useUnsavedForm(showPaymentForm);
   const [paymentValues, setPaymentValues] = useState<PaymentFormValues>(emptyPayment);
   const [paymentErrors, setPaymentErrors] = useState<ValidationResult["errors"]>({});
   const [saving, setSaving] = useState(false);
@@ -140,7 +141,7 @@ export function PayableDetails({
     onChanged();
   };
 
-  const onRecordPayment = (e: React.FormEvent) => {
+  const onRecordPayment = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSaving(true);
     const result = payableService.recordPayment(record.id, paymentValues);

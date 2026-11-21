@@ -81,7 +81,7 @@ test("returning to accounts renders cached rows before effects run, but details 
     assert.match(html, /aria-label="Next page"/);
     assert.match(html, /Showing 1-1 of 1/);
     window.location.pathname = "/users/2";
-    assert.match(render(), /Loading accounts/);
+    assert.match(render(), /Loading account…/);
   } finally {
     globalThis.window = previousWindow;
     await server.close();
