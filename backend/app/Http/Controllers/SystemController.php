@@ -38,7 +38,7 @@ class SystemController extends Controller
         $data = $request->validate([
             'current_password' => ['required', 'current_password'],
             'permissions' => ['sometimes', 'array'],
-            'permissions.*' => ['string', 'distinct', Rule::in(array_diff(Role::ACCESS[$role->slug], ['dashboard', 'account']))],
+            'permissions.*' => ['string', 'distinct', Rule::in(array_diff(Role::assignablePermissions($role->slug), ['dashboard', 'account']))],
         ]);
         DB::transaction(function () use ($request, $role, $data) {
             Role::where('slug', 'super-admin')->lockForUpdate()->firstOrFail();

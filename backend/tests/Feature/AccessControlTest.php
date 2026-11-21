@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\BusinessStateController;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
@@ -125,16 +126,54 @@ class AccessControlTest extends TestCase
         $this->assertDatabaseHas('activity_logs', ['action' => 'permissions.updated']);
     }
 
-    public function test_permission_settings_reject_cross_department_and_super_admin_changes(): void
+    public function test_permission_settings_reject_administration_and_super_admin_changes(): void
     {
         $this->signIn(User::factory()->withRole('super-admin')->create());
         $hr = Role::where('slug', 'hr')->firstOrFail();
         $admin = Role::where('slug', 'super-admin')->firstOrFail();
 
-        $this->put(route('settings.permissions', $hr), ['current_password' => 'password', 'permissions' => ['checks']])
+        $this->put(route('settings.permissions', $hr), ['current_password' => 'password', 'permissions' => ['settings']])
             ->assertSessionHasErrors('permissions.0');
         $this->put(route('settings.permissions', $admin), ['current_password' => 'password'])->assertForbidden();
         $this->assertDatabaseMissing('activity_logs', ['action' => 'permissions.updated']);
+    }
+
+    #[TestWith(['checks'])]
+    #[TestWith(['payables'])]
+    #[TestWith(['receivables'])]
+    public function test_selected_hr_monitoring_permissions_reach_navigation_routes_and_data(string $module): void
+    {
+        $admin = User::factory()->withRole('super-admin')->create();
+        $hr = User::factory()->withRole('hr')->create();
+        $role = $hr->role;
+        $this->signIn($admin);
+        $this->put(route('settings.permissions', $role), [
+            'current_password' => 'password', 'permissions' => ['hr', $module],
+        ])->assertSessionHasNoErrors()->assertRedirect();
+        $this->seed(RolePermissionSeeder::class);
+
+        $this->signIn($hr);
+        $this->getJson('/auth/session')->assertOk()
+            ->assertJsonPath('user.permissions', ['dashboard', 'hr', $module, 'account']);
+        $this->get('/'.$module)->assertOk()->assertViewIs('application');
+        $data = array_fill_keys(BusinessStateController::KEYS[$module], []);
+        $this->putJson('/business-state/'.$module, ['version' => 0, 'data' => $data])->assertOk();
+        $this->getJson('/business-state')->assertOk()->assertJsonCount(2, 'modules')
+            ->assertJsonPath('modules.'.$module.'.version', 1);
+        foreach (array_diff(['checks', 'payables', 'receivables'], [$module]) as $unassigned) {
+            $this->get('/'.$unassigned)->assertForbidden();
+        }
+        $this->get('/settings')->assertForbidden();
+
+        $this->signIn($admin);
+        $this->put(route('settings.permissions', $role), [
+            'current_password' => 'password', 'permissions' => ['hr'],
+        ])->assertSessionHasNoErrors()->assertRedirect();
+        $this->signIn($hr);
+        $this->get('/'.$module)->assertForbidden();
+        $this->putJson('/business-state/'.$module, [])->assertForbidden();
+        $this->getJson('/auth/session')->assertOk()
+            ->assertJsonPath('user.permissions', ['dashboard', 'hr', 'account']);
     }
 
     public function test_users_cannot_modify_roles_through_personal_settings(): void

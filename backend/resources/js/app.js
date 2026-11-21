@@ -4,7 +4,13 @@ document.addEventListener('click', (event) => {
         const input = document.getElementById(toggle.dataset.passwordToggle);
         const show = input.type === 'password';
         input.type = show ? 'text' : 'password';
-        toggle.textContent = show ? 'Hide' : 'Show';
+        const slash = toggle.querySelector('[data-password-slash]');
+        if (slash) {
+            slash.setAttribute('visibility', show ? 'hidden' : 'visible');
+        }
+        if (!toggle.querySelector('svg')) {
+            toggle.textContent = show ? 'Hide' : 'Show';
+        }
         toggle.setAttribute('aria-pressed', String(show));
         toggle.setAttribute('aria-label', (show ? 'Hide ' : 'Show ') + document.querySelector('label[for="' + input.id + '"]').textContent.toLowerCase());
     }

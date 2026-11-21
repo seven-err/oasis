@@ -58,6 +58,21 @@ test("existing page navigation follows server permissions and rejects unknown pa
   assert.equal(initialPage("/users-unrelated"), "dashboard");
 });
 
+test("HR monitoring navigation and actions follow the selected server permissions", () => {
+  for (const selected of ["checks", "payables", "receivables"]) {
+    const session = sessionFor("hr");
+    session.user.permissions = [...session.user.permissions, selected];
+    setSession(session);
+    for (const module of ["checks", "payables", "receivables"]) {
+      assert.equal(canAccessPage(module), module === selected);
+      assert.equal(moduleUser(module, ["edit"]).permissions.edit, module === selected);
+    }
+    assert.equal(canAccessPage("employees"), true);
+    assert.equal(canAccessPage("users"), false);
+    assert.equal(canAccessPage("settings"), false);
+  }
+});
+
 test("module actions use the signed-in identity and deny unassigned modules", () => {
   setSession(sessionFor("hr"));
   const user = moduleUser("checks", ["editChecks", "archiveChecks"]);

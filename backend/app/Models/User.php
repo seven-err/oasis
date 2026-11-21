@@ -39,7 +39,7 @@ class User extends Authenticatable
     public function hasPermission(string $permission): bool
     {
         $slug = $this->role?->slug;
-        if (! $this->is_active || ! in_array($permission, Role::ACCESS[$slug] ?? [], true)) {
+        if (! $this->is_active || ! in_array($permission, Role::assignablePermissions($slug ?? ''), true)) {
             return false;
         }
 
