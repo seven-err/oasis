@@ -2,13 +2,11 @@ import { ArchiveConfirmationDialog } from "@/components/ArchiveConfirmationDialo
 import {
   Archive,
   Banknote,
-  CheckCircle2,
   History,
   Pencil,
   Printer,
   RotateCcw,
   Undo2,
-  XCircle,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePrintReport } from "@/components/usePrintReport";
@@ -29,7 +27,6 @@ import {
   DetailGrid,
   FormInput,
   FormSelect,
-  FormTextarea,
   MoneySummaryStrip,
   PanelTitle,
   SectionCard,
@@ -77,12 +74,8 @@ export function PayableDetails({
   const linkableChecks = useMemo(() => payableService.linkableChecks(), [payments]);
 
   const [showPaymentForm, setShowPaymentForm] = useState(focus === "payments");
-  const paymentDraft = useUnsavedForm(showPaymentForm);
-  const [showApprovePanel, setShowApprovePanel] = useState(focus === "approve");
   const [paymentValues, setPaymentValues] = useState<PaymentFormValues>(emptyPayment);
   const [paymentErrors, setPaymentErrors] = useState<ValidationResult["errors"]>({});
-  const [rejectionReason, setRejectionReason] = useState("");
-  const [rejectError, setRejectError] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -93,7 +86,6 @@ export function PayableDetails({
 
   useEffect(() => {
     if (focus === "payments") setShowPaymentForm(true);
-    if (focus === "approve") setShowApprovePanel(true);
   }, [focus]);
 
   useEffect(() => {
@@ -148,35 +140,7 @@ export function PayableDetails({
     onChanged();
   };
 
-  const onApprove = () => {
-    const result = payableService.approve(record.id);
-    if (!result.ok) {
-      notify(result.errors.form ?? "Unable to approve.");
-      return;
-    }
-    notify("Payable approved.");
-    setShowApprovePanel(false);
-    onChanged();
-  };
-
-  const onReject = (event: React.MouseEvent<HTMLButtonElement>) => {
-    const result = payableService.reject(record.id, rejectionReason);
-    if (!result.ok) {
-      setRejectError(result.errors.rejectionReason ?? result.errors.form ?? "Unable to reject.");
-      if (result.errors.rejectionReason) {
-        const section = event.currentTarget.closest("section");
-        if (section) focusFirstError(section, { rejectionReason: true });
-      }
-      return;
-    }
-    notify("Payable rejected.");
-    setShowApprovePanel(false);
-    setRejectionReason("");
-    setRejectError("");
-    onChanged();
-  };
-
-  const onRecordPayment = (e: React.FormEvent<HTMLFormElement>) => {
+  const onRecordPayment = (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     const result = payableService.recordPayment(record.id, paymentValues);
@@ -207,8 +171,7 @@ export function PayableDetails({
     ) {
       return;
     }
-    const remarks = window.prompt("Optional reversal remarks:", "") ?? undefined;
-    const result = payableService.reversePayment(payment.id, remarks || undefined);
+    const result = payableService.reversePayment(payment.id);
     if (!result.ok) {
       notify(result.errors.form ?? "Unable to reverse payment.");
       return;
@@ -221,13 +184,7 @@ export function PayableDetails({
   const canRecordPayment =
     user.permissions.recordPayments &&
     !record.archivedAt &&
-    record.approvalStatus === "Approved" &&
     record.remainingBalance > 0;
-
-  const canDecide =
-    user.permissions.approvePayables &&
-    !record.archivedAt &&
-    record.approvalStatus === "Pending";
 
   const printRecord = () => {
     const details = {
@@ -245,10 +202,6 @@ export function PayableDetails({
       "Payment status": record.paymentStatus,
       "Latest payment method": record.displayPaymentMethod,
       "Latest payment reference": record.displayReferenceNumber,
-      "Approval status": record.approvalStatus,
-      Approver: record.approvedByName,
-      "Decision date": record.approvedAt ? formatDateTime(record.approvedAt) : null,
-      "Rejection reason": record.rejectionReason,
       "Created by": record.createdByName,
       Created: formatDateTime(record.createdAt),
       "Last updated": formatDateTime(record.updatedAt),
@@ -298,7 +251,6 @@ export function PayableDetails({
             <div className="space-y-2">
               <div className="flex flex-wrap gap-2">
                 <StatusBadge value={record.paymentStatus} />
-                <StatusBadge value={record.approvalStatus} />
               </div>
               <strong className="block text-lg tracking-[-.02em]">
                 {peso.format(record.remainingBalance)} remaining
@@ -309,14 +261,6 @@ export function PayableDetails({
             <button onClick={printRecord} className="secondary-btn">
               <Printer size={15} /> Print
             </button>
-            {canDecide && (
-              <button
-                onClick={() => setShowApprovePanel((x) => !x)}
-                className="secondary-btn"
-              >
-                <CheckCircle2 size={15} /> Approve / Reject
-              </button>
-            )}
             {record.archivedAt ? (
               <button onClick={onRestore} className="secondary-btn">
                 <RotateCcw size={15} /> Restore
@@ -338,35 +282,6 @@ export function PayableDetails({
           />
         </div>
       </section>
-
-      {showApprovePanel && canDecide && (
-        <section className="panel p-5">
-          <h3 className="mb-4 text-[10px] font-bold uppercase tracking-[.14em] text-[#1f6ea6]">
-            Approval decision
-          </h3>
-          <div className="flex flex-wrap gap-2">
-            <button onClick={onApprove} className="primary-btn">
-              <CheckCircle2 size={15} /> Approve
-            </button>
-          </div>
-          <div className="mt-5 border-t border-[#e1eef6] pt-5">
-            <FormTextarea
-              label="Rejection reason"
-              name="rejectionReason"
-              required
-              value={rejectionReason}
-              onChange={(v) => {
-                setRejectionReason(v);
-                if (v.trim()) setRejectError("");
-              }}
-              error={rejectError}
-            />
-            <button onClick={onReject} className="secondary-btn mt-3 text-red-700">
-              <XCircle size={15} /> Reject payable
-            </button>
-          </div>
-        </section>
-      )}
 
       {showPaymentForm && canRecordPayment && (
         <section
@@ -447,14 +362,6 @@ export function PayableDetails({
                   ))}
                 </FormSelect>
               )}
-              <div className="sm:col-span-2 lg:col-span-3">
-                <FormTextarea
-                  label="Remarks"
-                  name="remarks"
-                  value={paymentValues.remarks}
-                  onChange={setPay("remarks")}
-                />
-              </div>
             </div>
             <div className="flex justify-end gap-2 border-t border-[#e1eef6] pt-4">
               <button
@@ -510,26 +417,6 @@ export function PayableDetails({
             {
               label: "Latest payment reference",
               value: record.displayReferenceNumber || "—",
-            },
-          ]}
-        />
-      </SectionCard>
-
-      <SectionCard title="3. Approval">
-        <DetailGrid
-          items={[
-            {
-              label: "Approval status",
-              value: <StatusBadge value={record.approvalStatus} />,
-            },
-            { label: "Approver", value: record.approvedByName ?? "—" },
-            {
-              label: "Decision date",
-              value: record.approvedAt ? formatDateTime(record.approvedAt) : "—",
-            },
-            {
-              label: "Rejection reason",
-              value: record.rejectionReason ?? "—",
             },
           ]}
         />
@@ -613,7 +500,7 @@ export function PayableDetails({
         )}
       </section>
 
-      <SectionCard title="4. Audit information">
+      <SectionCard title="3. Audit information">
         <DetailGrid
           items={[
             { label: "Created by", value: record.createdByName },
@@ -632,7 +519,7 @@ export function PayableDetails({
       <section className="panel">
         <PanelTitle
           title="Activity history"
-          subtitle="Create, edit, approval, payment, and archive events"
+          subtitle="Create, edit, payment, and archive events"
         />
         {activity.length === 0 ? (
           <p className="px-5 py-8 text-xs text-[#888]">No history recorded yet.</p>

@@ -144,7 +144,7 @@ export function ReceivableForm({ mode, record, onCancel, onSaved }: Props) {
                   <option value="">Select customer</option>
                   {customers.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.customerName} · {c.clientId}
+                      {c.customerName}
                     </option>
                   ))}
                 </FormSelect>
@@ -228,14 +228,6 @@ export function ReceivableForm({ mode, record, onCancel, onSaved }: Props) {
             )}
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <FormInput
-                label="Client ID"
-                name="clientId"
-                required
-                value={values.clientId}
-                onChange={set("clientId")}
-                error={errors.clientId}
-              />
               <div className="sm:col-span-2">
                 <FormInput
                   label="Customer name"
@@ -303,15 +295,6 @@ export function ReceivableForm({ mode, record, onCancel, onSaved }: Props) {
                 placeholder="Internal AR reference"
               />
               <FormInput
-                label="Transaction date"
-                name="transactionDate"
-                type="date"
-                required
-                value={values.transactionDate}
-                onChange={set("transactionDate")}
-                error={errors.transactionDate}
-              />
-              <FormInput
                 label="Invoice date"
                 name="invoiceDate"
                 type="date"
@@ -368,15 +351,6 @@ export function ReceivableForm({ mode, record, onCancel, onSaved }: Props) {
                   value={values.description}
                   onChange={set("description")}
                   error={errors.description}
-                />
-              </div>
-              <div className="sm:col-span-2 lg:col-span-3">
-                <FormTextarea
-                  label="Remarks"
-                  name="remarks"
-                  value={values.remarks}
-                  onChange={set("remarks")}
-                  error={errors.remarks}
                 />
               </div>
             </div>

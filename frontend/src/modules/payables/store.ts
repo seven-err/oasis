@@ -27,7 +27,6 @@ import {
   remainingBalanceFor,
   validatePayablePayload,
   validatePaymentPayload,
-  validateRejection,
 } from "./validation";
 
 type StoreSnapshot = {
@@ -111,7 +110,7 @@ function toRecord(
     totalAmount: Number(values.totalAmount),
     paymentMethod: (values.paymentMethod || null) as PaymentMethod | null,
     referenceNumber: values.referenceNumber.trim(),
-    approvalStatus: existing?.approvalStatus ?? "Pending",
+    approvalStatus: existing?.approvalStatus ?? "Approved",
     approvedById: existing?.approvedById ?? null,
     approvedByName: existing?.approvedByName ?? null,
     approvedAt: existing?.approvedAt ?? null,
@@ -247,101 +246,6 @@ export const payableService = {
       performedById: user.id,
       performedByName: user.name,
       metadata: { invoiceNumber: record.invoiceNumber },
-    });
-    persist(snapshot);
-    return { ok: true, data: record };
-  },
-
-  approve(id: number): PayableServiceResult<PayableRecord> {
-    const snapshot = load();
-    const user = CURRENT_USER;
-    if (!user.permissions.approvePayables) {
-      return { ok: false, errors: { form: "You are not authorized to approve payables." } };
-    }
-    const existing = snapshot.payables.find((p) => p.id === id && !p.deletedAt);
-    if (!existing) return { ok: false, errors: { form: "Payable record not found." } };
-    if (existing.archivedAt) {
-      return { ok: false, errors: { form: "Archived payables cannot be approved." } };
-    }
-    if (existing.approvalStatus === "Approved") {
-      return { ok: false, errors: { form: "This payable is already approved." } };
-    }
-
-    const stamp = nowIso();
-    const record: PayableRecord = {
-      ...existing,
-      approvalStatus: "Approved",
-      approvedById: user.id,
-      approvedByName: user.name,
-      approvedAt: stamp,
-      rejectionReason: null,
-      updatedAt: stamp,
-      updatedById: user.id,
-    };
-    snapshot.payables = snapshot.payables.map((p) => (p.id === id ? record : p));
-    logActivity(snapshot, {
-      payableId: id,
-      action: "approved",
-      summary: "Payable approved",
-      previousApprovalStatus: existing.approvalStatus,
-      newApprovalStatus: "Approved",
-      performedById: user.id,
-      performedByName: user.name,
-    });
-    persist(snapshot);
-    return { ok: true, data: record };
-  },
-
-  reject(id: number, reason: string): PayableServiceResult<PayableRecord> {
-    const snapshot = load();
-    const user = CURRENT_USER;
-    if (!user.permissions.approvePayables) {
-      return { ok: false, errors: { form: "You are not authorized to reject payables." } };
-    }
-    const existing = snapshot.payables.find((p) => p.id === id && !p.deletedAt);
-    if (!existing) return { ok: false, errors: { form: "Payable record not found." } };
-    if (existing.archivedAt) {
-      return { ok: false, errors: { form: "Archived payables cannot be rejected." } };
-    }
-    if (existing.approvalStatus === "Rejected") {
-      return { ok: false, errors: { form: "This payable is already rejected." } };
-    }
-
-    const amountPaid =
-      existing.totalAmount - remainingBalanceFor(existing, snapshot.payments);
-    if (amountPaid > 0) {
-      return {
-        ok: false,
-        errors: {
-          form: "Cannot reject a payable that already has recorded payments. Reverse payments first.",
-        },
-      };
-    }
-
-    const validation = validateRejection(reason);
-    if (!validation.ok) return { ok: false, errors: validation.errors };
-
-    const stamp = nowIso();
-    const record: PayableRecord = {
-      ...existing,
-      approvalStatus: "Rejected",
-      approvedById: user.id,
-      approvedByName: user.name,
-      approvedAt: stamp,
-      rejectionReason: reason.trim(),
-      updatedAt: stamp,
-      updatedById: user.id,
-    };
-    snapshot.payables = snapshot.payables.map((p) => (p.id === id ? record : p));
-    logActivity(snapshot, {
-      payableId: id,
-      action: "rejected",
-      summary: "Payable rejected",
-      previousApprovalStatus: existing.approvalStatus,
-      newApprovalStatus: "Rejected",
-      performedById: user.id,
-      performedByName: user.name,
-      metadata: { reason: reason.trim() },
     });
     persist(snapshot);
     return { ok: true, data: record };

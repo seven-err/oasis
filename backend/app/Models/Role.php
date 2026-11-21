@@ -18,9 +18,14 @@ class Role extends Model
 
     public const ACCESS = [
         'super-admin' => ['dashboard', 'hr', 'checks', 'payables', 'receivables', 'users', 'activity', 'settings', 'account'],
-        'hr' => ['dashboard', 'hr', 'account'],
+        'hr' => ['dashboard', 'hr', 'checks', 'payables', 'receivables', 'account'],
         'finance' => ['dashboard', 'checks', 'payables', 'receivables', 'account'],
     ];
+
+    public static function assignablePermissions(string $slug): array
+    {
+        return array_merge(self::ACCESS[$slug] ?? [], $slug === 'hr' ? ['checks', 'payables', 'receivables'] : []);
+    }
 
     public function permissions(): BelongsToMany
     {

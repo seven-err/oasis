@@ -637,23 +637,6 @@ export function ReceivableRegister({
                 </div>
               </div>
               <div className="md:col-span-2">
-                <span className="field-label">Transaction date range</span>
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  <DateInput
-                    type="date"
-                    className="input"
-                    value={filters.transactionDateFrom}
-                    onChange={(e) => setFilter("transactionDateFrom", e.target.value)}
-                  />
-                  <DateInput
-                    type="date"
-                    className="input"
-                    value={filters.transactionDateTo}
-                    onChange={(e) => setFilter("transactionDateTo", e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="md:col-span-2">
                 <span className="field-label">Due date range</span>
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   <DateInput

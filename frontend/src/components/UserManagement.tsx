@@ -1,28 +1,19 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { ArrowUpDown, Download, FileText, Plus, Printer, Search, SlidersHorizontal, X } from "lucide-react";
 import { apiRequest, getSession } from "../auth";
+import { PaginationBar } from "../modules/checks/ui";
 import { ActiveFilters } from "./ActiveFilters";
+import { recordRowClick } from "./recordRowClick";
 import { useHeaderBack } from "./HeaderBack";
-import { confirmLeavingUnsavedForm, useUnsavedForm } from "@/hooks/useUnsavedForm";
-import { fieldError, focusFirstError } from "./formValidation";
-import { accountReportRows, safeAccountCsvRows, type AccountReportEntry } from "./accountReport";
-import { usePrintReport } from "./usePrintReport";
-import { downloadCsv } from "@/modules/checks/utils";
-import { StatusBadge } from "./StatusBadge";
+import {
+  cacheUserList,
+  clearUserListCache,
+  getCachedUserList,
+  type Role,
+  type User,
+  type UserList,
+} from "./userManagementCache";
 
-type Role = { id: number; name: string; slug: string };
-type User = {
-  id: number;
-  name: string;
-  email: string;
-  role_id: number;
-  role: Role | null;
-  is_active: boolean;
-  must_change_password: boolean;
-  created_at: string;
-  last_login_at: string | null;
-};
-type UserList = { data: User[]; total: number; current_page: number; last_page: number };
 type Credentials = { user: User; temporaryPassword: string };
 type ValidationErrors = Record<string, string[]>;
 
@@ -30,30 +21,25 @@ const date = (value: string | null) => (value ? new Date(value).toLocaleString()
 
 export function UserManagement({ notify }: { notify: (message: string) => void }) {
   const [path, setPath] = useState(() => window.location.pathname + window.location.search);
-  const [search, setSearch] = useState(() => new URLSearchParams(window.location.search).get("search") ?? "");
-  const [showFilters, setShowFilters] = useState(false);
-  const [reportFilters, setReportFilters] = useState<string | null>(null);
-  const [reportAccounts, setReportAccounts] = useState<AccountReportEntry[] | null>(null);
-  const [reportError, setReportError] = useState("");
-  const [reportAttempt, setReportAttempt] = useState(0);
-  const { printReport, printSheet } = usePrintReport();
-  const [list, setList] = useState<UserList | null>(null);
-  const [listPath, setListPath] = useState("");
-  const [user, setUser] = useState<User | null>(null);
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [credentials, setCredentials] = useState<Credentials | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [errors, setErrors] = useState<ValidationErrors>({});
   const url = new URL(path, window.location.origin);
+  const [search, setSearch] = useState(() => url.searchParams.get("search") ?? "");
+  const [showFilters, setShowFilters] = useState(false);
+  const sort = url.searchParams.get("sort") === "desc" ? "desc" : "asc";
   const match = url.pathname.match(/^\/users\/(\d+)(\/edit)?\/?$/);
   const creating = url.pathname === "/users/create";
   const editing = Boolean(match?.[2]);
   const form = creating || editing;
   const details = Boolean(match && !editing);
-  const sort = url.searchParams.get("sort") === "desc" ? "desc" : "asc";
-  const { markDirty, markSaved } = useUnsavedForm(form || details);
+  const [list, setList] = useState<UserList | null>(() =>
+    !form && !details ? getCachedUserList("/users" + url.search) : null,
+  );
+  const [user, setUser] = useState<User | null>(null);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [credentials, setCredentials] = useState<Credentials | null>(null);
+  const [loading, setLoading] = useState(!list);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [errors, setErrors] = useState<ValidationErrors>({});
 
   function navigate(next: string) {
     if (!confirmLeavingUnsavedForm()) return;
@@ -107,21 +93,30 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
+    const endpoint = form || details ? url.pathname : "/users" + url.search;
+    const cachedList = !form && !details ? getCachedUserList(endpoint) : null;
+    setLoading(!cachedList);
     setError("");
     setErrors({});
     setUser(null);
-    const endpoint = form || details ? url.pathname : "/users" + url.search;
+    if (cachedList) {
+      setList(cachedList);
+    }
     void apiRequest<UserList & { user?: User; roles?: Role[] }>(endpoint)
       .then((result) => {
         if (!active) return;
+        if (!form && !details && result.data) cacheUserList(endpoint, result);
         setList(result.data ? result : null);
         if (result.data) setListPath(path);
         setUser(result.user ?? null);
         setRoles(result.roles ?? []);
       })
       .catch((failure: Error) => {
-        if (active) setError(failure.message);
+        if (active) {
+          clearUserListCache();
+          setList(null);
+          setError(failure.message);
+        }
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -163,7 +158,7 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
         method: editing && !reset ? "PUT" : "POST",
         body: JSON.stringify(payload),
       });
-      markSaved();
+      clearUserListCache();
       if (result.temporaryPassword) {
         setCredentials(result);
       } else {
@@ -220,46 +215,8 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
           {error}
         </div>
       )}
-      {reportFilters !== null ? (
-        <>
-          <section className="panel p-5 sm:p-6">
-            <h2 className="text-base font-semibold">Account report</h2>
-            <p className="mt-2 text-sm text-[#5c7890]">All accounts matching the current search, role, and status filters. Passwords are excluded.</p>
-            {(() => {
-              const filters = new URLSearchParams(reportFilters);
-              const roles: Record<string, string> = { "super-admin": "Super Admin", hr: "HR", finance: "Finance" };
-              return <p className="mt-2 break-words text-xs text-[#5c7890]">Search: {filters.get("search") || "All"} · Role: {roles[filters.get("role") ?? ""] ?? "All"} · Status: {filters.get("status") === "active" ? "Active" : filters.get("status") === "inactive" ? "Inactive" : "All"}</p>;
-            })()}
-            {reportError ? <p role="alert" className="mt-4 text-sm text-red-700">Could not load the report: {reportError} <button type="button" className="text-link underline" onClick={() => setReportAttempt((attempt) => attempt + 1)}>Try again</button></p>
-              : reportAccounts === null ? <p role="status" className="mt-4 text-sm text-[#777]">Loading account report…</p>
-              : <p className="mt-4 text-sm text-[#777]">{reportAccounts.length} matching accounts</p>}
-            <div className="mt-5 flex flex-wrap gap-2">
-              <button type="button" className="secondary-btn" disabled={!reportAccounts?.length} onClick={() => { if (reportAccounts) printReport("Account report", accountReportRows(reportAccounts)); }}><Printer size={15} aria-hidden="true" /> Print</button>
-              <button type="button" className="primary-btn" disabled={!reportAccounts?.length} onClick={() => { if (reportAccounts) downloadCsv("oasis-account-report.csv", safeAccountCsvRows(accountReportRows(reportAccounts))); }}><Download size={15} aria-hidden="true" /> Export CSV</button>
-            </div>
-          </section>
-          {reportAccounts && (reportAccounts.length ? (
-            <>
-              <ul className="space-y-3 md:hidden" aria-label="Account report">
-                {accountReportRows(reportAccounts).map((row, index) => <li key={index} className="panel p-4 text-sm">
-                  <p className="break-words font-semibold">{row.Name}</p><p className="mt-1 break-all text-xs text-[#5c7890]">{row.Email}</p>
-                  <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-xs">
-                    <dt className="text-[#777]">Role</dt><dd className="break-words">{row.Role}</dd>
-                    <dt className="text-[#777]">Status</dt><dd><StatusBadge value={row.Status} /></dd>
-                    <dt className="text-[#777]">Last login (Philippine time)</dt><dd>{row["Last login (Philippine time)"]}</dd>
-                  </dl>
-                </li>)}
-              </ul>
-              <div className="panel hidden overflow-x-auto md:block"><table>
-                <caption className="sr-only">Account report; last login in Philippine time</caption>
-                <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last login (Philippine time)</th></tr></thead>
-                <tbody>{accountReportRows(reportAccounts).map((row, index) => <tr key={index}><td>{row.Name}</td><td>{row.Email}</td><td>{row.Role}</td><td><StatusBadge value={row.Status} /></td><td>{row["Last login (Philippine time)"]}</td></tr>)}</tbody>
-              </table></div>
-            </>
-          ) : <p className="panel p-5 text-sm">No accounts match these filters. Go back and adjust them to create a report.</p>)}
-        </>
-      ) : credentials ? (
-        <div className="panel max-w-2xl p-5 sm:p-6">
+      {credentials ? (
+        <div className="panel mx-auto w-full max-w-2xl p-5 sm:p-6">
           <h2 className="text-base font-semibold">{heading}</h2>
           <p className="my-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
             These credentials are shown only once. Save the temporary password and deliver it
@@ -292,70 +249,74 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
           <UserListSkeleton />
         )
       ) : form && (creating || user) ? (
-        <div className="panel max-w-2xl p-5 sm:p-6">
-          <h2 className="mb-5 text-base font-semibold">{heading}</h2>
-          <form key={path} className="space-y-5" onSubmit={save} onChangeCapture={updateField} noValidate>
-            <UserField
-              name="name"
-              label="Full name"
-              value={user?.name}
-              autoComplete="name"
-              maxLength={255}
-              errors={errors}
-            />
-            <UserField
-              name="email"
-              label="Email address"
-              type="email"
-              value={user?.email}
-              autoComplete="email"
-              maxLength={255}
-              errors={errors}
-            />
-            <label className="block">
-              <span className="field-label">Role</span>
-              <select
-                className="input mt-2"
-                name="role_id"
-                required
-                disabled={user?.id === getSession()?.user.id}
-                defaultValue={user?.role_id ?? roles.find((role) => role.slug === "hr")?.id}
-                aria-invalid={Boolean(errors.role_id)}
-                aria-describedby="role-error"
-              >
-                {roles.map((role) => (
-                  <option key={role.id} value={role.id}>
-                    {role.name}
-                  </option>
-                ))}
-              </select>
-              {user && user.id === getSession()?.user.id && (
-                <>
-                  <input type="hidden" name="role_id" value={user.role_id} />
-                  <small className="mt-1 block text-[#777]">You cannot change your own role.</small>
-                </>
-              )}
-              <span id="role-error" className="mt-1 block text-xs text-red-700">
-                {errors.role_id?.join(" ")}
-              </span>
-            </label>
-            <label className="block">
-              <span className="field-label">Account status</span>
-              <select
-                className="input mt-2"
-                name="is_active"
-                required
-                defaultValue={user?.is_active === false ? "0" : "1"}
-                aria-invalid={Boolean(errors.is_active)}
-                aria-describedby="status-error"
-              >
-                <option value="1">Active</option>
-                <option value="0">Inactive</option>
-              </select>
-              <span id="status-error" className="mt-1 block text-xs text-red-700">
-                {errors.is_active?.join(" ")}
-              </span>
-            </label>
+        <div className="panel mx-auto w-full max-w-2xl p-5 sm:p-8">
+          <h2 className="mb-6 text-center text-lg font-semibold">{heading}</h2>
+          <form key={path} className="space-y-5" onSubmit={save}>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <UserField
+                name="name"
+                label="Full name"
+                value={user?.name}
+                autoComplete="name"
+                maxLength={255}
+                errors={errors}
+              />
+              <UserField
+                name="email"
+                label="Email address"
+                type="email"
+                value={user?.email}
+                autoComplete="email"
+                maxLength={255}
+                errors={errors}
+              />
+              <label className="block">
+                <span className="field-label">Role</span>
+                <select
+                  className="input mt-2"
+                  name="role_id"
+                  required
+                  disabled={user?.id === getSession()?.user.id}
+                  defaultValue={user?.role_id ?? roles.find((role) => role.slug === "hr")?.id}
+                  aria-invalid={Boolean(errors.role_id)}
+                  aria-describedby="role-error"
+                >
+                  {roles.map((role) => (
+                    <option key={role.id} value={role.id}>
+                      {role.name}
+                    </option>
+                  ))}
+                </select>
+                {user && user.id === getSession()?.user.id && (
+                  <>
+                    <input type="hidden" name="role_id" value={user.role_id} />
+                    <small className="mt-1 block text-[#777]">
+                      You cannot change your own role.
+                    </small>
+                  </>
+                )}
+                <span id="role-error" className="mt-1 block text-xs text-red-700">
+                  {errors.role_id?.join(" ")}
+                </span>
+              </label>
+              <label className="block">
+                <span className="field-label">Account status</span>
+                <select
+                  className="input mt-2"
+                  name="is_active"
+                  required
+                  defaultValue={user?.is_active === false ? "0" : "1"}
+                  aria-invalid={Boolean(errors.is_active)}
+                  aria-describedby="status-error"
+                >
+                  <option value="1">Active</option>
+                  <option value="0">Inactive</option>
+                </select>
+                <span id="status-error" className="mt-1 block text-xs text-red-700">
+                  {errors.is_active?.join(" ")}
+                </span>
+              </label>
+            </div>
             {user?.is_active && (
               <UserField
                 name="confirmation"
@@ -377,7 +338,10 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
                 A temporary password will be generated and shown once after creation.
               </p>
             )}
-            <div className="flex flex-wrap justify-end gap-3 border-t border-[#e1eef6] pt-5">
+            <div className="flex flex-wrap justify-center gap-3 border-t border-[#e1eef6] pt-5">
+              <button className="primary-btn" disabled={saving}>
+                {saving ? "Saving…" : creating ? "Create account" : "Save account"}
+              </button>
               <button
                 type="button"
                 className="secondary-btn"
@@ -456,10 +420,7 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
         </>
       ) : !form && !details && list ? (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-[#777]" role="status" aria-live="polite">
-              {search !== (url.searchParams.get("search") ?? "") ? "Searching…" : error && listPath !== path ? "Could not update results; showing previous results." : loading || listPath !== path ? "Searching…" : `${list.total} matching accounts`}
-            </p>
+          <div className="flex justify-end">
             <button className="primary-btn" onClick={() => navigate("/users/create")}>
               <Plus size={15} /> Add user
             </button>
@@ -495,12 +456,6 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
             }}>
               <ArrowUpDown size={15} aria-hidden="true" /> {sort === "asc" ? "A-Z" : "Z-A"}
             </button>
-            <button type="button" className="secondary-btn w-full sm:w-auto" onClick={() => {
-              const filters = new URLSearchParams(url.search);
-              if (search) filters.set("search", search); else filters.delete("search");
-              filters.delete("page");
-              setReportFilters(filters.toString());
-            }}><FileText size={15} aria-hidden="true" /> Reports</button>
           </div>
           </div>
           <ActiveFilters
@@ -550,113 +505,65 @@ export function UserManagement({ notify }: { notify: (message: string) => void }
                 <option value="inactive">Inactive</option>
               </select>
             </label>
-          </div>
+            <button className="secondary-btn">
+              <SlidersHorizontal size={15} aria-hidden="true" /> Filter
+            </button>
+          </form>
           )}
-          {list.data.length > 0 && (
-          <ul className="space-y-3 md:hidden" aria-label="User accounts">
-            {list.data.map((account) => (
-              <li key={account.id} className="panel min-w-0 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h2 className="break-words text-sm font-semibold">{account.name}</h2>
-                    <p className="mt-1 break-all text-xs text-[#5c7890]">{account.email}</p>
-                  </div>
-                  <StatusBadge value={account.is_active ? "Active" : "Inactive"} />
-                </div>
-                <dl className="mt-4 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-xs">
-                  <dt className="text-[#777]">Role</dt><dd className="break-words">{account.role?.name ?? "Unassigned"}</dd>
-                  <dt className="text-[#777]">Last login</dt><dd className="break-words">{date(account.last_login_at)}</dd>
-                </dl>
-                <button type="button" className="secondary-btn mt-4 w-full" onClick={() => navigate(`/users/${account.id}`)}>
-                  Manage<span className="sr-only"> {account.name}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-          )}
-          {list.data.length > 0 && (
-          <div className="panel hidden overflow-x-auto md:block">
-            <table>
-              <caption className="sr-only">User accounts</caption>
-              <thead>
-                <tr>
-                  <th>User</th>
-                  <th>Email</th>
-                  <th>Role</th>
-                  <th>Status</th>
-                  <th>Last login</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {list.data.map((account) => (
-                  <tr key={account.id}>
-                    <td className="font-semibold">{account.name}</td>
-                    <td>{account.email}</td>
-                    <td>{account.role?.name ?? "Unassigned"}</td>
-                    <td><StatusBadge value={account.is_active ? "Active" : "Inactive"} /></td>
-                    <td>{date(account.last_login_at)}</td>
-                    <td>
-                      <button
-                        className="text-link"
-                        onClick={() => navigate(`/users/${account.id}`)}
-                      >
-                        Manage<span className="sr-only"> {account.name}</span>
-                      </button>
-                    </td>
+          <div className="panel overflow-hidden">
+            <div className="overflow-x-auto">
+              <table>
+                <caption className="sr-only">User accounts</caption>
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Last login</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {list.data.map((account) => (
+                    <tr
+                      key={account.id}
+                      className="cursor-pointer"
+                      onClick={recordRowClick(() => navigate(`/users/${account.id}`))}
+                    >
+                      <td className="font-semibold">
+                        <button
+                          type="button"
+                          className="text-left hover:underline"
+                          aria-label={`Open account for ${account.name}`}
+                          onClick={() => navigate(`/users/${account.id}`)}
+                        >
+                          {account.name}
+                        </button>
+                      </td>
+                      <td>{account.email}</td>
+                      <td>{account.role?.name ?? "Unassigned"}</td>
+                      <td>{account.is_active ? "Active" : "Inactive"}</td>
+                      <td>{date(account.last_login_at)}</td>
+                    </tr>
+                  ))}
+                  {!list.data.length && (
+                    <tr>
+                      <td colSpan={5}>No accounts match these filters.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <PaginationBar
+              page={list.current_page}
+              pageSize={list.per_page}
+              total={list.total}
+              onPageChange={(page) => {
+                url.searchParams.set("page", String(page));
+                navigate("/users" + url.search);
+              }}
+            />
           </div>
-          )}
-          {!list.data.length && !loading && !error && listPath === path && search === (url.searchParams.get("search") ?? "") && (
-                    <div className="panel px-4 py-8 text-center text-sm">
-                      {search || url.searchParams.get("role") || url.searchParams.get("status") ? (
-                        <div className="space-y-3">
-                          <p>No users found. Try a different search or clear your filters.</p>
-                          <button type="button" className="secondary-btn" onClick={() => navigate("/users")}>
-                            Clear filters
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          <p>No users yet. Add a user to get started.</p>
-                          <button type="button" className="primary-btn" onClick={() => navigate("/users/create")}>
-                            <Plus size={15} /> Add user
-                          </button>
-                        </div>
-                      )}
-                    </div>
-          )}
-          <nav
-            aria-label="Account pages"
-            className="flex flex-wrap items-center justify-end gap-3 text-sm"
-          >
-            <button
-              className="secondary-btn"
-              disabled={list.current_page <= 1}
-              onClick={() => {
-                url.searchParams.set("page", String(list.current_page - 1));
-                navigate(url.pathname + url.search);
-              }}
-            >
-              Previous
-            </button>
-            <span>
-              Page {list.current_page} of {list.last_page}
-            </span>
-            <button
-              className="secondary-btn"
-              disabled={list.current_page >= list.last_page}
-              onClick={() => {
-                url.searchParams.set("page", String(list.current_page + 1));
-                navigate(url.pathname + url.search);
-              }}
-            >
-              Next
-            </button>
-          </nav>
         </>
       ) : null}
     </section>

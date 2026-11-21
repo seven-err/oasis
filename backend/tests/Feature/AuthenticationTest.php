@@ -163,7 +163,7 @@ class AuthenticationTest extends TestCase
         $user = User::factory()->withRole('hr')->create();
         $this->signIn($user);
 
-        $this->get('/dashboard')->assertOk()->assertHeader('Cache-Control', 'no-store, private');
+        $this->get('/hr/alphalist')->assertOk()->assertHeader('Cache-Control', 'no-store, private');
     }
 
     public function test_remembered_login_receives_session_version(): void
@@ -171,7 +171,7 @@ class AuthenticationTest extends TestCase
         $user = User::factory()->withRole('hr')->create(['remember_token' => 'valid-remember-token']);
         $cookie = $user->id.'|'.$user->remember_token.'|'.$user->password;
 
-        $this->withCookie(Auth::getRecallerName(), $cookie)->get('/dashboard')
+        $this->withCookie(Auth::getRecallerName(), $cookie)->get('/hr/alphalist')
             ->assertOk()->assertSessionHas('auth_version', 0);
 
         $this->assertAuthenticatedAs($user);

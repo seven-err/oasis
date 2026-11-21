@@ -417,6 +417,10 @@
     border-radius: 0.5rem;
   }
 
+  textarea {
+    resize: none;
+  }
+
   button:focus-visible,
   a:focus-visible,
   [role="button"]:focus-visible,

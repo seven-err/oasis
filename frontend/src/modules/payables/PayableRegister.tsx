@@ -19,13 +19,12 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { SummaryStatCards } from "@/components/SummaryStatCards";
 import { ActiveFilters } from "@/components/ActiveFilters";
 import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 import { recordRowClick } from "@/components/recordRowClick";
 import {
-  APPROVAL_STATUSES,
   EMPTY_FILTERS,
   PAGE_SIZE,
   PAYMENT_METHODS,
@@ -54,7 +53,6 @@ type Props = {
   onEdit: (id: number) => void;
   onRecordPayment: (id: number) => void;
   onPaymentHistory: (id: number) => void;
-  onApprove: (id: number) => void;
   onOpenReports: () => void;
   onChanged: () => void;
   notify: (message: string) => void;
@@ -67,7 +65,6 @@ export function PayableRegister({
   onEdit,
   onRecordPayment,
   onPaymentHistory,
-  onApprove,
   onOpenReports,
   onChanged,
   notify,
@@ -82,7 +79,8 @@ export function PayableRegister({
   const [newCategory, setNewCategory] = useState("");
   const [sort, setSort] = useState<PayableSort>({ key: "dueDate", direction: "asc" });
   const [page, setPage] = useState(1);
-  const [menuId, setMenuId] = useState<number | null>(null);
+  const [menu, setMenu] = useState<{ id: number; trigger: HTMLButtonElement } | null>(null);
+  const menuRef = useRef<HTMLDialogElement>(null);
 
   const summary = useMemo(() => summarizePayables(records), [records]);
 
@@ -94,6 +92,46 @@ export function PayableRegister({
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
   const pageRows = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const menuRow = pageRows.find((row) => row.id === menu?.id);
+  const menuRowId = menuRow?.id;
+
+  useLayoutEffect(() => {
+    const dialog = menuRef.current;
+    if (!menu || menuRowId === undefined || !dialog) return;
+
+    const root = document.documentElement;
+
+    const positionMenu = () => {
+      const trigger = menu.trigger.getBoundingClientRect();
+      if (trigger.height === 0) {
+        setMenu(null);
+        return;
+      }
+
+      const gap = 8;
+      const spaceBelow = window.innerHeight - trigger.bottom - gap * 2;
+      const spaceAbove = trigger.top - gap * 2;
+      const openAbove = spaceAbove > spaceBelow && spaceBelow < dialog.scrollHeight;
+
+      dialog.style.right = `${Math.max(gap, root.clientWidth - trigger.right)}px`;
+      dialog.style.top = openAbove ? "auto" : `${trigger.bottom + gap}px`;
+      dialog.style.bottom = openAbove ? `${window.innerHeight - trigger.top + gap}px` : "auto";
+      dialog.style.maxHeight = `${Math.max(0, openAbove ? spaceAbove : spaceBelow)}px`;
+    };
+
+    menu.trigger.focus({ preventScroll: true });
+    positionMenu();
+    dialog.showPopover();
+    positionMenu();
+    window.addEventListener("resize", positionMenu);
+    window.addEventListener("scroll", positionMenu, true);
+    return () => {
+      window.removeEventListener("resize", positionMenu);
+      window.removeEventListener("scroll", positionMenu, true);
+      dialog.hidePopover();
+    };
+  }, [menu, menuRowId]);
+
 
   const setFilter = <K extends keyof PayableFilters>(key: K, value: PayableFilters[K]) => {
     setFilters((f) => ({ ...f, [key]: value }));
@@ -163,51 +201,55 @@ export function PayableRegister({
   const canPay = (row: PayableViewModel) =>
     user.permissions.recordPayments &&
     !row.archivedAt &&
-    row.approvalStatus === "Approved" &&
     row.remainingBalance > 0;
 
-  const actionMenu = (row: PayableViewModel) =>
-    menuId === row.id ? (
-      <div className="absolute right-0 top-9 z-20 w-52 border border-[#d0e3ef] bg-white p-1 shadow-xl">
+  const actionMenu = (row: PayableViewModel) => (
+    <dialog
+      ref={menuRef}
+      popover="manual"
+      aria-label={`Actions for ${row.invoiceNumber}`}
+      className="fixed inset-auto m-0 w-56 max-w-[calc(100%-1rem)] overflow-y-auto overscroll-contain border border-[#d0e3ef] bg-white shadow-xl backdrop:bg-transparent backdrop:touch-none"
+      onCancel={(event) => {
+        event.preventDefault();
+      }}
+    >
+      <div className="p-1">
         {user.permissions.editPayables && !row.archivedAt && (
           <button
             className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
             onClick={() => {
-              setMenuId(null);
+              setMenu(null);
               onEdit(row.id);
             }}
           >
             <Pencil size={14} /> Edit
           </button>
         )}
-        {user.permissions.approvePayables &&
-          !row.archivedAt &&
-          row.approvalStatus === "Pending" && (
-            <button
-              className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
-              onClick={() => {
-                setMenuId(null);
-                onApprove(row.id);
-              }}
-            >
-              <CheckCircle2 size={14} /> Approve / Reject
-            </button>
-          )}
-        {canPay(row) && (
+        {user.permissions.recordPayments && (
           <button
-            className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
+            disabled={!canPay(row)}
+            title={canPay(row) ? undefined : "Requires an active payable with an outstanding balance."}
+            className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb] disabled:cursor-not-allowed disabled:text-[#888]"
             onClick={() => {
-              setMenuId(null);
+              setMenu(null);
               onRecordPayment(row.id);
             }}
           >
-            <Plus size={14} /> Record payment
+            <Plus size={14} className="shrink-0" />
+            <span className="text-left">
+              Record payment
+              {!canPay(row) && (
+                <span className="mt-1 block text-[10px]">
+                  Requires an active outstanding balance.
+                </span>
+              )}
+            </span>
           </button>
         )}
         <button
           className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
           onClick={() => {
-            setMenuId(null);
+            setMenu(null);
             onPaymentHistory(row.id);
           }}
         >
@@ -217,7 +259,7 @@ export function PayableRegister({
           <button
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-700 hover:bg-red-50"
             onClick={() => {
-              setMenuId(null);
+              setMenu(null);
               archiveOrRestore(row);
             }}
           >
@@ -237,7 +279,7 @@ export function PayableRegister({
             type="button"
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-700 hover:bg-red-50"
             onClick={() => {
-              setMenuId(null);
+              setMenu(null);
               setDeleting(row);
             }}
           >
@@ -246,12 +288,28 @@ export function PayableRegister({
         )}
         <button
           className="flex w-full items-center gap-2 px-3 py-2 text-xs text-[#888] hover:bg-[#e7f3fb]"
-          onClick={() => setMenuId(null)}
+          onClick={() => setMenu(null)}
         >
           <X size={14} /> Close
         </button>
       </div>
-    ) : null;
+    </dialog>
+  );
+
+  const rowActions = (row: PayableViewModel) => (
+    <div className="relative flex shrink-0 items-center justify-end gap-1" onClick={(event) => event.stopPropagation()}>
+      <button
+        type="button"
+        className="table-action"
+        aria-label={`Actions for ${row.invoiceNumber}`}
+        aria-expanded={menu?.id === row.id}
+        aria-haspopup="dialog"
+        onClick={(event) => setMenu({ id: row.id, trigger: event.currentTarget })}
+      >
+        <MoreHorizontal size={17} />
+      </button>
+    </div>
+  );
 
   return (
     <div className="w-full max-w-full space-y-5 overflow-x-clip">
@@ -279,20 +337,19 @@ export function PayableRegister({
               setFilters({
                 ...EMPTY_FILTERS,
                 paymentStatus: "All",
-                approvalStatus: "All",
               });
               setShowFilters(false);
               setPage(1);
             },
           },
           {
-            label: "Pending",
-            value: summary.pendingApproval,
+            label: "Unpaid",
+            value: summary.unpaid,
             icon: Clock3,
             onClick: () => {
               setFilters({
                 ...EMPTY_FILTERS,
-                approvalStatus: "Pending",
+                paymentStatus: "Unpaid",
               });
               setPage(1);
             },
@@ -535,26 +592,6 @@ export function PayableRegister({
                 </select>
               </label>
               <label className="block">
-                <span className="field-label">Approval status</span>
-                <select
-                  className="input mt-2"
-                  value={filters.approvalStatus}
-                  onChange={(e) =>
-                    setFilter(
-                      "approvalStatus",
-                      e.target.value as PayableFilters["approvalStatus"],
-                    )
-                  }
-                >
-                  <option value="All">All approval statuses</option>
-                  {APPROVAL_STATUSES.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block">
                 <span className="field-label">Payment method</span>
                 <select
                   className="input mt-2"
@@ -629,7 +666,7 @@ export function PayableRegister({
                   key={row.id}
                   className={`relative cursor-pointer space-y-3 p-4 transition-colors hover:bg-[#eef6fb] ${row.archivedAt ? "opacity-60" : ""}`}
                   onClick={recordRowClick(() => {
-                    setMenuId(null);
+                    setMenu(null);
                     onView(row.id);
                   })}
                 >
@@ -639,7 +676,7 @@ export function PayableRegister({
                         type="button"
                         className="truncate text-left text-sm font-semibold text-[#1f6ea6]"
                         onClick={() => {
-                          setMenuId(null);
+                          setMenu(null);
                           onView(row.id);
                         }}
                         aria-label={`Open payable ${row.invoiceNumber}`}
@@ -651,20 +688,10 @@ export function PayableRegister({
                         {row.categoryName} · Due {formatDate(row.dueDate)}
                       </p>
                     </div>
-                    <div className="relative shrink-0" onClick={(event) => event.stopPropagation()}>
-                      <button
-                        className="table-action"
-                        aria-label={`Actions for ${row.invoiceNumber}`}
-                        onClick={() => setMenuId(menuId === row.id ? null : row.id)}
-                      >
-                        <MoreHorizontal size={17} />
-                      </button>
-                      {actionMenu(row)}
-                    </div>
+                    {rowActions(row)}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge value={row.paymentStatus} />
-                    <StatusBadge value={row.approvalStatus} />
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-[#777]">
@@ -695,7 +722,6 @@ export function PayableRegister({
                     <SortHeader label="Paid" sortKey="amountPaid" />
                     <SortHeader label="Balance" sortKey="remainingBalance" />
                     <SortHeader label="Payment" sortKey="paymentStatus" />
-                    <SortHeader label="Approval" sortKey="approvalStatus" />
                     <th className="w-12">
                       <span className="sr-only">Actions</span>
                     </th>
@@ -707,7 +733,7 @@ export function PayableRegister({
                       key={row.id}
                       className={`cursor-pointer ${row.archivedAt ? "opacity-60" : ""}`}
                       onClick={recordRowClick(() => {
-                        setMenuId(null);
+                        setMenu(null);
                         onView(row.id);
                       })}
                     >
@@ -718,7 +744,7 @@ export function PayableRegister({
                         </span>
                       </td>
                       <td className="overflow-hidden text-ellipsis font-semibold text-[#1f6ea6]">
-                        <button type="button" className="block max-w-full truncate text-left hover:underline" onClick={() => { setMenuId(null); onView(row.id); }} aria-label={`Open payable ${row.invoiceNumber}`}>
+                        <button type="button" className="block max-w-full truncate text-left hover:underline" onClick={() => { setMenu(null); onView(row.id); }} aria-label={`Open payable ${row.invoiceNumber}`}>
                           {row.invoiceNumber}
                         </button>
                       </td>
@@ -740,20 +766,8 @@ export function PayableRegister({
                       <td>
                         <StatusBadge value={row.paymentStatus} />
                       </td>
-                      <td>
-                        <StatusBadge value={row.approvalStatus} />
-                      </td>
                       <td onClick={(event) => event.stopPropagation()}>
-                        <div className="relative flex justify-end">
-                          <button
-                            className="table-action"
-                            aria-label={`Actions for ${row.invoiceNumber}`}
-                            onClick={() => setMenuId(menuId === row.id ? null : row.id)}
-                          >
-                            <MoreHorizontal size={17} />
-                          </button>
-                          {actionMenu(row)}
-                        </div>
+                        {rowActions(row)}
                       </td>
                     </tr>
                   ))}
@@ -773,6 +787,7 @@ export function PayableRegister({
         />
         </div>
       </section>
+      {menuRow && actionMenu(menuRow)}
     </div>
   );
 }
