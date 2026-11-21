@@ -23,7 +23,7 @@ Route::middleware('private.pages')->group(function () {
         Route::put('/business-state/{module}', [BusinessStateController::class, 'update'])->middleware('throttle:120,1');
         Route::post('/business-files/{module}', [BusinessStateController::class, 'upload'])->middleware('throttle:30,1');
         Route::get('/business-files/{module}/{file}', [BusinessStateController::class, 'download'])->where('file', '[A-Za-z0-9._-]+');
-        Route::get('/dashboard', [ApplicationController::class, 'show'])->middleware('can:dashboard')->name('dashboard');
+        Route::get('/dashboard', [ApplicationController::class, 'dashboard'])->middleware('can:dashboard')->name('dashboard');
         Route::get('/oasis/{file}', [ApplicationController::class, 'asset'])
             ->where('file', '(assets/[A-Za-z0-9._/-]+|favicon\.png)')->name('application.asset');
         foreach (['profile' => 'account', 'team' => 'users', 'activity' => 'activity', 'archives' => 'users', 'deleted' => 'users', 'reports' => 'users'] as $page => $permission) {

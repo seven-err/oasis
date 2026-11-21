@@ -394,16 +394,20 @@ const nav = [
 ];
 
 function App() {
+  const isHr = getSession()?.user.role === "hr";
+  const landingPage = isHr && canAccessPage("employees") ? "employees" : "dashboard";
+  const resolvePage = (requested: Page) =>
+    requested !== "dashboard" && canAccessPage(requested) ? requested : landingPage;
   const [page, setPage] = useState<Page>(() => {
     const requested = (window.__OASIS_PAGE__ ?? initialPage(window.location.pathname)) as Page;
-    return canAccessPage(requested) ? requested : "dashboard";
+    return resolvePage(requested);
   });
   const initials = CURRENT_USER.name.split(" ").filter(Boolean).map((name) => name[0]).slice(0, 2).join("");
-  const visibleNav = nav.map((group) => ({ ...group, items: group.items.filter((item) => canAccessPage(item.page)) })).filter((group) => group.items.length);
+  const visibleNav = nav.map((group) => ({ ...group, items: group.items.filter((item) => (!isHr || item.page === "employees") && canAccessPage(item.page)) })).filter((group) => group.items.length);
   useEffect(() => {
     const onPopState = () => {
       const requested = initialPage(window.location.pathname) as Page;
-      setPage(canAccessPage(requested) ? requested : "dashboard");
+      setPage(resolvePage(requested));
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
@@ -541,6 +545,7 @@ function App() {
   }, []);
 
   const go = (next: Page, notification?: OfficeNotification) => {
+    if (next === "dashboard") next = landingPage;
     if (!canAccessPage(next)) {
       setToast("You do not have access to this area.");
       return;
