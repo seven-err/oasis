@@ -670,7 +670,7 @@ function App() {
             onClick={() => go("dashboard")}
             className="flex min-w-0 items-center overflow-hidden"
           >
-            <span data-sidebar-logo className={`block shrink-0 overflow-hidden ${compactMenu ? "w-56 lg:-ml-2 lg:w-16" : "w-56"}`}>
+            <span data-sidebar-logo className={`block shrink-0 overflow-hidden lg:-ml-2 ${compactMenu ? "w-56 lg:w-16" : "w-56"}`}>
               <img
                 data-loading-logo-target
                 src={oasisLogo}
