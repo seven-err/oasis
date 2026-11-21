@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal, flushSync } from "react-dom";
-import reportLogo from "@/assets/report-logo-transparent.png";
+import reportLogo from "@/assets/report-logo-medical-center.png";
 
 type PrintReport = { title: string; subtitle?: string; rows: Record<string, unknown>[]; recordCount: number; printedAt: string };
 const currency = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" });

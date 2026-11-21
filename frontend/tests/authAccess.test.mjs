@@ -48,6 +48,7 @@ test("existing page navigation follows server permissions and rejects unknown pa
     assert.equal(canAccessPage("archives"), role === "super-admin");
     assert.equal(canAccessPage("profile"), true);
     assert.equal(canAccessPage("password"), true);
+    assert.equal(canAccessPage("settings"), role === "super-admin");
     assert.equal(canAccessPage("unknown"), false);
   }
   setSession({ ...sessionFor("finance"), user: { ...sessionFor("finance").user, permissions: ["dashboard", "checks", "account"] } });
@@ -55,6 +56,8 @@ test("existing page navigation follows server permissions and rejects unknown pa
   assert.equal(initialPage("/hr/alphalist"), "employees");
   assert.equal(initialPage("/receivables"), "receivables");
   assert.equal(initialPage("/change-password"), "password");
+  assert.equal(initialPage("/settings"), "settings");
+  assert.equal(initialPage("/activity-logs"), "activity");
   for (const path of ["/users", "/users/create", "/users/3", "/users/3/edit", "/team"]) {
     assert.equal(initialPage(path), "users", path);
   }

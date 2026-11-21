@@ -6,7 +6,7 @@ document.addEventListener('click', (event) => {
         input.type = show ? 'text' : 'password';
         const slash = toggle.querySelector('[data-password-slash]');
         if (slash) {
-            slash.setAttribute('visibility', show ? 'hidden' : 'visible');
+            slash.setAttribute('visibility', show ? 'visible' : 'hidden');
         }
         if (!toggle.querySelector('svg')) {
             toggle.textContent = show ? 'Hide' : 'Show';

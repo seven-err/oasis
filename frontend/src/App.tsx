@@ -1,3 +1,4 @@
+import { PasswordInput } from "./components/PasswordInput";
 import { apiRequest, canAccessPage, getSession, initialPage, logout, pagePaths, setSession } from "./auth";
 import { loadActivityLogs, type ActivityLog } from "./activityLogs";
 import { readBusinessJson, writeBusinessJson } from "./businessStorage";
@@ -92,7 +93,8 @@ type Page =
   | "archives"
   | "deleted"
   | "profile"
-  | "password";
+  | "password"
+  | "settings";
 
 type ArchiveModule = "Checks" | "Payables" | "Receivables" | "Employees";
 
@@ -369,6 +371,11 @@ const pageMeta: Record<Page, { eyebrow: string; title: string; description: stri
     eyebrow: "Account",
     title: "My Profile",
     description: "Manage your personal information and security preferences.",
+  },
+  settings: {
+    eyebrow: "Administration",
+    title: "System Settings",
+    description: "Manage role permissions and module access.",
   },
   password: {
     eyebrow: "Account",
@@ -1011,6 +1018,7 @@ function App() {
           {page === "activity" && <ActivityLogs />}
           {page === "profile" && <Profile notify={notify} />}
           {page === "password" && <ChangePassword />}
+          {page === "settings" && <SystemSettings onClose={() => go("profile")} />}
         </main>
       </div>
 
@@ -2444,15 +2452,15 @@ function ChangePassword({ onClose }: { onClose?: () => void }) {
         {success && <p role="status" className="text-sm text-green-700">{success}</p>}
         <label className="block">
           <span className="field-label">Current password <span className="text-red-700">*</span></span>
-          <input className="input mt-2" type="password" name="current_password" autoComplete="current-password" required />
+          <PasswordInput className="mt-2" name="current_password" autoComplete="current-password" required />
         </label>
         <label className="block">
           <span className="field-label">New password <span className="text-red-700">*</span></span>
-          <input className="input mt-2" type="password" name="password" autoComplete="new-password" minLength={12} maxLength={1024} required />
+          <PasswordInput className="mt-2" name="password" autoComplete="new-password" minLength={12} maxLength={1024} required />
         </label>
         <label className="block">
           <span className="field-label">Confirm new password <span className="text-red-700">*</span></span>
-          <input className="input mt-2" type="password" name="password_confirmation" autoComplete="new-password" minLength={12} maxLength={1024} required />
+          <PasswordInput className="mt-2" name="password_confirmation" autoComplete="new-password" minLength={12} maxLength={1024} required />
         </label>
         <div className="flex flex-wrap justify-end gap-3 border-t border-[#e1eef6] pt-5">
           {onClose
@@ -2488,7 +2496,7 @@ function SystemSettings({ onClose }: { onClose: () => void }) {
     <section className="panel">
       <PanelTitle title="System settings" subtitle="Manage role permissions" />
       <div className="grid gap-5 p-6">
-        <p className="text-xs text-[#777]">Restrict module access within each role. HR can access all monitoring modules. Finance access is limited to financial monitoring. Dashboard and personal account access are always retained. Super Admin access is fixed.</p>
+        <p className="text-xs text-[#777]">Choose module access for each role. HR can be granted selected monitoring modules. Finance access is limited to financial monitoring. Dashboard and personal account access are always retained. Super Admin access is fixed.</p>
         {loading && <p role="status" className="text-sm">Loading settings…</p>}
         {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
         {success && <p role="status" className="text-sm text-green-700">{success}</p>}
@@ -2523,7 +2531,7 @@ function SystemSettings({ onClose }: { onClose: () => void }) {
             ))}
             <label className="block">
               <span className="field-label">Confirm your administrator password <span className="text-red-700">*</span></span>
-              <input className="input mt-2" type="password" name="current_password" autoComplete="current-password" required />
+              <PasswordInput className="mt-2" name="current_password" autoComplete="current-password" required />
             </label>
             <div className="flex justify-end">
               <button className="primary-btn" type="submit" disabled={saving}>Save {role.name} permissions</button>
@@ -2637,7 +2645,7 @@ function FormField({
   defaultValue,
   error,
 }: any) {
-  const Input = type === "date" ? DateInput : "input";
+  const Input = type === "date" ? DateInput : type === "password" ? PasswordInput : "input";
   return (
     <label className="block">
       <span className="field-label">
@@ -2656,7 +2664,7 @@ function FormField({
         max={max}
         step={type === "number" ? "0.01" : undefined}
         defaultValue={defaultValue}
-        className="input mt-2"
+        className={type === "password" ? "mt-2" : "input mt-2"}
       />
       {error && <p id={`${name}-error`} className="mt-1.5 text-[11px] text-red-700">{error}</p>}
     </label>

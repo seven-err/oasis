@@ -24,7 +24,7 @@ class Role extends Model
 
     public static function assignablePermissions(string $slug): array
     {
-        return array_merge(self::ACCESS[$slug] ?? [], $slug === 'hr' ? ['checks', 'payables', 'receivables'] : []);
+        return self::ACCESS[$slug] ?? [];
     }
 
     public function permissions(): BelongsToMany
