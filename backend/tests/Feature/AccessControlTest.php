@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\BusinessStateController;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
