@@ -51,7 +51,7 @@
     .field-error { color: #b42318; }
     .input-group { display: flex; position: relative; }
     .input-group:has(.password-toggle) input { padding-right: 4.25rem; }
-    .password-toggle { display: inline-flex; align-items: center; justify-content: center; position: absolute; right: .5rem; top: .45rem; min-height: 30px; padding: 0 .4rem; color: #1f6ea6; font-size: .8rem; }
+    .password-toggle { display: inline-flex; align-items: center; justify-content: center; position: absolute; right: .5rem; top: .45rem; min-height: 30px; padding: 0 .4rem; color: #999; font-size: .8rem; }
     .button { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; padding: .65rem 1rem; min-height: 44px; border: 1px solid transparent; border-radius: .4rem; background: #1f6ea6; color: white; font-weight: 600; font-size: .875rem; text-align: center; }
     .button:hover { background: #185985; }
     .button.secondary { background: white; border-color: #bac6cf; color: #294c66; }
@@ -177,7 +177,8 @@
     .login-form input::placeholder { color: #999; }
     .login-form input:focus { border-color: #1f6ea6; outline: none; box-shadow: 0 0 0 2px rgb(31 110 166 / 16%); }
     .login-form .input-group:has(.password-toggle) input { padding-right: 58px; }
-    .login-form .password-toggle { top: 7px; color: #111; font-size: 10px; }
+    .login-form .password-toggle { top: 50%; transform: translateY(-50%); font-size: 10px; }
+    .login-form .password-toggle svg { width: 16px; height: 16px; }
     .login-remember { gap: 8px; color: #5c7890; font-size: 11px; font-weight: 400; }
     .login-remember input { width: 14px; height: 14px; accent-color: #1f6ea6; }
     .login-submit { min-height: 44px; border-radius: 8px; background: #1f6ea6; font-size: 12px; font-weight: 600; transition: background-color 160ms ease; }
