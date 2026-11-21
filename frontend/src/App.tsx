@@ -671,6 +671,7 @@ function App() {
             className="flex min-w-0 items-center overflow-hidden"
           >
             <img
+              data-loading-logo-target
               src={oasisLogo}
               alt=""
               className="size-14 shrink-0 object-contain"
