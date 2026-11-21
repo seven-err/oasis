@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
@@ -22,23 +23,44 @@ class UserController extends Controller
     public function index(Request $request): View|JsonResponse
     {
         Gate::authorize('users');
+        $query = $this->filteredUsers($request);
+        if (! $request->expectsJson()) {
+            return app(ApplicationController::class)->show($request, 'users');
+        }
+
+        return response()->json($query->with('role')->paginate(20)->withQueryString());
+    }
+
+    public function report(Request $request): JsonResponse
+    {
+        Gate::authorize('users');
+        $users = $this->filteredUsers($request)
+            ->select(['id', 'name', 'email', 'role_id', 'is_active', 'last_login_at'])
+            ->with('role:id,name')->get();
+
+        return response()->json(['data' => $users->map(fn (User $user) => [
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->role?->name ?? 'Unassigned',
+            'status' => $user->is_active ? 'Active' : 'Inactive',
+            'last_login_at' => $user->last_login_at?->toISOString(),
+        ])]);
+    }
+
+    private function filteredUsers(Request $request): Builder
+    {
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:255'],
             'role' => ['nullable', Rule::in(array_keys(Role::ACCESS))],
             'status' => ['nullable', Rule::in(['active', 'inactive'])],
             'sort' => ['nullable', Rule::in(['asc', 'desc'])],
         ]);
-        if (! $request->expectsJson()) {
-            return app(ApplicationController::class)->show($request, 'users');
-        }
-        $users = User::with('role')
+        return User::query()
             ->when(isset($filters['search']) && $filters['search'] !== '', fn ($query) => $query->where(fn ($query) => $query
                 ->where('name', 'like', '%'.$filters['search'].'%')->orWhere('email', 'like', '%'.$filters['search'].'%')))
             ->when($filters['role'] ?? null, fn ($query, $role) => $query->whereHas('role', fn ($query) => $query->where('slug', $role)))
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('is_active', $status === 'active'))
-            ->orderBy('name', $filters['sort'] ?? 'asc')->orderBy('id')->paginate(20)->withQueryString();
-
-        return response()->json($users);
+            ->orderBy('name', $filters['sort'] ?? 'asc')->orderBy('id');
     }
 
     public function create(Request $request): View|JsonResponse
@@ -108,7 +130,10 @@ class UserController extends Controller
                 throw ValidationException::withMessages(['is_active' => 'The last active Super Admin cannot be deactivated or demoted.']);
             }
             if ($user->is_active && ! $active) {
-                $request->validate(['confirmation' => ['required', Rule::in(['DEACTIVATE'])]]);
+                $request->validate(['confirmation' => ['required', Rule::in(['DEACTIVATE'])]], [
+                    'confirmation.required' => 'Type DEACTIVATE to confirm.',
+                    'confirmation.in' => 'Type DEACTIVATE exactly to confirm.',
+                ]);
             }
             $changes = [
                 'role_id' => $newRole, 'is_active' => $active,
@@ -137,6 +162,9 @@ class UserController extends Controller
         $request->validate([
             'current_password' => ['required', 'current_password'],
             'confirmation' => ['required', Rule::in(['RESET'])],
+        ], [
+            'confirmation.required' => 'Type RESET to confirm.',
+            'confirmation.in' => 'Type RESET exactly to confirm.',
         ]);
         $temporaryPassword = Str::password(24);
         DB::transaction(function () use ($request, $user, $temporaryPassword) {

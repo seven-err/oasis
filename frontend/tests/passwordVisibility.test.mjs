@@ -36,7 +36,7 @@ test("Blade eye toggles reveal and mask the password without changing its value"
     setAttribute: (name, value) => { attributes[name] = value; },
   };
   const document = {
-    addEventListener: (name, handler) => { click = handler; },
+    addEventListener: (name, handler) => { if (name === "click") click = handler; },
     getElementById: (id) => { assert.equal(id, "password"); return input; },
     querySelector: () => ({ textContent: "Password" }),
   };

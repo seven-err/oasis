@@ -78,7 +78,7 @@ export function ReceivableCancellationDialog({ record, onBack, onConfirm }: Prop
             className="input mt-2 h-auto min-h-[88px] py-2.5"
             onChange={(event) => {
               setReason(event.target.value);
-              setReasonError("");
+              if (event.target.value.trim()) setReasonError("");
               setFormError("");
             }}
           />

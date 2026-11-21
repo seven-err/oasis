@@ -146,6 +146,7 @@ class ApplicationAccessTest extends TestCase
         $response = $this->followingRedirects()->from('/login')->post('/login', ['email' => $user->email, 'password' => 'incorrect']);
 
         $response->assertOk();
+        $response->assertSee('id="email-error"', false)->assertSee('aria-invalid="true"', false);
         $this->assertSame(1, substr_count($response->getContent(), 'The provided credentials do not match an active account.'));
     }
 

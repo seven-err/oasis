@@ -10,6 +10,7 @@ const listeners = new Set<() => void>();
 let initialized = false;
 let saving = false;
 let polling = false;
+let connectionIssue = false;
 let error = "";
 let conflict = false;
 let status = "";
@@ -23,7 +24,7 @@ const changed = () => {
     error ||
     (saving || [...modules.values()].some((state) => state.dirty)
       ? "Saving changes…"
-      : "All changes saved");
+      : connectionIssue ? (polling ? "Checking connection…" : "Connection issue") : "All changes saved");
   listeners.forEach((listener) => listener());
 };
 
@@ -92,6 +93,7 @@ export async function flushBusinessChanges(): Promise<void> {
           method: "PUT",
           body: JSON.stringify(payload),
         });
+        connectionIssue = false;
         state.version = result.version;
         if (generation === state.generation) {
           state.dirty = false;
@@ -146,23 +148,26 @@ export function discardBusinessDraft() {
   window.location.reload();
 }
 
-export async function refreshBusinessStorage(): Promise<void> {
+export async function refreshBusinessStorage(checkConnection = false): Promise<void> {
   if (
     polling ||
     saving ||
     error ||
     [...modules.values()].some((state) => state.dirty) ||
-    document.querySelector("form")
+    (!checkConnection && document.querySelector("form"))
   )
     return;
   polling = true;
+  if (connectionIssue) changed();
   try {
     const query = new URLSearchParams(
       [...modules].map(([module, state]) => [`versions[${module}]`, String(state.version)]),
     );
     const result = await apiRequest<{ modules: Partial<Record<Module, State>> }>(
       `/business-state?${query}`,
+      { signal: AbortSignal.timeout(8_000) },
     );
+    connectionIssue = false;
     if (
       saving ||
       [...modules.values()].some((state) => state.dirty) ||
@@ -178,9 +183,10 @@ export async function refreshBusinessStorage(): Promise<void> {
       }
     }
   } catch {
-    // Local edits still use version checks; a later refresh or save reports connection failures.
+    connectionIssue = true;
   } finally {
     polling = false;
+    changed();
   }
 }
 
@@ -266,6 +272,8 @@ export async function initializeBusinessStorage(): Promise<void> {
     }
   });
   window.addEventListener("focus", () => void refreshBusinessStorage());
+  window.addEventListener("offline", () => { connectionIssue = true; changed(); });
+  window.addEventListener("online", () => void refreshBusinessStorage(true));
   window.setInterval(() => {
     if (document.visibilityState === "visible") void refreshBusinessStorage();
   }, 30_000);
