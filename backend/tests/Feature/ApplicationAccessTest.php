@@ -61,6 +61,9 @@ class ApplicationAccessTest extends TestCase
     #[TestWith(['finance', '/payables', 'payables'])]
     #[TestWith(['finance', '/receivables', 'receivables'])]
     #[TestWith(['super-admin', '/team', 'users'])]
+    #[TestWith(['super-admin', '/activity', 'activity'])]
+    #[TestWith(['super-admin', '/activity-logs', 'activity'])]
+    #[TestWith(['super-admin', '/settings', 'settings'])]
     #[TestWith(['hr', '/change-password', 'password'])]
     #[TestWith(['finance', '/change-password', 'password'])]
     #[TestWith(['super-admin', '/change-password', 'password'])]
@@ -143,6 +146,7 @@ class ApplicationAccessTest extends TestCase
         $response = $this->followingRedirects()->from('/login')->post('/login', ['email' => $user->email, 'password' => 'incorrect']);
 
         $response->assertOk();
+        $response->assertSee('id="email-error"', false)->assertSee('aria-invalid="true"', false);
         $this->assertSame(1, substr_count($response->getContent(), 'The provided credentials do not match an active account.'));
     }
 

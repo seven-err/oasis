@@ -22,6 +22,11 @@ class Role extends Model
         'finance' => ['dashboard', 'checks', 'payables', 'receivables', 'account'],
     ];
 
+    public static function assignablePermissions(string $slug): array
+    {
+        return self::ACCESS[$slug] ?? [];
+    }
+
     public function permissions(): BelongsToMany
     {
         return $this->belongsToMany(Permission::class, 'role_permissions')->withTimestamps();

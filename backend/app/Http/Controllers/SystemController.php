@@ -21,7 +21,7 @@ class SystemController extends Controller
 
         $logs = ActivityLog::with('user')->orderByDesc('id')->paginate(30);
 
-        return $request->expectsJson() ? response()->json($logs) : view('system.activity', compact('logs'));
+        return $request->expectsJson() ? response()->json($logs) : app(ApplicationController::class)->show($request, 'activity');
     }
 
     public function settings(Request $request): View|JsonResponse
@@ -34,12 +34,12 @@ class SystemController extends Controller
                 'id' => $role->id,
                 'name' => $role->name,
                 'permissions' => $role->permissions->pluck('slug'),
-                'availablePermissions' => collect(array_diff(Role::ACCESS[$role->slug], ['dashboard', 'account']))
+                'availablePermissions' => collect(array_diff(Role::assignablePermissions($role->slug), ['dashboard', 'account']))
                     ->map(fn (string $slug) => ['slug' => $slug, 'name' => Role::PERMISSIONS[$slug]])->values(),
             ])]);
         }
 
-        return view('system.settings', compact('roles'));
+        return app(ApplicationController::class)->show($request, 'settings');
     }
 
     public function updatePermissions(Request $request, Role $role): RedirectResponse|JsonResponse
@@ -49,7 +49,7 @@ class SystemController extends Controller
         $data = $request->validate([
             'current_password' => ['required', 'current_password'],
             'permissions' => ['sometimes', 'array'],
-            'permissions.*' => ['string', 'distinct', Rule::in(array_diff(Role::ACCESS[$role->slug], ['dashboard', 'account']))],
+            'permissions.*' => ['string', 'distinct', Rule::in(array_diff(Role::assignablePermissions($role->slug), ['dashboard', 'account']))],
         ]);
         DB::transaction(function () use ($request, $role, $data) {
             Role::where('slug', 'super-admin')->lockForUpdate()->firstOrFail();

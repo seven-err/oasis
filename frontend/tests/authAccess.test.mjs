@@ -48,6 +48,7 @@ test("existing page navigation follows server permissions and rejects unknown pa
     assert.equal(canAccessPage("archives"), role === "super-admin");
     assert.equal(canAccessPage("profile"), true);
     assert.equal(canAccessPage("password"), true);
+    assert.equal(canAccessPage("settings"), role === "super-admin");
     assert.equal(canAccessPage("unknown"), false);
   }
   setSession({ ...sessionFor("finance"), user: { ...sessionFor("finance").user, permissions: ["dashboard", "checks", "account"] } });
@@ -55,10 +56,27 @@ test("existing page navigation follows server permissions and rejects unknown pa
   assert.equal(initialPage("/hr/alphalist"), "employees");
   assert.equal(initialPage("/receivables"), "receivables");
   assert.equal(initialPage("/change-password"), "password");
+  assert.equal(initialPage("/settings"), "settings");
+  assert.equal(initialPage("/activity-logs"), "activity");
   for (const path of ["/users", "/users/create", "/users/3", "/users/3/edit", "/team"]) {
     assert.equal(initialPage(path), "users", path);
   }
   assert.equal(initialPage("/users-unrelated"), "dashboard");
+});
+
+test("HR monitoring access and actions follow the selected server permissions", () => {
+  for (const selected of ["checks", "payables", "receivables"]) {
+    const session = sessionFor("hr");
+    session.user.permissions = ["dashboard", "hr", "account", selected];
+    setSession(session);
+    for (const module of ["checks", "payables", "receivables"]) {
+      assert.equal(canAccessPage(module), module === selected);
+      assert.equal(moduleUser(module, ["edit"]).permissions.edit, module === selected);
+    }
+    assert.equal(canAccessPage("employees"), true);
+    assert.equal(canAccessPage("users"), false);
+    assert.equal(canAccessPage("settings"), false);
+  }
 });
 
 test("module actions use the signed-in identity and deny unassigned modules", () => {

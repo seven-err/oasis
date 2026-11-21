@@ -23,7 +23,7 @@ class ApplicationController extends Controller
 
     public function show(Request $request, ?string $page = null): View
     {
-        Gate::authorize($page === 'users' ? 'users' : ($request->route()->defaults['permission'] ?? 'dashboard'));
+        Gate::authorize(in_array($page, ['users', 'activity', 'settings'], true) ? $page : ($request->route()->defaults['permission'] ?? 'dashboard'));
 
         return view('application', [
             'session' => $this->sessionData($request),
