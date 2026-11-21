@@ -789,7 +789,10 @@ function App() {
               <span>{pageMeta[page].title}</span>
             </div>
           ) : (
-            <HeaderBackButton fallback={() => go("dashboard")} />
+            <HeaderBackButton
+              fallback={() => go("dashboard")}
+              currentPage={isHr && page === "employees" ? pageMeta.employees.title : undefined}
+            />
           )}
           <div className="ml-auto flex items-center gap-1">
             <NotificationInbox
