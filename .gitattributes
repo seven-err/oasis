@@ -20,6 +20,7 @@
 /frontend/Oasis-Logo.png      -filter -diff -merge -text
 /frontend/src/assets/*.png    -filter -diff -merge -text
 /backend/public/favicon.ico   -filter -diff -merge -text
+/backend/resources/images/*   -filter -diff -merge -text
 
 # ---------------------------------------------------------------------------
 # Video
