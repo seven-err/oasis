@@ -1,6 +1,5 @@
 import { APPROVAL_STATUSES, PAYMENT_METHODS } from "./constants";
 import type {
-  PayableCategory,
   PayableFormValues,
   PayablePayment,
   PayableRecord,
@@ -8,17 +7,20 @@ import type {
   PaymentMethod,
   ValidationResult,
 } from "./types";
-import { isValidIsoDate, roundMoney, sumValidPayments, validPayments } from "./utils";
+import { isValidIsoDate, payableItemsTotal, roundMoney, sumValidPayments, validPayments } from "./utils";
 
 export function validatePayablePayload(
   values: PayableFormValues,
   options: {
     existing: PayableRecord[];
-    categories: PayableCategory[];
     editingId?: number;
   },
 ): ValidationResult {
   const errors: ValidationResult["errors"] = {};
+
+  if (values.paymentStatus !== "Paid" && values.paymentStatus !== "Unpaid") {
+    errors.paymentStatus = "Select Paid or Unpaid.";
+  }
 
   if (!values.payeeName.trim()) errors.payeeName = "Payee name is required.";
   else if (values.payeeName.trim().length > 255)
@@ -29,34 +31,44 @@ export function validatePayablePayload(
   else if (invoice.length > 64)
     errors.invoiceNumber = "Invoice number must be 64 characters or fewer.";
 
-  if (!values.description.trim()) errors.description = "Description is required.";
-
-  const categoryId = Number(values.categoryId);
-  if (!values.categoryId || Number.isNaN(categoryId)) {
-    errors.categoryId = "Select a category.";
-  } else {
-    const cat = options.categories.find((c) => c.id === categoryId && c.isActive);
-    if (!cat) errors.categoryId = "Select a valid active category.";
+  if (!values.items.length) errors.items = "Add at least one item.";
+  for (const [index, item] of values.items.entries()) {
+    if (!item.description.trim() || item.description.trim().length > 255) {
+      errors.items = `Item ${index + 1}: enter a description of 255 characters or fewer.`;
+      break;
+    }
+    const quantity = Number(item.quantity);
+    const price = Number(item.price);
+    if (!item.quantity.trim() || !Number.isFinite(quantity) || quantity <= 0) {
+      errors.items = `Item ${index + 1}: quantity must be greater than zero.`;
+      break;
+    }
+    if (!item.price.trim() || !Number.isFinite(price) || price < 0 || roundMoney(price) !== price) {
+      errors.items = `Item ${index + 1}: enter a non-negative price with at most two decimal places.`;
+      break;
+    }
   }
 
   if (!values.invoiceDate || !isValidIsoDate(values.invoiceDate)) {
     errors.invoiceDate = "Enter a valid invoice date.";
   }
-  if (!values.dueDate || !isValidIsoDate(values.dueDate)) {
-    errors.dueDate = "Enter a valid due date.";
-  }
-  if (
-    values.invoiceDate &&
-    values.dueDate &&
-    isValidIsoDate(values.invoiceDate) &&
-    isValidIsoDate(values.dueDate) &&
-    values.dueDate < values.invoiceDate
-  ) {
-    errors.dueDate = "Due date cannot be earlier than the invoice date.";
+  if (values.paymentStatus === "Unpaid") {
+    if (!values.dueDate || !isValidIsoDate(values.dueDate)) {
+      errors.dueDate = "Enter a valid due date.";
+    }
+    if (
+      values.invoiceDate &&
+      values.dueDate &&
+      isValidIsoDate(values.invoiceDate) &&
+      isValidIsoDate(values.dueDate) &&
+      values.dueDate < values.invoiceDate
+    ) {
+      errors.dueDate = "Due date cannot be earlier than the invoice date.";
+    }
   }
 
-  const amount = Number(values.totalAmount);
-  if (!values.totalAmount || Number.isNaN(amount)) {
+  const amount = payableItemsTotal(values.items);
+  if (!Number.isFinite(amount)) {
     errors.totalAmount = "Total amount is required.";
   } else if (amount <= 0) {
     errors.totalAmount = "Total amount must be greater than zero.";
@@ -122,14 +134,10 @@ export function validatePaymentPayload(
     errors.paymentMethod = "Select a valid payment method.";
   }
 
-  if (!values.referenceNumber.trim()) {
-    errors.referenceNumber = "Reference number is required.";
-  }
-
-  if (values.paymentMethod === "Check") {
+  if (values.paymentMethod === "Check" && values.checkId) {
     const checkId = Number(values.checkId);
-    if (!values.checkId || Number.isNaN(checkId)) {
-      errors.checkId = "Link an existing OASIS check record for Check payments.";
+    if (!Number.isInteger(checkId) || checkId <= 0) {
+      errors.checkId = "Select a valid check record.";
     } else if (options.checkExists && !options.checkExists(checkId)) {
       errors.checkId = "Selected check record was not found.";
     }

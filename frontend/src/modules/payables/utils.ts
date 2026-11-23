@@ -75,7 +75,7 @@ export function derivePaymentStatus(
 ): PaymentStatus {
   const remaining = roundMoney(totalAmount - amountPaid);
   if (remaining <= 0) return "Paid";
-  if (dueDate < asOf) return "Overdue";
+  if (dueDate && dueDate < asOf) return "Overdue";
   if (amountPaid > 0) return "Partial";
   return "Unpaid";
 }
@@ -125,32 +125,44 @@ export function enrichPayables(
   return records.map((r) => toViewModel(r, payments, asOf));
 }
 
+export function payableItemAmount(item: { quantity: number | string; price: number | string }): number {
+  return roundMoney(Number(item.quantity) * Number(item.price));
+}
+
+export function payableItemsTotal(items: { quantity: number | string; price: number | string }[]): number {
+  return roundMoney(items.reduce((sum, item) => sum + payableItemAmount(item), 0));
+}
+
+export function payableItems(record: PayableRecord) {
+  return record.items ?? [{ description: record.description, quantity: 1, price: record.totalAmount }];
+}
+
 export function emptyFormValues(
   defaults?: Partial<PayableFormValues>,
 ): PayableFormValues {
   return {
+    paymentStatus: "Unpaid",
     payeeName: "",
     invoiceNumber: "",
-    description: "",
-    categoryId: "",
+    items: [{ description: "", quantity: "1", price: "" }],
     invoiceDate: "",
     dueDate: "",
-    totalAmount: "",
     paymentMethod: "",
     referenceNumber: "",
     ...defaults,
   };
 }
 
-export function recordToFormValues(record: PayableRecord): PayableFormValues {
+export function recordToFormValues(record: PayableRecord, payments: PayablePayment[] = []): PayableFormValues {
   return {
+    paymentStatus: roundMoney(record.totalAmount - sumValidPayments(payments)) <= 0 ? "Paid" : "Unpaid",
     payeeName: record.payeeName,
     invoiceNumber: record.invoiceNumber,
-    description: record.description,
-    categoryId: String(record.categoryId),
+    items: payableItems(record).map((item) => ({
+      description: item.description, quantity: String(item.quantity), price: String(item.price),
+    })),
     invoiceDate: record.invoiceDate,
     dueDate: record.dueDate,
-    totalAmount: String(record.totalAmount),
     paymentMethod: record.paymentMethod ?? "",
     referenceNumber: record.referenceNumber,
   };

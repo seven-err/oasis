@@ -32,7 +32,7 @@ import {
   SectionCard,
   StatusBadge,
 } from "./ui";
-import { formatDate, formatDateTime, peso, todayIsoDate } from "./utils";
+import { formatDate, formatDateTime, payableItemAmount, payableItems, peso, todayIsoDate } from "./utils";
 
 type Props = {
   record: PayableViewModel;
@@ -191,8 +191,6 @@ export function PayableDetails({
     const details = {
       "Payee name": record.payeeName,
       "Invoice number": record.invoiceNumber,
-      Category: record.categoryName,
-      Description: record.description,
       "Invoice date": formatDate(record.invoiceDate),
       "Due date": formatDate(record.dueDate),
       "Expected payment method": record.paymentMethod,
@@ -209,6 +207,10 @@ export function PayableDetails({
       "Archive status": record.archivedAt ? `Archived ${formatDateTime(record.archivedAt)}` : "Active",
     };
     const rows: Record<string, unknown>[] = Object.entries(details).map(([Field, Value]) => ({ Field, Value }));
+    rows.push(...payableItems(record).map((item) => ({
+      Field: `Item · ${item.description}`,
+      Value: `${item.quantity} × ${peso.format(item.price)} = ${peso.format(payableItemAmount(item))}`,
+    })));
     rows.push(...(payments.length ? payments.map((p) => ({
       Field: `Payment · ${formatDate(p.paymentDate)}`,
       Value: `${peso.format(p.amountPaid)} · ${p.paymentMethod} · Reference: ${p.referenceNumber || "—"} · Check: ${p.checkNumber || "—"} · Recorded by: ${p.recordedByName} · ${p.isReversal ? "Reversal" : p.reversedAt ? "Reversed" : "Valid"}`,
@@ -233,7 +235,7 @@ export function PayableDetails({
         <PanelTitle
           onBack={onBack}
           title={record.invoiceNumber}
-          subtitle={`${record.payeeName} · ${record.categoryName}`}
+          subtitle={record.payeeName}
           action={
             <div className="flex flex-wrap gap-2">
               {user.permissions.editPayables && !record.archivedAt && (
@@ -339,18 +341,16 @@ export function PayableDetails({
                 ))}
               </FormSelect>
               <FormInput
-                label="Reference number"
+                label="Reference number (optional)"
                 name="referenceNumber"
-                required
                 value={paymentValues.referenceNumber}
                 onChange={setPay("referenceNumber")}
                 error={paymentErrors.referenceNumber}
               />
               {paymentValues.paymentMethod === "Check" && (
                 <FormSelect
-                  label="Linked check"
+                  label="Linked check (optional)"
                   name="checkId"
-                  required
                   value={paymentValues.checkId}
                   onChange={setPay("checkId")}
                   error={paymentErrors.checkId}
@@ -385,8 +385,6 @@ export function PayableDetails({
           items={[
             { label: "Payee name", value: record.payeeName },
             { label: "Invoice number", value: record.invoiceNumber },
-            { label: "Category", value: record.categoryName },
-            { label: "Description", value: record.description },
             { label: "Invoice date", value: formatDate(record.invoiceDate) },
             { label: "Due date", value: formatDate(record.dueDate) },
             {
@@ -396,6 +394,32 @@ export function PayableDetails({
             { label: "Reference number", value: record.referenceNumber || "—" },
           ]}
         />
+      </SectionCard>
+
+      <SectionCard title="Payable items">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[500px]">
+            <caption className="sr-only">Payable items</caption>
+            <thead>
+              <tr>
+                <th scope="col">Item Description</th>
+                <th scope="col">Quantity</th>
+                <th scope="col">Price</th>
+                <th scope="col">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {payableItems(record).map((item, index) => (
+                <tr key={index}>
+                  <td className="whitespace-pre-wrap break-words">{item.description}</td>
+                  <td>{item.quantity}</td>
+                  <td>{peso.format(item.price)}</td>
+                  <td>{peso.format(payableItemAmount(item))}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </SectionCard>
 
       <SectionCard title="2. Financial summary (derived)">

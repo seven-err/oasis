@@ -15,7 +15,6 @@ import {
   RotateCcw,
   Search,
   SlidersHorizontal,
-  LayoutGrid,
   Trash2,
   X,
 } from "lucide-react";
@@ -72,11 +71,8 @@ export function PayableRegister({
   const user = payableService.getUser();
   const [deleting, setDeleting] = useState<PayableViewModel | null>(null);
   const [archiving, setArchiving] = useState<PayableViewModel | null>(null);
-  const categories = useMemo(() => payableService.categories(false), [records]);
   const [filters, setFilters] = useState<PayableFilters>(EMPTY_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
-  const [showCategories, setShowCategories] = useState(false);
-  const [newCategory, setNewCategory] = useState("");
   const [sort, setSort] = useState<PayableSort>({ key: "dueDate", direction: "asc" });
   const [page, setPage] = useState(1);
   const [menu, setMenu] = useState<{ id: number; trigger: HTMLButtonElement } | null>(null);
@@ -384,70 +380,6 @@ export function PayableRegister({
       <section className="max-w-full space-y-4">
 
 
-        {showCategories && user.permissions.manageCategories && (
-          <div className="rounded-lg border border-[#d0e3ef] bg-[#f4f9fd] p-4">
-            <p className="mb-3 text-[10px] font-bold uppercase tracking-[.14em] text-[#1f6ea6]">
-              Manage categories
-            </p>
-            <div className="mb-3 flex flex-col gap-2 sm:flex-row">
-              <input
-                className="input flex-1"
-                placeholder="New category name"
-                value={newCategory}
-                onChange={(e) => setNewCategory(e.target.value)}
-              />
-              <button
-                type="button"
-                className="primary-btn"
-                onClick={() => {
-                  const result = payableService.addCategory(newCategory);
-                  if (!result.ok) {
-                    notify(result.errors.form ?? "Unable to add category.");
-                    return;
-                  }
-                  setNewCategory("");
-                  notify("Category added.");
-                  onChanged();
-                }}
-              >
-                <Plus size={15} /> Add
-              </button>
-            </div>
-            <ul className="overflow-hidden rounded-lg divide-y divide-[#e1eef6] border border-[#d0e3ef] bg-white">
-              {categories.map((c) => (
-                <li
-                  key={c.id}
-                  className="flex items-center justify-between gap-3 px-3 py-2 text-xs"
-                >
-                  <span>
-                    {c.name}
-                    {!c.isActive && (
-                      <span className="ml-2"><StatusBadge value="Inactive" /></span>
-                    )}
-                  </span>
-                  {c.isActive && (
-                    <button
-                      type="button"
-                      className="text-[11px] text-red-700 hover:underline"
-                      onClick={() => {
-                        const result = payableService.deactivateCategory(c.id);
-                        if (!result.ok) {
-                          notify(result.errors.form ?? "Unable to deactivate.");
-                          return;
-                        }
-                        notify("Category deactivated.");
-                        onChanged();
-                      }}
-                    >
-                      Deactivate
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <label className="relative min-w-0 w-full flex-1">
@@ -499,18 +431,13 @@ export function PayableRegister({
               <button type="button" onClick={onOpenReports} className="secondary-btn w-full sm:w-auto">
                 <FileText size={15} /> Reports
               </button>
-              {user.permissions.manageCategories && (
-                <button type="button" onClick={() => setShowCategories((visible) => !visible)} className="secondary-btn w-full sm:w-auto">
-                  <LayoutGrid size={15} aria-hidden="true" /> Categories
-                </button>
-              )}
+
             </div>
           </div>
 
           <ActiveFilters
             filters={filters}
             defaults={EMPTY_FILTERS}
-            valueLabels={{ categoryId: Object.fromEntries(categories.map((category) => [String(category.id), category.name])) }}
             matched={filtered.length}
             total={records.filter((record) => filters.includeArchived || !record.archivedAt).length}
             onRemove={(key) => setFilter(key, EMPTY_FILTERS[key])}
@@ -549,27 +476,6 @@ export function PayableRegister({
                   value={filters.referenceNumber}
                   onChange={(e) => setFilter("referenceNumber", e.target.value)}
                 />
-              </label>
-              <label className="block">
-                <span className="field-label">Category</span>
-                <select
-                  className="input mt-2"
-                  value={filters.categoryId === "All" ? "All" : String(filters.categoryId)}
-                  onChange={(e) =>
-                    setFilter(
-                      "categoryId",
-                      e.target.value === "All" ? "All" : Number(e.target.value),
-                    )
-                  }
-                >
-                  <option value="All">All categories</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                      {!c.isActive ? " (inactive)" : ""}
-                    </option>
-                  ))}
-                </select>
               </label>
               <label className="block">
                 <span className="field-label">Payment status</span>
@@ -685,7 +591,7 @@ export function PayableRegister({
                       </button>
                       <p className="mt-1 truncate text-xs text-[#555]">{row.payeeName}</p>
                       <p className="mt-1 text-[10px] text-[#888]">
-                        {row.categoryName} · Due {formatDate(row.dueDate)}
+                        Due {formatDate(row.dueDate)}
                       </p>
                     </div>
                     {rowActions(row)}
@@ -709,14 +615,6 @@ export function PayableRegister({
                   <tr>
                     <SortHeader label="Payee" sortKey="payeeName" />
                     <SortHeader label="Invoice" sortKey="invoiceNumber" />
-                    <th className="hidden 2xl:table-cell">
-                      <button
-                        onClick={() => toggleSort("categoryName")}
-                        className="inline-flex items-center gap-1"
-                      >
-                        Category
-                      </button>
-                    </th>
                     <SortHeader label="Due" sortKey="dueDate" />
                     <SortHeader label="Total" sortKey="totalAmount" />
                     <SortHeader label="Paid" sortKey="amountPaid" />
@@ -747,9 +645,6 @@ export function PayableRegister({
                         <button type="button" className="block max-w-full truncate text-left hover:underline" onClick={() => { setMenu(null); onView(row.id); }} aria-label={`Open payable ${row.invoiceNumber}`}>
                           {row.invoiceNumber}
                         </button>
-                      </td>
-                      <td className="hidden overflow-hidden text-ellipsis 2xl:table-cell">
-                        {row.categoryName}
                       </td>
                       <td className="overflow-hidden text-ellipsis">
                         {formatDate(row.dueDate)}
