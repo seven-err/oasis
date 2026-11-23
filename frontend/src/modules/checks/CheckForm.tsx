@@ -193,7 +193,6 @@ export function CheckForm({ mode, record, onCancel, onSaved }: Props) {
               <FormInput
                 label="Reference number"
                 name="referenceNumber"
-                required
                 value={values.referenceNumber}
                 onChange={set("referenceNumber")}
                 error={errors.referenceNumber}

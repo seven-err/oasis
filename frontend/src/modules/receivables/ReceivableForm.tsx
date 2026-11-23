@@ -64,7 +64,7 @@ export function ReceivableForm({ mode, record, onCancel, onSaved }: Props) {
     };
 
   const applyCustomer = (customerId: string) => {
-    const customer = customers.find((c) => c.id === Number(customerId));
+    const customer = receivableService.customers(true).find((c) => c.id === Number(customerId));
     setValues((prev) => ({
       ...prev,
       customerId,
@@ -164,16 +164,6 @@ export function ReceivableForm({ mode, record, onCancel, onSaved }: Props) {
                   Register new customer
                 </p>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <FormInput
-                    label="Client ID"
-                    name="newClientId"
-                    required
-                    value={customerValues.clientId}
-                    onChange={(v) => {
-                      setCustomerValues((p) => ({ ...p, clientId: v }));
-                    }}
-                    error={customerErrors.clientId}
-                  />
                   <FormInput
                     label="Customer name"
                     name="newCustomerName"
@@ -288,11 +278,9 @@ export function ReceivableForm({ mode, record, onCancel, onSaved }: Props) {
               <FormInput
                 label="Reference number"
                 name="referenceNumber"
-                required
                 value={values.referenceNumber}
                 onChange={set("referenceNumber")}
                 error={errors.referenceNumber}
-                placeholder="Internal AR reference"
               />
               <FormInput
                 label="Invoice date"

@@ -30,8 +30,7 @@ export function validateCustomerPayload(
   const errors: ValidationResult["errors"] = {};
 
   const clientId = values.clientId.trim();
-  if (!clientId) errors.clientId = "Client ID is required.";
-  else if (clientId.length > 64) errors.clientId = "Client ID must be 64 characters or fewer.";
+  if (clientId.length > 64) errors.clientId = "Client ID must be 64 characters or fewer.";
 
   if (!values.customerName.trim()) errors.customerName = "Customer name is required.";
   else if (values.customerName.trim().length > 255)
@@ -82,7 +81,6 @@ export function validateReceivablePayload(
   else if (invoice.length > 64)
     errors.invoiceNumber = "Invoice number must be 64 characters or fewer.";
 
-  if (!values.clientId.trim()) errors.clientId = "Client ID is required.";
   if (!values.customerName.trim()) errors.customerName = "Customer name is required.";
   if (!values.contactNumber.trim()) errors.contactNumber = "Contact number is required.";
   if (!values.emailAddress.trim()) errors.emailAddress = "Email address is required.";
@@ -110,8 +108,6 @@ export function validateReceivablePayload(
   }
 
   if (!values.description.trim()) errors.description = "Description is required.";
-  if (!values.referenceNumber.trim())
-    errors.referenceNumber = "Reference number is required.";
 
   const amount = Number(values.totalReceivableAmount);
   if (!values.totalReceivableAmount || Number.isNaN(amount)) {

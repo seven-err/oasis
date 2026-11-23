@@ -66,7 +66,6 @@ export function validateCheckPayload(
   }
 
   if (!values.purpose.trim()) errors.purpose = "Purpose is required.";
-  if (!values.referenceNumber.trim()) errors.referenceNumber = "Reference number is required.";
 
   for (const [key, label] of [
     ["dueDate", "Due date"],
