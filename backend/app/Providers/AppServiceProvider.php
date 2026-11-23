@@ -25,6 +25,11 @@ class AppServiceProvider extends ServiceProvider
                 }
             },
         ]));
+        Gate::define('records', fn (User $user): bool => $user->hasPermission('users') || (
+            $user->role?->slug === 'finance' && (
+                $user->hasPermission('checks') || $user->hasPermission('payables') || $user->hasPermission('receivables')
+            )
+        ));
         foreach (array_keys(Role::PERMISSIONS) as $permission) {
             Gate::define($permission, fn (User $user) => $user->hasPermission($permission));
         }

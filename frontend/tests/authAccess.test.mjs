@@ -45,7 +45,8 @@ test("existing page navigation follows server permissions and rejects unknown pa
     assert.equal(canAccessPage("payables"), true);
     assert.equal(canAccessPage("receivables"), true);
     assert.equal(canAccessPage("users"), role === "super-admin");
-    assert.equal(canAccessPage("archives"), role === "super-admin");
+    assert.equal(canAccessPage("archives"), role !== "hr");
+    assert.equal(canAccessPage("deleted"), role !== "hr");
     assert.equal(canAccessPage("profile"), true);
     assert.equal(canAccessPage("password"), true);
     assert.equal(canAccessPage("settings"), role === "super-admin");
@@ -62,6 +63,18 @@ test("existing page navigation follows server permissions and rejects unknown pa
     assert.equal(initialPage(path), "users", path);
   }
   assert.equal(initialPage("/users-unrelated"), "dashboard");
+});
+
+test("Finance archives and deleted pages require a permitted finance module", () => {
+  for (const permissions of [[], ["checks"], ["payables"], ["receivables"]]) {
+    const session = sessionFor("finance");
+    session.user.permissions = ["dashboard", "account", ...permissions];
+    setSession(session);
+    assert.equal(canAccessPage("archives"), permissions.length > 0);
+    assert.equal(canAccessPage("deleted"), permissions.length > 0);
+    assert.equal(canAccessPage("users"), false);
+    assert.equal(canAccessPage("employees"), false);
+  }
 });
 
 test("HR monitoring access and actions follow the selected server permissions", () => {
@@ -113,6 +126,34 @@ test("existing dashboard hides restricted module totals and record details", asy
     const finance = render();
     assert.match(finance, /Total Checks|Private Finance Payee/);
     assert.doesNotMatch(finance, /Active Employees|Employee updated/);
+  } finally {
+    await server.close();
+  }
+});
+
+test("Finance archive and deleted lists expose only permitted module records", async () => {
+  const server = await createServer({ server: { middlewareMode: true, hmr: false }, appType: "custom" });
+  try {
+    const { setSession: setSsrSession } = await server.ssrLoadModule("/src/auth.ts");
+    const { ArchivedRecords } = await server.ssrLoadModule("/src/App.tsx");
+    const props = {
+      checks: [{ id: 1, checkNumber: "CHECK-RECORD", payeeName: "Check payee", archivedAt: "2026-11-23", deletedAt: "2026-11-23" }],
+      payables: [{ id: 2, invoiceNumber: "PAYABLE-RECORD", payeeName: "Payable payee", archivedAt: "2026-11-23", deletedAt: "2026-11-23" }],
+      receivables: [{ id: 3, invoiceNumber: "RECEIVABLE-RECORD", customerName: "Receivable customer", archivedAt: "2026-11-23", deletedAt: "2026-11-23" }],
+      employees: [{ id: 4, number: "PRIVATE-EMPLOYEE", name: "Private employee", archived: true }],
+    };
+    for (const deleted of [false, true]) {
+      setSsrSession(sessionFor("finance"));
+      const finance = renderToStaticMarkup(createElement(ArchivedRecords, { ...props, deleted }));
+      assert.match(finance, /CHECK-RECORD/);
+      assert.match(finance, /PAYABLE-RECORD/);
+      assert.match(finance, /RECEIVABLE-RECORD/);
+      assert.doesNotMatch(finance, /PRIVATE-EMPLOYEE|Private employee/);
+      setSsrSession({ ...sessionFor("finance"), user: { ...sessionFor("finance").user, permissions: ["payables"] } });
+      const restricted = renderToStaticMarkup(createElement(ArchivedRecords, { ...props, deleted }));
+      assert.match(restricted, /PAYABLE-RECORD/);
+      assert.doesNotMatch(restricted, /CHECK-RECORD|RECEIVABLE-RECORD|PRIVATE-EMPLOYEE/);
+    }
   } finally {
     await server.close();
   }

@@ -26,7 +26,7 @@ Route::middleware('private.pages')->group(function () {
         Route::get('/dashboard', [ApplicationController::class, 'dashboard'])->middleware('can:dashboard')->name('dashboard');
         Route::get('/oasis/{file}', [ApplicationController::class, 'asset'])
             ->where('file', '(assets/[A-Za-z0-9._/-]+|favicon\.png)')->name('application.asset');
-        foreach (['profile' => 'account', 'team' => 'users', 'activity' => 'activity', 'archives' => 'users', 'deleted' => 'users', 'reports' => 'users'] as $page => $permission) {
+        foreach (['profile' => 'account', 'team' => 'users', 'activity' => 'activity', 'archives' => 'records', 'deleted' => 'records', 'reports' => 'users'] as $page => $permission) {
             Route::get('/'.$page, [ApplicationController::class, 'show'])
                 ->defaults('page', $page === 'team' ? 'users' : $page)
                 ->defaults('permission', $permission)->middleware('can:'.$permission);

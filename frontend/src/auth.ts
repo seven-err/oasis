@@ -40,6 +40,9 @@ export function getSession() {
 export function canAccessPage(page: string) {
   if (!session || session.user.mustChangePassword) return false;
   if (page === "password") return true;
+  if ((page === "archives" || page === "deleted") && session.user.role === "finance") {
+    return ["checks", "payables", "receivables"].some(canAccessPage);
+  }
   const permission = { employees: "hr", profile: "account", archives: "users", deleted: "users", reports: "users" }[page] ?? page;
   return session.user.permissions.includes(permission);
 }
