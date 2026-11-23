@@ -1428,11 +1428,6 @@ export function Dashboard({
         <PanelTitle
           title="Recent check records"
           subtitle="Latest official check activity"
-          action={
-            <button onClick={() => go("checks")} className="text-link">
-              Open register <ChevronRight size={13} />
-            </button>
-          }
         />
         <div className="overflow-x-auto">
           <table>
