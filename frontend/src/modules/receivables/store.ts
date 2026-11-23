@@ -11,14 +11,6 @@ import {
   RECEIVABLE_CUSTOMERS_STORAGE_KEY,
   RECEIVABLE_FOLLOWUPS_STORAGE_KEY,
 } from "./constants";
-import {
-  seedActivity,
-  seedAttachments,
-  seedCollections,
-  seedCustomers,
-  seedFollowUps,
-  seedReceivables,
-} from "./seed";
 import type {
   AttachmentKind,
   CollectionFollowUp,
@@ -71,28 +63,28 @@ function writeJson(key: string, value: unknown): void {
 function load(): StoreSnapshot {
   const receivables = readJson<ReceivableRecord[] | null>(RECEIVABLES_STORAGE_KEY, null);
   if (!receivables) {
-    writeJson(RECEIVABLES_STORAGE_KEY, seedReceivables);
-    writeJson(RECEIVABLE_COLLECTIONS_STORAGE_KEY, seedCollections);
-    writeJson(RECEIVABLE_CUSTOMERS_STORAGE_KEY, seedCustomers);
-    writeJson(RECEIVABLE_FOLLOWUPS_STORAGE_KEY, seedFollowUps);
-    writeJson(RECEIVABLE_ATTACHMENTS_STORAGE_KEY, seedAttachments);
-    writeJson(RECEIVABLE_ACTIVITY_STORAGE_KEY, seedActivity);
+    writeJson(RECEIVABLES_STORAGE_KEY, []);
+    writeJson(RECEIVABLE_COLLECTIONS_STORAGE_KEY, []);
+    writeJson(RECEIVABLE_CUSTOMERS_STORAGE_KEY, []);
+    writeJson(RECEIVABLE_FOLLOWUPS_STORAGE_KEY, []);
+    writeJson(RECEIVABLE_ATTACHMENTS_STORAGE_KEY, []);
+    writeJson(RECEIVABLE_ACTIVITY_STORAGE_KEY, []);
     return {
-      receivables: seedReceivables,
-      collections: seedCollections,
-      customers: seedCustomers,
-      followUps: seedFollowUps,
-      attachments: seedAttachments,
-      activity: seedActivity,
+      receivables: [],
+      collections: [],
+      customers: [],
+      followUps: [],
+      attachments: [],
+      activity: [],
     };
   }
   return {
     receivables,
-    collections: readJson(RECEIVABLE_COLLECTIONS_STORAGE_KEY, seedCollections),
-    customers: readJson(RECEIVABLE_CUSTOMERS_STORAGE_KEY, seedCustomers),
-    followUps: readJson(RECEIVABLE_FOLLOWUPS_STORAGE_KEY, seedFollowUps),
-    attachments: readJson(RECEIVABLE_ATTACHMENTS_STORAGE_KEY, seedAttachments),
-    activity: readJson(RECEIVABLE_ACTIVITY_STORAGE_KEY, seedActivity),
+    collections: readJson(RECEIVABLE_COLLECTIONS_STORAGE_KEY, []),
+    customers: readJson(RECEIVABLE_CUSTOMERS_STORAGE_KEY, []),
+    followUps: readJson(RECEIVABLE_FOLLOWUPS_STORAGE_KEY, []),
+    attachments: readJson(RECEIVABLE_ATTACHMENTS_STORAGE_KEY, []),
+    activity: readJson(RECEIVABLE_ACTIVITY_STORAGE_KEY, []),
   };
 }
 
@@ -934,14 +926,5 @@ export const receivableService = {
     const receivable = snapshot.receivables.find((r) => r.id === receivableId);
     if (!receivable) return 0;
     return remainingBalanceFor(receivable, snapshot.collections);
-  },
-
-  resetDemoData(): void {
-    writeJson(RECEIVABLES_STORAGE_KEY, seedReceivables);
-    writeJson(RECEIVABLE_COLLECTIONS_STORAGE_KEY, seedCollections);
-    writeJson(RECEIVABLE_CUSTOMERS_STORAGE_KEY, seedCustomers);
-    writeJson(RECEIVABLE_FOLLOWUPS_STORAGE_KEY, seedFollowUps);
-    writeJson(RECEIVABLE_ATTACHMENTS_STORAGE_KEY, seedAttachments);
-    writeJson(RECEIVABLE_ACTIVITY_STORAGE_KEY, seedActivity);
   },
 };

@@ -7,7 +7,6 @@ import {
   CHECKS_STORAGE_KEY,
   CURRENT_USER,
 } from "./constants";
-import { seedActivity, seedAttachments, seedChecks } from "./seed";
 import type {
   CheckActivity,
   CheckAttachment,
@@ -38,19 +37,19 @@ function writeJson(key: string, value: unknown): void {
 function load(): StoreSnapshot {
   const checks = readJson<CheckRecord[] | null>(CHECKS_STORAGE_KEY, null);
   if (!checks) {
-    writeJson(CHECKS_STORAGE_KEY, seedChecks);
-    writeJson(CHECK_ATTACHMENTS_STORAGE_KEY, seedAttachments);
-    writeJson(CHECK_ACTIVITY_STORAGE_KEY, seedActivity);
+    writeJson(CHECKS_STORAGE_KEY, []);
+    writeJson(CHECK_ATTACHMENTS_STORAGE_KEY, []);
+    writeJson(CHECK_ACTIVITY_STORAGE_KEY, []);
     return {
-      checks: seedChecks,
-      attachments: seedAttachments,
-      activity: seedActivity,
+      checks: [],
+      attachments: [],
+      activity: [],
     };
   }
   return {
     checks,
-    attachments: readJson(CHECK_ATTACHMENTS_STORAGE_KEY, seedAttachments),
-    activity: readJson(CHECK_ACTIVITY_STORAGE_KEY, seedActivity),
+    attachments: readJson(CHECK_ATTACHMENTS_STORAGE_KEY, []),
+    activity: readJson(CHECK_ACTIVITY_STORAGE_KEY, []),
   };
 }
 
@@ -414,12 +413,6 @@ export const checkService = {
       performedByName: user.name,
     });
     persist(snapshot);
-  },
-
-  resetDemoData(): void {
-    writeJson(CHECKS_STORAGE_KEY, seedChecks);
-    writeJson(CHECK_ATTACHMENTS_STORAGE_KEY, seedAttachments);
-    writeJson(CHECK_ACTIVITY_STORAGE_KEY, seedActivity);
   },
 };
 

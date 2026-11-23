@@ -19,6 +19,12 @@ test("Finance records payments without approval while retaining payment safeguar
       roleName: "Finance", mustChangePassword: false,
       permissions: ["dashboard", "checks", "payables", "receivables", "account"],
     } });
+    const fixtures = await server.ssrLoadModule("/src/modules/payables/seed.ts");
+    for (const [key, name] of Object.entries({
+      "oasis.payables.v1": "seedPayables",
+      "oasis.payable-payments.v1": "seedPayments",
+      "oasis.payable-activity.v1": "seedActivity",
+    })) values.set(key, JSON.stringify(fixtures[name]));
     const { payableService: service } = await server.ssrLoadModule("/src/modules/payables/store.ts");
     const { summarizePayables } = await server.ssrLoadModule("/src/modules/payables/utils.ts");
     const { PayableDetails } = await server.ssrLoadModule("/src/modules/payables/PayableDetails.tsx");

@@ -8,7 +8,7 @@ import {
   PAYABLE_CATEGORIES_STORAGE_KEY,
   PAYABLE_PAYMENTS_STORAGE_KEY,
 } from "./constants";
-import { seedActivity, seedCategories, seedPayables, seedPayments } from "./seed";
+import { seedCategories } from "./seed";
 import type {
   OasisPayableUser,
   PayableActivity,
@@ -51,22 +51,22 @@ function writeJson(key: string, value: unknown): void {
 function load(): StoreSnapshot {
   const payables = readJson<PayableRecord[] | null>(PAYABLES_STORAGE_KEY, null);
   if (!payables) {
-    writeJson(PAYABLES_STORAGE_KEY, seedPayables);
-    writeJson(PAYABLE_PAYMENTS_STORAGE_KEY, seedPayments);
+    writeJson(PAYABLES_STORAGE_KEY, []);
+    writeJson(PAYABLE_PAYMENTS_STORAGE_KEY, []);
     writeJson(PAYABLE_CATEGORIES_STORAGE_KEY, seedCategories);
-    writeJson(PAYABLE_ACTIVITY_STORAGE_KEY, seedActivity);
+    writeJson(PAYABLE_ACTIVITY_STORAGE_KEY, []);
     return {
-      payables: seedPayables,
-      payments: seedPayments,
+      payables: [],
+      payments: [],
       categories: seedCategories,
-      activity: seedActivity,
+      activity: [],
     };
   }
   return {
     payables,
-    payments: readJson(PAYABLE_PAYMENTS_STORAGE_KEY, seedPayments),
+    payments: readJson(PAYABLE_PAYMENTS_STORAGE_KEY, []),
     categories: readJson(PAYABLE_CATEGORIES_STORAGE_KEY, seedCategories),
-    activity: readJson(PAYABLE_ACTIVITY_STORAGE_KEY, seedActivity),
+    activity: readJson(PAYABLE_ACTIVITY_STORAGE_KEY, []),
   };
 }
 
@@ -647,12 +647,5 @@ export const payableService = {
     const payable = snapshot.payables.find((p) => p.id === payableId);
     if (!payable) return 0;
     return remainingBalanceFor(payable, snapshot.payments);
-  },
-
-  resetDemoData(): void {
-    writeJson(PAYABLES_STORAGE_KEY, seedPayables);
-    writeJson(PAYABLE_PAYMENTS_STORAGE_KEY, seedPayments);
-    writeJson(PAYABLE_CATEGORIES_STORAGE_KEY, seedCategories);
-    writeJson(PAYABLE_ACTIVITY_STORAGE_KEY, seedActivity);
   },
 };

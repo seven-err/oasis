@@ -46,6 +46,8 @@ test("monitoring deletion is authorized, recoverable, audited, and retains relat
     const { ArchivedRecords, EmployeeRegister, loadEmployeeRecords } = await server.ssrLoadModule("/src/App.tsx");
     const { HeaderBackProvider } = await server.ssrLoadModule("/src/components/HeaderBack.tsx");
     const { CheckMonitoring } = await server.ssrLoadModule("/src/modules/checks/index.ts");
+    const { seedChecks } = await server.ssrLoadModule("/src/modules/checks/seed.ts");
+    values.set("oasis.checks.v1", JSON.stringify(seedChecks));
     const checkMarkup = renderToStaticMarkup(
       createElement(HeaderBackProvider, null, createElement(CheckMonitoring, { notify: () => {} })),
     );
@@ -122,6 +124,15 @@ test("monitoring deletion is authorized, recoverable, audited, and retains relat
     ]) {
       values.clear();
       const { [name]: service } = await server.ssrLoadModule(`/src/modules/${module}/store.ts`);
+      assert.deepEqual(service.list(), [], `${module}: fresh storage has no demo records`);
+      const fixtures = await server.ssrLoadModule(`/src/modules/${module}/seed.ts`);
+      const { default: keys } = await server.ssrLoadModule("/src/businessKeys.json");
+      const seedNames = {
+        checks: ["seedChecks", "seedAttachments", "seedActivity"],
+        payables: ["seedPayables", "seedPayments", "seedCategories", "seedActivity"],
+        receivables: ["seedReceivables", "seedCollections", "seedCustomers", "seedFollowUps", "seedAttachments", "seedActivity"],
+      };
+      keys[module].forEach((key, index) => values.set(key, JSON.stringify(fixtures[seedNames[module][index]])));
       const before = service.list();
       const target = before[0];
       assert.ok(target, `${module}: seeded record exists`);
