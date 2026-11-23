@@ -73,7 +73,7 @@ export function PayableRegister({
   const [archiving, setArchiving] = useState<PayableViewModel | null>(null);
   const [filters, setFilters] = useState<PayableFilters>(EMPTY_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
-  const [sort, setSort] = useState<PayableSort>({ key: "dueDate", direction: "asc" });
+  const [sort, setSort] = useState<PayableSort>({ key: "dueDate", direction: "desc" });
   const [page, setPage] = useState(1);
   const [menu, setMenu] = useState<{ id: number; trigger: HTMLButtonElement } | null>(null);
   const menuRef = useRef<HTMLDialogElement>(null);

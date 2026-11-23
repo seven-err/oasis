@@ -18,7 +18,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { SummaryStatCards } from "@/components/SummaryStatCards";
 import { ActiveFilters } from "@/components/ActiveFilters";
 import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
@@ -66,7 +66,8 @@ export function CheckRegister({
   const [showFilters, setShowFilters] = useState(false);
   const [sort, setSort] = useState<CheckSort>({ key: "checkDate", direction: "desc" });
   const [page, setPage] = useState(1);
-  const [menuId, setMenuId] = useState<number | null>(null);
+  const [menu, setMenu] = useState<{ id: number; trigger: HTMLButtonElement } | null>(null);
+  const menuRef = useRef<HTMLDialogElement>(null);
 
   const summary = useMemo(() => summarizeChecks(records), [records]);
   const banks = useMemo(() => uniqueBanks(records), [records]);
@@ -79,6 +80,46 @@ export function CheckRegister({
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
   const pageRows = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  const menuRow = pageRows.find((row) => row.id === menu?.id);
+  const menuRowId = menuRow?.id;
+
+  useLayoutEffect(() => {
+    const dialog = menuRef.current;
+    if (!menu || menuRowId === undefined || !dialog) return;
+
+    const root = document.documentElement;
+
+    const positionMenu = () => {
+      const trigger = menu.trigger.getBoundingClientRect();
+      if (trigger.height === 0) {
+        setMenu(null);
+        return;
+      }
+
+      const gap = 8;
+      const spaceBelow = window.innerHeight - trigger.bottom - gap * 2;
+      const spaceAbove = trigger.top - gap * 2;
+      const openAbove = spaceAbove > spaceBelow && spaceBelow < dialog.scrollHeight;
+
+      dialog.style.right = `${Math.max(gap, root.clientWidth - trigger.right)}px`;
+      dialog.style.top = openAbove ? "auto" : `${trigger.bottom + gap}px`;
+      dialog.style.bottom = openAbove ? `${window.innerHeight - trigger.top + gap}px` : "auto";
+      dialog.style.maxHeight = `${Math.max(0, openAbove ? spaceAbove : spaceBelow)}px`;
+    };
+
+    menu.trigger.focus({ preventScroll: true });
+    positionMenu();
+    dialog.showPopover();
+    positionMenu();
+    window.addEventListener("resize", positionMenu);
+    window.addEventListener("scroll", positionMenu, true);
+    return () => {
+      window.removeEventListener("resize", positionMenu);
+      window.removeEventListener("scroll", positionMenu, true);
+      dialog.hidePopover();
+    };
+  }, [menu, menuRowId]);
 
   const setFilter = <K extends keyof CheckFilters>(key: K, value: CheckFilters[K]) => {
     setFilters((f) => ({ ...f, [key]: value }));
@@ -145,68 +186,72 @@ export function CheckRegister({
     }
   };
 
-  const actionMenu = (row: CheckRecord) =>
-    menuId === row.id ? (
-      <div className="absolute right-0 top-9 z-20 w-44 border border-[#d0e3ef] bg-white p-1 shadow-xl">
-        {user.permissions.editChecks && !row.archivedAt && (
-          <button
-            className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
-            onClick={() => {
-              setMenuId(null);
-              onEdit(row.id);
-            }}
-          >
-            <Pencil size={14} /> Edit
-          </button>
-        )}
+  const actionMenu = (row: CheckRecord) => (
+    <dialog
+      ref={menuRef}
+      popover="manual"
+      aria-label={`Actions for ${row.checkNumber}`}
+      className="fixed inset-auto m-0 w-44 max-w-[calc(100%-1rem)] overflow-y-auto overscroll-contain border border-[#d0e3ef] bg-white p-1 shadow-xl"
+    >
+      {user.permissions.editChecks && !row.archivedAt && (
         <button
           className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
           onClick={() => {
-            setMenuId(null);
-            onView(row.id);
+            setMenu(null);
+            onEdit(row.id);
           }}
         >
-          <Printer size={14} /> Documents
+          <Pencil size={14} /> Edit
         </button>
-        {user.permissions.archiveChecks && (
-          <button
-            className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-700 hover:bg-red-50"
-            onClick={() => {
-              setMenuId(null);
-              archiveOrRestore(row);
-            }}
-          >
-            {row.archivedAt ? (
-              <>
-                <RotateCcw size={14} /> Restore
-              </>
-            ) : (
-              <>
-                <Archive size={14} /> Archive
-              </>
-            )}
-          </button>
-        )}
-        {user.permissions.archiveChecks && (
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-700 hover:bg-red-50"
-            onClick={() => {
-              setMenuId(null);
-              setDeleting(row);
-            }}
-          >
-            <Trash2 size={14} /> Delete
-          </button>
-        )}
+      )}
+      <button
+        className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-[#e7f3fb]"
+        onClick={() => {
+          setMenu(null);
+          onView(row.id);
+        }}
+      >
+        <Printer size={14} /> Documents
+      </button>
+      {user.permissions.archiveChecks && (
         <button
-          className="flex w-full items-center gap-2 px-3 py-2 text-xs text-[#888] hover:bg-[#e7f3fb]"
-          onClick={() => setMenuId(null)}
+          className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-700 hover:bg-red-50"
+          onClick={() => {
+            setMenu(null);
+            archiveOrRestore(row);
+          }}
         >
-          <X size={14} /> Close
+          {row.archivedAt ? (
+            <>
+              <RotateCcw size={14} /> Restore
+            </>
+          ) : (
+            <>
+              <Archive size={14} /> Archive
+            </>
+          )}
         </button>
-      </div>
-    ) : null;
+      )}
+      {user.permissions.archiveChecks && (
+        <button
+          type="button"
+          className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-700 hover:bg-red-50"
+          onClick={() => {
+            setMenu(null);
+            setDeleting(row);
+          }}
+        >
+          <Trash2 size={14} /> Delete
+        </button>
+      )}
+      <button
+        className="flex w-full items-center gap-2 px-3 py-2 text-xs text-[#888] hover:bg-[#e7f3fb]"
+        onClick={() => setMenu(null)}
+      >
+        <X size={14} /> Close
+      </button>
+    </dialog>
+  );
 
   return (
     <div className="w-full max-w-full space-y-5 overflow-x-clip">
@@ -418,7 +463,7 @@ export function CheckRegister({
                   key={row.id}
                   className={`relative cursor-pointer space-y-3 p-4 transition-colors hover:bg-[#eef6fb] ${row.archivedAt ? "opacity-60" : ""}`}
                   onClick={recordRowClick(() => {
-                    setMenuId(null);
+                    setMenu(null);
                     onView(row.id);
                   })}
                 >
@@ -428,7 +473,7 @@ export function CheckRegister({
                         type="button"
                         className="truncate text-left text-sm font-semibold text-[#1f6ea6]"
                         onClick={() => {
-                          setMenuId(null);
+                          setMenu(null);
                           onView(row.id);
                         }}
                         aria-label={`Open check for ${row.payeeName}`}
@@ -443,11 +488,12 @@ export function CheckRegister({
                       <button
                         className="table-action"
                         aria-label={`Actions for ${row.checkNumber}`}
-                        onClick={() => setMenuId(menuId === row.id ? null : row.id)}
+                        aria-expanded={menu?.id === row.id}
+                        aria-haspopup="dialog"
+                        onClick={(event) => setMenu(menu?.id === row.id ? null : { id: row.id, trigger: event.currentTarget })}
                       >
                         <MoreHorizontal size={17} />
                       </button>
-                      {actionMenu(row)}
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -498,7 +544,7 @@ export function CheckRegister({
                       key={row.id}
                       className={`cursor-pointer ${row.archivedAt ? "opacity-60" : ""}`}
                       onClick={recordRowClick(() => {
-                        setMenuId(null);
+                        setMenu(null);
                         onView(row.id);
                       })}
                     >
@@ -506,7 +552,7 @@ export function CheckRegister({
                         {row.checkType.replace(" Check", "")}
                       </td>
                       <td className="overflow-hidden text-ellipsis">
-                        <button type="button" className="block max-w-full truncate text-left text-xs font-bold hover:underline" onClick={() => { setMenuId(null); onView(row.id); }} aria-label={`Open check for ${row.payeeName}`}>
+                        <button type="button" className="block max-w-full truncate text-left text-xs font-bold hover:underline" onClick={() => { setMenu(null); onView(row.id); }} aria-label={`Open check for ${row.payeeName}`}>
                           {row.payeeName}
                         </button>
                         <span className="mt-1 block truncate text-[10px] text-[#888]">
@@ -530,11 +576,12 @@ export function CheckRegister({
                           <button
                             className="table-action"
                             aria-label={`Actions for ${row.checkNumber}`}
-                            onClick={() => setMenuId(menuId === row.id ? null : row.id)}
+                            aria-expanded={menu?.id === row.id}
+                        aria-haspopup="dialog"
+                        onClick={(event) => setMenu(menu?.id === row.id ? null : { id: row.id, trigger: event.currentTarget })}
                           >
                             <MoreHorizontal size={17} />
                           </button>
-                          {actionMenu(row)}
                         </div>
                       </td>
                     </tr>
@@ -555,6 +602,7 @@ export function CheckRegister({
         />
         </div>
       </section>
+      {menuRow && actionMenu(menuRow)}
     </div>
   );
 }
