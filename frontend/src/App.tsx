@@ -942,9 +942,9 @@ function App() {
                       notify(result.errors.form || "Unable to delete record.");
                       return;
                     }
-                    setChecks(getCheckRecords());
-                    setPayables(getPayableRecords());
-                    setReceivables(getReceivableRecords());
+                    if (canAccessPage("checks")) setChecks(getCheckRecords());
+                    if (canAccessPage("payables")) setPayables(getPayableRecords());
+                    if (canAccessPage("receivables")) setReceivables(getReceivableRecords());
                   }
                   notify("Record moved to Deleted Records.");
                 } catch {
@@ -962,9 +962,9 @@ function App() {
                       notify(result.errors.form || "Unable to restore record.");
                       return false;
                     }
-                    setChecks(getCheckRecords());
-                    setPayables(getPayableRecords());
-                    setReceivables(getReceivableRecords());
+                    if (canAccessPage("checks")) setChecks(getCheckRecords());
+                    if (canAccessPage("payables")) setPayables(getPayableRecords());
+                    if (canAccessPage("receivables")) setReceivables(getReceivableRecords());
                   }
                   notify("Record restored.");
                   return true;
@@ -978,13 +978,13 @@ function App() {
           {page === "deleted" && (
             <ArchivedRecords
               key="deleted-records"
-              checks={checkService.listDeleted()}
+              checks={canAccessPage("checks") ? checkService.listDeleted() : []}
               payables={[]}
               receivables={[]}
               employees={deletedEmployees}
               deletedFinancialRecords={[
-                ...payableService.listDeleted().map((record) => ({ key: `payable-${record.id}`, id: record.id, module: "Payables" as const, reference: record.invoiceNumber, name: record.payeeName, deletedAt: record.deletedAt, details: { ...record } })),
-                ...receivableService.listDeleted().map((record) => ({ key: `receivable-${record.id}`, id: record.id, module: "Receivables" as const, reference: record.invoiceNumber, name: record.customerName, deletedAt: record.deletedAt, details: { ...record } })),
+                ...(canAccessPage("payables") ? payableService.listDeleted() : []).map((record) => ({ key: `payable-${record.id}`, id: record.id, module: "Payables" as const, reference: record.invoiceNumber, name: record.payeeName, deletedAt: record.deletedAt, details: { ...record } })),
+                ...(canAccessPage("receivables") ? receivableService.listDeleted() : []).map((record) => ({ key: `receivable-${record.id}`, id: record.id, module: "Receivables" as const, reference: record.invoiceNumber, name: record.customerName, deletedAt: record.deletedAt, details: { ...record } })),
               ]}
               deleted
               onRestore={(module, id) => {
@@ -1001,9 +1001,9 @@ function App() {
                       notify(result.errors.form || "Unable to restore record.");
                       return false;
                     }
-                    setChecks(getCheckRecords());
-                    setPayables(getPayableRecords());
-                    setReceivables(getReceivableRecords());
+                    if (canAccessPage("checks")) setChecks(getCheckRecords());
+                    if (canAccessPage("payables")) setPayables(getPayableRecords());
+                    if (canAccessPage("receivables")) setReceivables(getReceivableRecords());
                   }
                   notify("Record restored.");
                   return true;
@@ -1099,7 +1099,7 @@ export function ArchivedRecords({ checks, payables, receivables, employees, onRe
     ...employees.filter((record) => deleted || record.archived).map((record) => ({
       key: `employee-${record.id}`, id: record.id, module: "Employees" as const, reference: record.number, name: record.name, deletedAt: record.deletedAt, details: { ...record },
     })),
-  ];
+  ].filter((record) => canAccessPage({ Checks: "checks", Payables: "payables", Receivables: "receivables", Employees: "employees" }[record.module]));
   const reviewRecord = records.find((record) => record.key === reviewKey);
   useEffect(() => {
     if (reviewRecord) reviewDialogRef.current?.showModal();

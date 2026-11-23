@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Http\Controllers\BusinessStateController;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
@@ -40,6 +39,8 @@ class AccessControlTest extends TestCase
     #[TestWith(['finance', '/users'])]
     #[TestWith(['finance', '/activity-logs'])]
     #[TestWith(['finance', '/settings'])]
+    #[TestWith(['hr', '/archives'])]
+    #[TestWith(['hr', '/deleted'])]
     public function test_manual_unauthorized_urls_return_403(string $role, string $url): void
     {
         $this->signIn(User::factory()->withRole($role)->create());
@@ -58,6 +59,10 @@ class AccessControlTest extends TestCase
     #[TestWith(['finance', '/checks'])]
     #[TestWith(['finance', '/payables'])]
     #[TestWith(['finance', '/receivables'])]
+    #[TestWith(['finance', '/archives'])]
+    #[TestWith(['finance', '/deleted'])]
+    #[TestWith(['super-admin', '/archives'])]
+    #[TestWith(['super-admin', '/deleted'])]
     public function test_authorized_module_routes_open_the_existing_interface(string $role, string $url): void
     {
         $this->signIn(User::factory()->withRole($role)->create());
@@ -100,6 +105,22 @@ class AccessControlTest extends TestCase
 
         $response = $this->get('/dashboard')->assertOk()->assertViewIs('application');
         $this->assertSame(['dashboard', 'checks', 'payables', 'receivables', 'account'], $response->viewData('session')['user']['permissions']);
+    }
+
+    public function test_finance_record_pages_follow_monitoring_permissions_without_granting_administration(): void
+    {
+        $role = Role::where('slug', 'finance')->firstOrFail();
+        $role->permissions()->sync(Permission::whereIn('slug', ['dashboard', 'account'])->pluck('id'));
+        $this->signIn(User::factory()->withRole('finance')->create());
+        $this->get('/archives')->assertForbidden();
+        $this->get('/deleted')->assertForbidden();
+
+        $role->permissions()->attach(Permission::where('slug', 'payables')->firstOrFail()->id);
+        $this->get('/archives')->assertOk()->assertViewHas('initialPage', 'archives');
+        $this->get('/deleted')->assertOk()->assertViewHas('initialPage', 'deleted');
+        $this->get('/users')->assertForbidden();
+        $this->get('/hr/alphalist')->assertForbidden();
+        $this->getJson('/business-state')->assertOk()->assertJsonCount(1, 'modules')->assertJsonStructure(['modules' => ['payables']]);
     }
 
     public function test_permission_edits_cannot_cross_role_boundaries_even_if_database_is_modified(): void
