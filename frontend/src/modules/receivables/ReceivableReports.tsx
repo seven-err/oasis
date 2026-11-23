@@ -20,7 +20,7 @@ type Props = {
 const REPORTS: { kind: ReceivableReportKind; title: string; detail: string }[] = [
   {
     kind: "complete_register",
-    title: "Complete Receivable Records",
+    title: "Complete Receivable Record",
     detail: "Full authorized receivable listing with derived balances",
   },
   {
