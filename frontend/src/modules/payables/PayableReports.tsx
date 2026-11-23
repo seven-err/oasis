@@ -17,7 +17,7 @@ type Props = {
 const REPORTS: { kind: PayableReportKind; title: string; detail: string }[] = [
   {
     kind: "complete_register",
-    title: "Complete Payable Register",
+    title: "Complete Payable Records",
     detail: "Full authorized payable listing with derived balances",
   },
   {
@@ -39,11 +39,6 @@ const REPORTS: { kind: PayableReportKind; title: string; detail: string }[] = [
     kind: "overdue",
     title: "Overdue Payables Report",
     detail: "Payables past due with remaining balance",
-  },
-  {
-    kind: "by_category",
-    title: "Payables by Category",
-    detail: "Grouped summary by category",
   },
   {
     kind: "by_payee",
@@ -68,7 +63,7 @@ const REPORTS: { kind: PayableReportKind; title: string; detail: string }[] = [
 ];
 
 function hasDateColumn(kind: PayableReportKind) {
-  return !['by_category', 'by_payee', 'by_method'].includes(kind);
+  return !['by_payee', 'by_method'].includes(kind);
 }
 
 function activeRecords(records: PayableViewModel[]) {
@@ -100,7 +95,6 @@ function selectPayableRows(
         if (dateTo && r.invoiceDate > dateTo) return false;
         return true;
       });
-    case "by_category":
     case "by_payee":
       return active;
     default:
@@ -125,14 +119,10 @@ function payableExportRows(rows: PayableViewModel[]) {
   }));
 }
 
-function groupedExport(
-  rows: PayableViewModel[],
-  key: "categoryName" | "payeeName",
-  label: string,
-) {
+function groupedExport(rows: PayableViewModel[]) {
   const map = new Map<string, { count: number; total: number; paid: number; remaining: number }>();
   for (const r of rows) {
-    const k = r[key];
+    const k = r.payeeName;
     const cur = map.get(k) ?? { count: 0, total: 0, paid: 0, remaining: 0 };
     cur.count += 1;
     cur.total += r.totalAmount;
@@ -141,7 +131,7 @@ function groupedExport(
     map.set(k, cur);
   }
   return [...map.entries()].map(([name, stats]) => ({
-    [label]: name,
+    Payee: name,
     Payables: stats.count,
     TotalAmount: stats.total.toFixed(2),
     AmountPaid: stats.paid.toFixed(2),
@@ -201,8 +191,7 @@ export function PayableReports({ records, onBack, notify }: Props) {
     switch (kind) {
       case "payment_history": return paymentExportRows(payments, records);
       case "by_method": return methodExportRows(payments);
-      case "by_category": return groupedExport(rows, "categoryName", "Category");
-      case "by_payee": return groupedExport(rows, "payeeName", "Payee");
+      case "by_payee": return groupedExport(rows);
       default: return payableExportRows(rows);
     }
   };
@@ -219,9 +208,9 @@ export function PayableReports({ records, onBack, notify }: Props) {
         Status: row.IsReversal === "Yes" ? "Reversal" : row.Reversed === "Yes" ? "Reversed" : "Valid",
       };
     }
-    if (kind === "by_category" || kind === "by_payee") {
+    if (kind === "by_payee") {
       return {
-        [kind === "by_category" ? "Category" : "Payee"]: row.Category ?? row.Payee,
+        Payee: row.Payee,
         Payables: row.Payables,
         Total: row.TotalAmount,
         Paid: row.AmountPaid,

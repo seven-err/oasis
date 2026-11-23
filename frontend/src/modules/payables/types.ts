@@ -192,7 +192,6 @@ export type PayableReportKind =
   | "partial"
   | "paid"
   | "overdue"
-  | "by_category"
   | "by_payee"
   | "payment_history"
   | "by_method"
