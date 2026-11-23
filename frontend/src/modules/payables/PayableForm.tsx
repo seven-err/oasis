@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useState } from "react";
+import { Trash2, X } from "lucide-react";
 import { PAYMENT_METHODS } from "./constants";
 import { payableService } from "./store";
-import type { PayableFormValues, PayableRecord, ValidationResult } from "./types";
-import { FormInput, FormSelect, FormTextarea, PanelTitle } from "./ui";
-import { emptyFormValues, recordToFormValues } from "./utils";
+import type { PayableFormValues, PayableItemValues, PayableRecord, ValidationResult } from "./types";
+import { FormInput, FormSelect, PanelTitle } from "./ui";
+import { emptyFormValues, payableItemAmount, payableItemsTotal, peso, recordToFormValues } from "./utils";
 import { useUnsavedForm } from "@/hooks/useUnsavedForm";
 import { focusFirstError, updateVisibleErrors } from "@/components/formValidation";
 import { validatePayablePayload } from "./validation";
@@ -17,29 +18,34 @@ type Props = {
 
 export function PayableForm({ mode, record, onCancel, onSaved }: Props) {
   const { markDirty, markSaved } = useUnsavedForm();
-  const categories = useMemo(() => payableService.categories(true), []);
+  const itemsErrorId = useId();
   const [values, setValues] = useState<PayableFormValues>(() =>
     record
-      ? recordToFormValues(record)
-      : emptyFormValues({
-          categoryId: categories[0] ? String(categories[0].id) : "",
-          paymentMethod: "",
-        }),
+      ? recordToFormValues(record, payableService.paymentsFor(record.id))
+      : emptyFormValues(),
   );
   const [errors, setErrors] = useState<ValidationResult["errors"]>({});
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setErrors((current) => Object.values(current).some(Boolean)
-      ? updateVisibleErrors(current, validatePayablePayload(values, { existing: payableService.list(), categories, editingId: record?.id }).errors)
+      ? updateVisibleErrors(current, validatePayablePayload(values, { existing: payableService.list(), editingId: record?.id }).errors)
       : current);
-  }, [values, categories, record]);
+  }, [values, record]);
 
   const set =
     (key: keyof PayableFormValues) =>
     (value: string) => {
       setValues((prev) => ({ ...prev, [key]: value }));
     };
+
+  const updateItem = (index: number, key: keyof PayableItemValues, value: string) => {
+    markDirty();
+    setValues((current) => ({
+      ...current,
+      items: current.items.map((item, position) => position === index ? { ...item, [key]: value } : item),
+    }));
+  };
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -99,21 +105,6 @@ export function PayableForm({ mode, record, onCancel, onSaved }: Props) {
                 onChange={set("invoiceNumber")}
                 error={errors.invoiceNumber}
               />
-              <FormSelect
-                label="Category"
-                name="categoryId"
-                required
-                value={values.categoryId}
-                onChange={set("categoryId")}
-                error={errors.categoryId}
-              >
-                <option value="">Select category</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </FormSelect>
               <FormInput
                 label="Invoice date"
                 name="invoiceDate"
@@ -123,6 +114,7 @@ export function PayableForm({ mode, record, onCancel, onSaved }: Props) {
                 onChange={set("invoiceDate")}
                 error={errors.invoiceDate}
               />
+              {values.paymentStatus === "Unpaid" && (
               <FormInput
                 label="Due date"
                 name="dueDate"
@@ -132,17 +124,21 @@ export function PayableForm({ mode, record, onCancel, onSaved }: Props) {
                 onChange={set("dueDate")}
                 error={errors.dueDate}
               />
-              <FormInput
-                label="Total amount"
-                name="totalAmount"
-                type="number"
-                required
-                value={values.totalAmount}
-                onChange={set("totalAmount")}
-                error={errors.totalAmount}
-              />
+              )}
               <FormSelect
-                label="Expected payment method"
+                label="Payment status"
+                name="paymentStatus"
+                required
+                value={values.paymentStatus}
+                onChange={set("paymentStatus")}
+                error={errors.paymentStatus}
+              >
+                <option value="Unpaid">Unpaid</option>
+                <option value="Paid">Paid</option>
+              </FormSelect>
+              <FormSelect
+                label={values.paymentStatus === "Paid" ? "Payment method" : "Expected payment method"}
+                required={values.paymentStatus === "Paid"}
                 name="paymentMethod"
                 value={values.paymentMethod}
                 onChange={set("paymentMethod")}
@@ -156,24 +152,136 @@ export function PayableForm({ mode, record, onCancel, onSaved }: Props) {
                 ))}
               </FormSelect>
               <FormInput
-                label="Reference number"
+                label="Reference number (optional)"
                 name="referenceNumber"
                 value={values.referenceNumber}
                 onChange={set("referenceNumber")}
                 error={errors.referenceNumber}
                 placeholder="Internal AP reference"
               />
-              <div className="sm:col-span-2 lg:col-span-3">
-                <FormTextarea
-                  label="Description"
-                  name="description"
-                  required
-                  value={values.description}
-                  onChange={set("description")}
-                  error={errors.description}
-                />
-              </div>
+              {values.paymentStatus === "Paid" && (
+                  <p className="text-xs text-[#555] sm:col-span-2 lg:col-span-3">
+                    Saving as Paid records a payment for the remaining balance using today’s date. Select the payment method above; the reference number is optional.
+                  </p>
+              )}
             </div>
+          </fieldset>
+
+          <fieldset>
+            <legend className="mb-4 text-[10px] font-bold uppercase tracking-[.14em] text-[#1f6ea6]">
+              Payable items
+            </legend>
+            {(errors.items || errors.totalAmount) && (
+              <p id={itemsErrorId} role="alert" tabIndex={-1} className="mb-3 text-xs text-red-700">
+                {errors.items || errors.totalAmount}
+              </p>
+            )}
+            <div className="overflow-x-auto rounded-lg border border-[#d0e3ef]">
+              <table className="w-full min-w-[600px]">
+                <caption className="sr-only">Payable items</caption>
+                <thead>
+                  <tr>
+                    <th scope="col" className="w-1/2">Item Description</th>
+                    <th scope="col">Quantity</th>
+                    <th scope="col">Price</th>
+                    <th scope="col">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {values.items.map((item, index) => (
+                    <tr key={index}>
+                      <td>
+                        <div className="relative">
+                        <input
+                          className="input pr-9" name="items" aria-label={`Item ${index + 1} description`}
+                          required maxLength={255} value={item.description}
+                          aria-invalid={Boolean(errors.items)} aria-describedby={errors.items ? itemsErrorId : undefined}
+                          onChange={(event) => updateItem(index, "description", event.target.value)}
+                        />
+                          {item.description !== "" && (
+                            <button type="button"
+                              className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded text-[#888] hover:bg-[#e7f3fb] hover:text-[#1f6ea6]"
+                              aria-label={`Clear item ${index + 1} description`}
+                              onClick={(event) => {
+                                updateItem(index, "description", "");
+                                event.currentTarget.parentElement?.querySelector("input")?.focus();
+                              }}
+                            ><X size={14} aria-hidden="true" /></button>
+                          )}
+                        </div>
+
+                      </td>
+                      <td>
+                        <div className="relative">
+                        <input className="input pr-9" name="items" type="number" min="0.01" step="0.01" required
+                          aria-label={`Item ${index + 1} quantity`} value={item.quantity}
+                          aria-invalid={Boolean(errors.items)} aria-describedby={errors.items ? itemsErrorId : undefined}
+                          onChange={(event) => updateItem(index, "quantity", event.target.value)}
+                        />
+                          {item.quantity !== "" && (
+                            <button type="button"
+                              className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded text-[#888] hover:bg-[#e7f3fb] hover:text-[#1f6ea6]"
+                              aria-label={`Clear item ${index + 1} quantity`}
+                              onClick={(event) => {
+                                updateItem(index, "quantity", "");
+                                event.currentTarget.parentElement?.querySelector("input")?.focus();
+                              }}
+                            ><X size={14} aria-hidden="true" /></button>
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="relative">
+                        <input className="input pr-9" name="items" type="number" min="0" step="0.01" required
+                          aria-label={`Item ${index + 1} price`} value={item.price}
+                          aria-invalid={Boolean(errors.items)} aria-describedby={errors.items ? itemsErrorId : undefined}
+                          onChange={(event) => updateItem(index, "price", event.target.value)}
+                        />
+                          {item.price !== "" && (
+                            <button type="button"
+                              className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded text-[#888] hover:bg-[#e7f3fb] hover:text-[#1f6ea6]"
+                              aria-label={`Clear item ${index + 1} price`}
+                              onClick={(event) => {
+                                updateItem(index, "price", "");
+                                event.currentTarget.parentElement?.querySelector("input")?.focus();
+                              }}
+                            ><X size={14} aria-hidden="true" /></button>
+                          )}
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap">
+                        <div className="flex items-center justify-between gap-3">
+                        <output aria-label={`Item ${index + 1} amount`}>
+                          {Number.isFinite(payableItemAmount(item)) ? peso.format(payableItemAmount(item)) : "—"}
+                        </output>
+                        {values.items.length > 1 && (
+                          <button type="button" className="table-action shrink-0"
+                            aria-label={`Remove item ${index + 1}`}
+                            onClick={() => {
+                              markDirty();
+                              setValues((current) => ({ ...current, items: current.items.filter((_, position) => position !== index) }));
+                            }}
+                          ><Trash2 size={16} style={{ color: "#b91c1c" }} aria-hidden="true" /></button>
+                        )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <th scope="row" colSpan={3} className="text-right">Total amount</th>
+                    <td className="whitespace-nowrap font-semibold">
+                      {Number.isFinite(payableItemsTotal(values.items)) ? peso.format(payableItemsTotal(values.items)) : "—"}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+            <button type="button" className="secondary-btn mt-3" onClick={() => {
+              markDirty();
+              setValues((current) => ({ ...current, items: [...current.items, { description: "", quantity: "1", price: "" }] }));
+            }}>Add item</button>
           </fieldset>
 
         </div>

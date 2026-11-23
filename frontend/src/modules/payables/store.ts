@@ -21,7 +21,7 @@ import type {
   PaymentMethod,
   ValidationResult,
 } from "./types";
-import { enrichPayables, nowIso, peso, toViewModel, uid } from "./utils";
+import { enrichPayables, nowIso, payableItemsTotal, peso, todayIsoDate, toViewModel, uid } from "./utils";
 import {
   canReversePayment,
   remainingBalanceFor,
@@ -91,10 +91,111 @@ function logActivity(
   ];
 }
 
+function appendPayment(
+  snapshot: StoreSnapshot,
+  payableId: number,
+  values: PaymentFormValues,
+): PayableServiceResult<PayablePayment> {
+  const user = CURRENT_USER;
+  if (!user.permissions.recordPayments) {
+    return { ok: false, errors: { form: "You are not authorized to record payments." } };
+  }
+
+  const payable = snapshot.payables.find((p) => p.id === payableId);
+  if (!payable) return { ok: false, errors: { form: "Payable record not found." } };
+
+  const checks = checkService.list();
+  const validation = validatePaymentPayload(values, {
+    payable,
+    payments: snapshot.payments,
+    checkExists: (checkId) => checks.some((c) => c.id === checkId && !c.archivedAt),
+  });
+  if (!validation.ok) return { ok: false, errors: validation.errors };
+
+  const method = values.paymentMethod as PaymentMethod;
+  let checkId: number | null = null;
+  let checkNumber: string | null = null;
+  if (method === "Check") {
+    const linked = checks.find((c) => c.id === Number(values.checkId));
+    checkId = linked?.id ?? null;
+    checkNumber = linked?.checkNumber ?? null;
+  }
+
+  const stamp = nowIso();
+  const payment: PayablePayment = {
+    id: uid("pay"),
+    payableId,
+    paymentDate: values.paymentDate,
+    amountPaid: Number(values.amountPaid),
+    paymentMethod: method,
+    referenceNumber: values.referenceNumber.trim(),
+    checkId,
+    checkNumber,
+    remarks: values.remarks.trim() || null,
+    recordedById: user.id,
+    recordedByName: user.name,
+    isReversal: false,
+    reversesPaymentId: null,
+    reversedAt: null,
+    createdAt: stamp,
+    updatedAt: stamp,
+  };
+
+  // Transactional-style update: all or nothing via single persist
+  snapshot.payments = [payment, ...snapshot.payments];
+  snapshot.payables = snapshot.payables.map((p) =>
+    p.id === payableId
+      ? {
+          ...p,
+          paymentMethod: method,
+          referenceNumber: p.referenceNumber || payment.referenceNumber,
+          updatedAt: stamp,
+          updatedById: user.id,
+        }
+      : p,
+  );
+  logActivity(snapshot, {
+    payableId,
+    action: "payment_recorded",
+    summary: `Payment recorded: ${peso.format(payment.amountPaid)}`,
+    performedById: user.id,
+    performedByName: user.name,
+    metadata: {
+      amount: payment.amountPaid,
+      method,
+      paymentId: payment.id,
+      reference: payment.referenceNumber,
+    },
+  });
+  return { ok: true, data: payment };
+}
+
+function applyPaymentStatus(
+  snapshot: StoreSnapshot,
+  record: PayableRecord,
+  values: PayableFormValues,
+): ValidationResult {
+  const remaining = remainingBalanceFor(record, snapshot.payments);
+  if (values.paymentStatus === "Unpaid") {
+    return remaining > 0
+      ? { ok: true, errors: {} }
+      : { ok: false, errors: { paymentStatus: "This payable is fully paid. Reverse the recorded payment before marking it unpaid." } };
+  }
+  if (remaining <= 0) return { ok: true, errors: {} };
+  const result = appendPayment(snapshot, record.id, {
+    paymentDate: todayIsoDate(),
+    amountPaid: String(remaining),
+    paymentMethod: values.paymentMethod,
+    referenceNumber: values.referenceNumber,
+    checkId: "",
+    remarks: "Marked paid from payable form.",
+  });
+  return result.ok ? { ok: true, errors: {} } : { ok: false, errors: result.errors };
+}
+
 function toRecord(
   values: PayableFormValues,
   user: OasisPayableUser,
-  category: PayableCategory,
   existing?: PayableRecord,
 ): PayableRecord {
   const stamp = nowIso();
@@ -102,12 +203,15 @@ function toRecord(
     id: existing?.id ?? Date.now(),
     payeeName: values.payeeName.trim(),
     invoiceNumber: values.invoiceNumber.trim(),
-    description: values.description.trim(),
-    categoryId: category.id,
-    categoryName: category.name,
+    description: values.items.map((item) => item.description.trim()).join("; "),
+    items: values.items.map((item) => ({
+      description: item.description.trim(), quantity: Number(item.quantity), price: Number(item.price),
+    })),
+    categoryId: existing?.categoryId ?? 0,
+    categoryName: existing?.categoryName ?? "",
     invoiceDate: values.invoiceDate,
-    dueDate: values.dueDate,
-    totalAmount: Number(values.totalAmount),
+    dueDate: values.paymentStatus === "Paid" ? existing?.dueDate ?? "" : values.dueDate,
+    totalAmount: payableItemsTotal(values.items),
     paymentMethod: (values.paymentMethod || null) as PaymentMethod | null,
     referenceNumber: values.referenceNumber.trim(),
     approvalStatus: existing?.approvalStatus ?? "Approved",
@@ -186,13 +290,13 @@ export const payableService = {
     }
     const validation = validatePayablePayload(values, {
       existing: snapshot.payables,
-      categories: snapshot.categories,
     });
     if (!validation.ok) return { ok: false, errors: validation.errors };
 
-    const category = snapshot.categories.find((c) => c.id === Number(values.categoryId))!;
-    const record = toRecord(values, user, category);
+    const record = toRecord(values, user);
     snapshot.payables = [record, ...snapshot.payables];
+    const paymentStatus = applyPaymentStatus(snapshot, record, values);
+    if (!paymentStatus.ok) return { ok: false, errors: paymentStatus.errors };
     logActivity(snapshot, {
       payableId: record.id,
       action: "created",
@@ -219,14 +323,13 @@ export const payableService = {
 
     const validation = validatePayablePayload(values, {
       existing: snapshot.payables,
-      categories: snapshot.categories,
       editingId: id,
     });
     if (!validation.ok) return { ok: false, errors: validation.errors };
 
     const amountPaid =
       existing.totalAmount - remainingBalanceFor(existing, snapshot.payments);
-    const newTotal = Number(values.totalAmount);
+    const newTotal = payableItemsTotal(values.items);
     if (newTotal < amountPaid - 0.001) {
       return {
         ok: false,
@@ -236,9 +339,10 @@ export const payableService = {
       };
     }
 
-    const category = snapshot.categories.find((c) => c.id === Number(values.categoryId))!;
-    const record = toRecord(values, user, category, existing);
+    const record = toRecord(values, user, existing);
     snapshot.payables = snapshot.payables.map((p) => (p.id === id ? record : p));
+    const paymentStatus = applyPaymentStatus(snapshot, record, values);
+    if (!paymentStatus.ok) return { ok: false, errors: paymentStatus.errors };
     logActivity(snapshot, {
       payableId: id,
       action: "updated",
@@ -260,79 +364,9 @@ export const payableService = {
     values: PaymentFormValues,
   ): PayableServiceResult<PayablePayment> {
     const snapshot = load();
-    const user = CURRENT_USER;
-    if (!user.permissions.recordPayments) {
-      return { ok: false, errors: { form: "You are not authorized to record payments." } };
-    }
-
-    const payable = snapshot.payables.find((p) => p.id === payableId);
-    if (!payable) return { ok: false, errors: { form: "Payable record not found." } };
-
-    const checks = checkService.list();
-    const validation = validatePaymentPayload(values, {
-      payable,
-      payments: snapshot.payments,
-      checkExists: (checkId) => checks.some((c) => c.id === checkId && !c.archivedAt),
-    });
-    if (!validation.ok) return { ok: false, errors: validation.errors };
-
-    const method = values.paymentMethod as PaymentMethod;
-    let checkId: number | null = null;
-    let checkNumber: string | null = null;
-    if (method === "Check") {
-      const linked = checks.find((c) => c.id === Number(values.checkId));
-      checkId = linked?.id ?? null;
-      checkNumber = linked?.checkNumber ?? null;
-    }
-
-    const stamp = nowIso();
-    const payment: PayablePayment = {
-      id: uid("pay"),
-      payableId,
-      paymentDate: values.paymentDate,
-      amountPaid: Number(values.amountPaid),
-      paymentMethod: method,
-      referenceNumber: values.referenceNumber.trim(),
-      checkId,
-      checkNumber,
-      remarks: values.remarks.trim() || null,
-      recordedById: user.id,
-      recordedByName: user.name,
-      isReversal: false,
-      reversesPaymentId: null,
-      reversedAt: null,
-      createdAt: stamp,
-      updatedAt: stamp,
-    };
-
-    // Transactional-style update: all or nothing via single persist
-    snapshot.payments = [payment, ...snapshot.payments];
-    snapshot.payables = snapshot.payables.map((p) =>
-      p.id === payableId
-        ? {
-            ...p,
-            paymentMethod: method,
-            referenceNumber: p.referenceNumber || payment.referenceNumber,
-            updatedAt: stamp,
-            updatedById: user.id,
-          }
-        : p,
-    );
-    logActivity(snapshot, {
-      payableId,
-      action: "payment_recorded",
-      summary: `Payment recorded: ${peso.format(payment.amountPaid)}`,
-      performedById: user.id,
-      performedByName: user.name,
-      metadata: {
-        amount: payment.amountPaid,
-        method,
-        paymentId: payment.id,
-        reference: payment.referenceNumber,
-      },
-    });
-    persist(snapshot);
-    return { ok: true, data: payment };
+    const result = appendPayment(snapshot, payableId, values);
+    if (result.ok) persist(snapshot);
+    return result;
   },
 
   reversePayment(

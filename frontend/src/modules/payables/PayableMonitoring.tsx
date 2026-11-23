@@ -24,7 +24,7 @@ export function PayableMonitoring({
   const [records, setRecords] = useState<PayableViewModel[]>(() =>
     payableService.listViewModels(),
   );
-  const { view, open: setView, back, replace } = useViewHistory<PayableView>(() =>
+  const { view, open: setView, back, reset } = useViewHistory<PayableView>(() =>
     initialRecordId === undefined ? { mode: "register" } : { mode: "details", id: initialRecordId },
     { mode: "register" },
   );
@@ -73,10 +73,10 @@ export function PayableMonitoring({
       <PayableForm
         mode="create"
         onCancel={back}
-        onSaved={(record) => {
+        onSaved={() => {
           refresh();
           notify("Payable record created.");
-          replace({ mode: "details", id: record.id });
+          reset({ mode: "register" });
         }}
       />
     );
@@ -88,10 +88,10 @@ export function PayableMonitoring({
         mode="edit"
         record={selected}
         onCancel={back}
-        onSaved={(record) => {
+        onSaved={() => {
           refresh();
           notify("Payable record updated.");
-          replace({ mode: "details", id: record.id });
+          reset({ mode: "register" });
         }}
       />
     );

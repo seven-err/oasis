@@ -58,11 +58,24 @@ export type PayablePayment = {
   updatedAt: string;
 };
 
+export type PayableItem = {
+  description: string;
+  quantity: number;
+  price: number;
+};
+
+export type PayableItemValues = {
+  description: string;
+  quantity: string;
+  price: string;
+};
+
 export type PayableRecord = {
   id: number;
   payeeName: string;
   invoiceNumber: string;
   description: string;
+  items?: PayableItem[];
   categoryId: number;
   categoryName: string;
   invoiceDate: string;
@@ -95,13 +108,12 @@ export type PayableViewModel = PayableRecord & {
 };
 
 export type PayableFormValues = {
+  paymentStatus: "Paid" | "Unpaid";
   payeeName: string;
   invoiceNumber: string;
-  description: string;
-  categoryId: string;
+  items: PayableItemValues[];
   invoiceDate: string;
   dueDate: string;
-  totalAmount: string;
   paymentMethod: PaymentMethod | "";
   referenceNumber: string;
 };
@@ -190,7 +202,7 @@ export type ValidationResult = {
   ok: boolean;
   errors: Partial<
     Record<
-      keyof PayableFormValues | keyof PaymentFormValues | "form" | "rejectionReason",
+      keyof PayableFormValues | keyof PaymentFormValues | "form" | "rejectionReason" | "totalAmount",
       string
     >
   >;
