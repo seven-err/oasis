@@ -2,8 +2,8 @@
 
 OASIS Office Management System. One repo, two apps:
 
-- `frontend/` - React + Vite + Tailwind CSS v4 prototype (current UI, data in `localStorage`)
-- `backend/` - Laravel 13 + Blade + MySQL (the app the frontend screens are being ported to)
+- `frontend/` - React + Vite + Tailwind CSS v4 interface; authenticated business records sync to Laravel/MySQL, with browser drafts and legacy import in `localStorage`
+- `backend/` - Laravel 13 + Blade + MySQL; serves the built React screens, authentication, permissions, business-state API and private attachments
 
 Setup for a fresh clone is in `README.md`.
 
@@ -20,7 +20,8 @@ Start with task-relevant files below. Only follow imports or inspect other files
 
 - `src/main.tsx` - React entrypoint; imports `src/index.css` and mounts `src/App.tsx` into the `#root` element
 - `src/App.tsx` - Primary application component and the usual starting point for UI work
-- `src/modules/{checks,payables,receivables}/` - Module screens, `store.ts` (localStorage), `validation.ts`, `seed.ts`
+- `src/modules/{checks,payables,receivables}/` - Module screens, `store.ts` (uses shared business storage), `validation.ts`, `seed.ts`
+- `src/businessStorage.ts` - MySQL-backed module synchronization through Laravel, browser draft recovery and legacy localStorage import; keys are in `src/businessKeys.json`
 - `src/index.css` - Global CSS entrypoint and Tailwind CSS v4 import
 - `index.html` - Vite HTML shell containing the `#root` element and loading `src/main.tsx`
 - `package.json` - Dependencies and the Vite build, development, preview, and formatting scripts
@@ -35,6 +36,7 @@ Runtime: React 19. Build tooling: Vite 8, TypeScript 5.7, `@vitejs/plugin-react`
 Standard Laravel 13 layout: `routes/web.php`, `app/Http/Controllers`, `app/Models`, `resources/views` (Blade), `database/migrations`.
 
 - `database/sql/` - Original hand-written MySQL schema for checks, payables and receivables. Reference for writing Laravel migrations; not run by `php artisan migrate`.
+- `database/migrations/` - Active schema, including `business_states`: one row per module, with records stored as JSON in a LONGTEXT `data` column. Actual MySQL data is outside Git; see README backup/transfer instructions.
 - `.env.example` - Defaults to MySQL `oasis` on `127.0.0.1:3306`, user `root`, empty password (Laragon defaults).
 - Tests use in-memory SQLite (`phpunit.xml`), so `php artisan test` needs no MySQL.
 
