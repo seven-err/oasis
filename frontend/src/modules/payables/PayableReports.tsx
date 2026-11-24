@@ -17,7 +17,7 @@ type Props = {
 const REPORTS: { kind: PayableReportKind; title: string; detail: string }[] = [
   {
     kind: "complete_register",
-    title: "Complete Payable Records",
+    title: "Complete Payable Record",
     detail: "Full authorized payable listing with derived balances",
   },
   {
