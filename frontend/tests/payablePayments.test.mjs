@@ -203,6 +203,15 @@ test("Finance records payments without approval while retaining payment safeguar
     assert.equal(service.list().length, countBefore + 1);
 
     assert.equal(service.recordPayment(record.id, payload).ok, false);
+    const savedPayables = service.list();
+    const nullableRecord = { ...service.get(created.data.id), referenceNumber: null };
+    values.set("oasis.payables.v1", JSON.stringify(savedPayables.map((row) => row.id === nullableRecord.id ? nullableRecord : row)));
+    const nullableEdit = recordToFormValues(service.get(nullableRecord.id));
+    assert.equal(nullableEdit.referenceNumber, "", "a saved null reference opens as an empty editable field");
+    const savedEdit = service.update(nullableRecord.id, { ...nullableEdit, payeeName: "Corrected supplier" });
+    assert.equal(savedEdit.ok, true, "editing a payable with a null optional reference does not throw");
+    assert.equal(savedEdit.data.referenceNumber, "");
+    assert.equal(savedEdit.data.payeeName, "Corrected supplier");
   } finally {
     await server.close();
     if (previousStorage === undefined) delete globalThis.localStorage;

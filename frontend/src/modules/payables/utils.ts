@@ -170,7 +170,7 @@ export function recordToFormValues(record: PayableRecord, payments: PayablePayme
     invoiceDate: record.invoiceDate,
     dueDate: record.dueDate,
     paymentMethod: record.paymentMethod ?? "",
-    referenceNumber: record.referenceNumber,
+    referenceNumber: record.referenceNumber ?? "",
   };
 }
 

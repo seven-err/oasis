@@ -102,7 +102,7 @@ class BusinessStateTest extends TestCase
     {
         $this->signIn(User::factory()->withRole('finance')->create());
         $payables = array_fill_keys(BusinessStateController::KEYS['payables'], []);
-        $payables['oasis.payables.v1'] = [['id' => 10, 'invoiceNumber' => 'INV-10', 'totalAmount' => 500]];
+        $payables['oasis.payables.v1'] = [['id' => 10, 'invoiceNumber' => 'INV-10', 'totalAmount' => 500, 'referenceNumber' => '', 'paymentMethod' => null]];
         $payables['oasis.payable-payments.v1'] = [['id' => 'pay_10', 'payableId' => 10, 'amountPaid' => 200]];
         $this->putJson('/business-state/payables', ['version' => 0, 'data' => $payables])->assertOk();
         $receivables = array_fill_keys(BusinessStateController::KEYS['receivables'], []);

@@ -15,6 +15,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Shared JSON records must keep blank strings for editable form fields.
+        $middleware->convertEmptyStringsToNull(except: [
+            fn (Request $request): bool => $request->is('business-state/*'),
+        ]);
         // The office tunnel connects through loopback; remote proxy headers stay untrusted.
         $middleware->trustProxies(at: ['127.0.0.1', '::1']);
         $middleware->alias([
