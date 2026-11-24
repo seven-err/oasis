@@ -8,7 +8,7 @@ import type {
   ValidationResult,
 } from "./types";
 import { FieldError, FormInput, FormSelect, FormTextarea, PanelTitle } from "./ui";
-import { emptyFormValues, recordToFormValues } from "./utils";
+import { paymentMethodLabel, emptyFormValues, recordToFormValues } from "./utils";
 import { useUnsavedForm } from "@/hooks/useUnsavedForm";
 import { focusFirstError, updateVisibleErrors } from "@/components/formValidation";
 import { validateCustomerPayload, validateReceivablePayload } from "./validation";
@@ -319,7 +319,7 @@ export function ReceivableForm({ mode, record, onCancel, onSaved }: Props) {
                 <option value="">Not specified</option>
                 {PAYMENT_METHODS.map((m) => (
                   <option key={m} value={m}>
-                    {m}
+                    {paymentMethodLabel(m)}
                   </option>
                 ))}
               </FormSelect>

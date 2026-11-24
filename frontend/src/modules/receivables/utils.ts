@@ -394,7 +394,7 @@ export function downloadCsv(
 }
 
 export function paymentMethodLabel(method: PaymentMethod | null | undefined): string {
-  return method ?? "—";
+  return method === "Check" ? "Cheque" : method ?? "—";
 }
 
 export function methodNeedsBank(method: PaymentMethod | ""): boolean {

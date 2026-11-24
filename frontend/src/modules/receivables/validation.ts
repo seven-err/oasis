@@ -199,14 +199,14 @@ export function validateCollectionPayload(
   if (methodNeedsCheck(method)) {
     if (!values.checkNumber.trim() && !values.checkId) {
       errors.checkNumber =
-        "Enter a check number or link an existing Check Monitoring record.";
+        "Enter a cheque number or link an existing Cheque Monitoring record.";
     }
     if (values.checkId) {
       const checkId = Number(values.checkId);
       if (Number.isNaN(checkId)) {
-        errors.checkId = "Select a valid check record.";
+        errors.checkId = "Select a valid cheque record.";
       } else if (options.checkExists && !options.checkExists(checkId)) {
-        errors.checkId = "Selected check record was not found.";
+        errors.checkId = "Selected cheque record was not found.";
       }
     }
   }

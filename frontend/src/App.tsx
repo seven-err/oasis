@@ -1174,7 +1174,7 @@ export function ArchivedRecords({ checks, payables, receivables, employees, onRe
                     }
                   }}
                 >
-                  <td>{record.module}</td><td>{record.reference}</td><td>{record.name}</td>
+                  <td>{record.module === "Checks" ? "Cheques" : record.module}</td><td>{record.reference}</td><td>{record.name}</td>
                   {deleted && (
                     <td className={daysLeft !== null && daysLeft <= 7 ? "font-semibold text-red-700" : "text-[#555]"}>
                       {daysLeft === null ? "Date unavailable" : daysLeft === 0 ? "Pending cleanup" : `${daysLeft} ${daysLeft === 1 ? "day" : "days"} left`}
@@ -1183,7 +1183,7 @@ export function ArchivedRecords({ checks, payables, receivables, employees, onRe
                   <td className="w-16 text-right" onClick={(event) => event.stopPropagation()}>
                     <button
                       type="button"
-                      aria-label={`Actions for ${record.module} ${record.reference}`}
+                      aria-label={`Actions for ${record.module === "Checks" ? "Cheques" : record.module} ${record.reference}`}
                       popoverTarget={`archive-actions-${record.key}`}
                       className="ml-auto grid size-8 place-items-center rounded hover:bg-[#e7f3fb]"
                       onClick={(event) => {
@@ -1231,7 +1231,7 @@ export function ArchivedRecords({ checks, payables, receivables, employees, onRe
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 id="record-review-title" className="text-lg font-semibold">{reviewRecord?.reference || "Record review"}</h2>
-            <p className="mt-1 text-sm text-[#737373]">{reviewRecord?.module} · {reviewRecord?.name}</p>
+            <p className="mt-1 text-sm text-[#737373]">{reviewRecord?.module === "Checks" ? "Cheques" : reviewRecord?.module} · {reviewRecord?.name}</p>
           </div>
           <button type="button" aria-label="Close record review" className="grid size-8 shrink-0 place-items-center rounded hover:bg-[#e7f3fb]" onClick={() => setReviewKey(null)}><X size={18} /></button>
         </div>
@@ -1240,13 +1240,13 @@ export function ArchivedRecords({ checks, payables, receivables, employees, onRe
             value != null && value !== "" && !key.endsWith("Id") && key !== "id" && key !== "initials"
           ).map(([key, value]) => (
             <div key={key} className="min-w-0">
-              <dt className="text-xs capitalize text-[#737373]">{key.replace(/([a-z])([A-Z])/g, "$1 $2")}</dt>
+              <dt className="text-xs capitalize text-[#737373]">{key.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/check/gi, "cheque")}</dt>
               <dd className="mt-1 whitespace-pre-wrap break-words text-sm">
                 {key === "accountNumber" ? `•••• ${String(value).slice(-4)}`
                   : Array.isArray(value) ? value.join(", ") || "None"
                   : typeof value === "boolean" ? value ? "Yes" : "No"
                   : value && typeof value === "object" ? Object.values(value).map((item) => item instanceof File ? item.name : String(item)).join(", ") || "None"
-                  : String(value)}
+                  : key === "checkType" || key === "paymentMethod" ? checkTypeLabel(String(value)) : String(value)}
               </dd>
             </div>
           ))}

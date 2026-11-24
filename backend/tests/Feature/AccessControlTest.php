@@ -187,6 +187,9 @@ class AccessControlTest extends TestCase
 
         $response = $this->getJson('/settings')->assertOk()->assertJsonCount(2, 'roles');
         $hrSettings = collect($response->json('roles'))->firstWhere('id', $hr->id);
+        foreach ($response->json('roles') as $settings) {
+            $this->assertSame('Cheque Monitoring', collect($settings['availablePermissions'])->firstWhere('slug', 'checks')['name']);
+        }
         $this->assertSame(['hr', 'checks', 'payables', 'receivables'], array_column($hrSettings['availablePermissions'], 'slug'));
         $this->assertContains('hr', $hrSettings['permissions']);
 

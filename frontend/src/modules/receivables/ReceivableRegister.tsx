@@ -42,6 +42,7 @@ import type {
 } from "./types";
 import { EmptyState, PaginationBar, StatusBadge } from "./ui";
 import {
+  paymentMethodLabel,
   canCancelReceivable,
   filterReceivables,
   formatDate,
@@ -469,7 +470,7 @@ export function ReceivableRegister({
           <ActiveFilters
             filters={filters}
             defaults={EMPTY_FILTERS}
-            valueLabels={{ customerId: Object.fromEntries(customers.map((customer) => [String(customer.id), customer.customerName])), preparedById: { "1": "Miguel Alvarina", ...Object.fromEntries(records.map((record) => [String(record.preparedById), record.preparedByName])) } }}
+            valueLabels={{ paymentMethod: { Check: "Cheque" }, customerId: Object.fromEntries(customers.map((customer) => [String(customer.id), customer.customerName])), preparedById: { "1": "Miguel Alvarina", ...Object.fromEntries(records.map((record) => [String(record.preparedById), record.preparedByName])) } }}
             matched={filtered.length}
             total={records.filter((record) => filters.includeArchived || !record.archivedAt).length}
             onRemove={(key) => setFilter(key, EMPTY_FILTERS[key])}
@@ -580,7 +581,7 @@ export function ReceivableRegister({
                   <option value="All">All methods</option>
                   {PAYMENT_METHODS.map((m) => (
                     <option key={m} value={m}>
-                      {m}
+                      {paymentMethodLabel(m)}
                     </option>
                   ))}
                 </select>

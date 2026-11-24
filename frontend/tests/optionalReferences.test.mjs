@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { createServer } from "vite";
 
 test("customers and receivables save without client IDs, and references are optional", async () => {
@@ -20,6 +22,21 @@ test("customers and receivables save without client IDs, and references are opti
       roleName: "Finance", mustChangePassword: false,
       permissions: ["checks", "receivables"],
     } });
+    const { seedReceivables } = await server.ssrLoadModule("/src/modules/receivables/seed.ts");
+    const { seedChecks } = await server.ssrLoadModule("/src/modules/checks/seed.ts");
+    storage.set("oasis.receivables.v1", JSON.stringify(seedReceivables));
+    storage.set("oasis.checks.v1", JSON.stringify(seedChecks));
+    const { HeaderBackProvider } = await server.ssrLoadModule("/src/components/HeaderBack.tsx");
+    const { ReceivableForm } = await server.ssrLoadModule("/src/modules/receivables/ReceivableForm.tsx");
+    const form = renderToStaticMarkup(createElement(HeaderBackProvider, null,
+      createElement(ReceivableForm, { mode: "create", onCancel() {}, onSaved() {} }),
+    ));
+    assert.match(form, /<option value="Check">Cheque<\/option>/);
+    assert.doesNotMatch(form, />Check<\/option>/);
+    const { paymentMethodLabel } = await server.ssrLoadModule("/src/modules/receivables/utils.ts");
+    assert.equal(paymentMethodLabel("Check"), "Cheque");
+    assert.equal(paymentMethodLabel("Cash"), "Cash");
+    assert.equal(paymentMethodLabel(null), "—");
     const { receivableService } = await server.ssrLoadModule("/src/modules/receivables/store.ts");
     const { recordToFormValues } = await server.ssrLoadModule("/src/modules/receivables/utils.ts");
     const { validateCustomerPayload } = await server.ssrLoadModule("/src/modules/receivables/validation.ts");

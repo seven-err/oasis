@@ -39,6 +39,7 @@ import {
   StatusBadge,
 } from "./ui";
 import {
+  paymentMethodLabel,
   formatDate,
   formatDateTime,
   methodNeedsBank,
@@ -327,11 +328,11 @@ export function ReceivableDetails({
       "Total receivable amount": peso.format(record.totalReceivableAmount),
       "Amount paid": peso.format(record.amountPaid),
       "Remaining balance": peso.format(record.remainingBalance),
-      "Expected payment method": record.paymentMethod,
-      "Latest payment method": record.displayPaymentMethod,
+      "Expected payment method": paymentMethodLabel(record.paymentMethod),
+      "Latest payment method": paymentMethodLabel(record.displayPaymentMethod),
       "Latest payment reference": record.displayPaymentReference,
       "Bank name": record.displayBankName,
-      "Check number": record.displayCheckNumber,
+      "Cheque number": record.displayCheckNumber,
       "Collection status": record.collectionStatus,
       "Days overdue": record.daysOverdue,
       "Collection follow-up date": record.collectionFollowUpDate ? formatDate(record.collectionFollowUpDate) : null,
@@ -344,7 +345,7 @@ export function ReceivableDetails({
     const rows: Record<string, unknown>[] = Object.entries(details).map(([Field, Value]) => ({ Field, Value }));
     rows.push(...(collections.length ? collections.map((c) => ({
       Field: `Collection · ${formatDate(c.collectionDate)}`,
-      Value: `${peso.format(c.amountCollected)} · ${c.paymentMethod} · Reference: ${c.paymentReferenceNumber || "—"} · Bank: ${c.bankName || "—"} · Check: ${c.checkNumber || "—"} · Recorded by: ${c.recordedByName} · ${c.isReversal ? "Reversal" : c.reversedAt ? "Reversed" : "Valid"}`,
+      Value: `${peso.format(c.amountCollected)} · ${paymentMethodLabel(c.paymentMethod)} · Reference: ${c.paymentReferenceNumber || "—"} · Bank: ${c.bankName || "—"} · Cheque: ${c.checkNumber || "—"} · Recorded by: ${c.recordedByName} · ${c.isReversal ? "Reversal" : c.reversedAt ? "Reversed" : "Valid"}`,
     })) : [{ Field: "Collection history", Value: "No collections recorded yet." }]));
     rows.push(...(followUps.length ? followUps.map((f) => ({
       Field: `Follow-up · ${formatDate(f.followUpDate)}`,
@@ -491,7 +492,7 @@ export function ReceivableDetails({
                 <option value="">Select method</option>
                 {PAYMENT_METHODS.map((m) => (
                   <option key={m} value={m}>
-                    {m}
+                    {paymentMethodLabel(m)}
                   </option>
                 ))}
               </FormSelect>
@@ -516,21 +517,21 @@ export function ReceivableDetails({
               {methodNeedsCheck(collectionValues.paymentMethod) && (
                 <>
                   <FormInput
-                    label="Check number"
+                    label="Cheque number"
                     name="checkNumber"
                     value={collectionValues.checkNumber}
                     onChange={setCol("checkNumber")}
                     error={collectionErrors.checkNumber}
-                    placeholder="Optional if linking a check"
+                    placeholder="Optional if linking a cheque"
                   />
                   <FormSelect
-                    label="Linked Check Monitoring record"
+                    label="Linked Cheque Monitoring record"
                     name="checkId"
                     value={collectionValues.checkId}
                     onChange={setCol("checkId")}
                     error={collectionErrors.checkId}
                   >
-                    <option value="">No linked check</option>
+                    <option value="">No linked cheque</option>
                     {linkableChecks.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.checkNumber} · {c.drawerName} · {c.bankName} ·{" "}
@@ -539,8 +540,8 @@ export function ReceivableDetails({
                     ))}
                   </FormSelect>
                   <p className="sm:col-span-2 lg:col-span-3 text-[11px] text-[#777]">
-                    Check collections do not auto-create Check Monitoring records. Link an
-                    existing received check or register a new check in Check Monitoring.
+                    Cheque collections do not auto-create Cheque Monitoring records. Link an
+                    existing received cheque or register a new cheque in Cheque Monitoring.
                   </p>
                 </>
               )}
@@ -680,11 +681,11 @@ export function ReceivableDetails({
           items={[
             {
               label: "Expected payment method",
-              value: record.paymentMethod ?? "—",
+              value: paymentMethodLabel(record.paymentMethod),
             },
             {
               label: "Latest payment method",
-              value: record.displayPaymentMethod ?? "—",
+              value: paymentMethodLabel(record.displayPaymentMethod),
             },
             {
               label: "Latest payment reference",
@@ -698,7 +699,7 @@ export function ReceivableDetails({
         <DetailGrid
           items={[
             { label: "Bank name", value: record.displayBankName ?? "—" },
-            { label: "Check number", value: record.displayCheckNumber ?? "—" },
+            { label: "Cheque number", value: record.displayCheckNumber ?? "—" },
           ]}
         />
       </SectionCard>
@@ -889,7 +890,7 @@ export function ReceivableDetails({
                   <th>Amount</th>
                   <th>Method</th>
                   <th>Reference</th>
-                  <th className="hidden md:table-cell">Bank / Check</th>
+                  <th className="hidden md:table-cell">Bank / Cheque</th>
                   <th className="hidden lg:table-cell">Recorded by</th>
                   <th>Status</th>
                   <th>
@@ -904,7 +905,7 @@ export function ReceivableDetails({
                     <tr key={c.id} className={isDead ? "opacity-60" : ""}>
                       <td>{formatDate(c.collectionDate)}</td>
                       <td className="font-semibold">{peso.format(c.amountCollected)}</td>
-                      <td>{c.paymentMethod}</td>
+                      <td>{paymentMethodLabel(c.paymentMethod)}</td>
                       <td className="overflow-hidden text-ellipsis">
                         {c.paymentReferenceNumber}
                       </td>

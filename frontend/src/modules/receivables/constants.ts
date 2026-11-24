@@ -28,7 +28,7 @@ export const ATTACHMENT_KINDS: { value: AttachmentKind; label: string }[] = [
   { value: "official_receipt", label: "Official receipt" },
   { value: "deposit_slip", label: "Deposit slip" },
   { value: "bank_transfer", label: "Bank transfer confirmation" },
-  { value: "check_image", label: "Check image" },
+  { value: "check_image", label: "Cheque image" },
   { value: "other", label: "Other supporting document" },
 ];
 

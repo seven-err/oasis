@@ -9,7 +9,7 @@ import type {
   ReceivableViewModel,
 } from "./types";
 import { PanelTitle, StatusBadge } from "./ui";
-import { downloadCsv, formatDate, peso, validCollections } from "./utils";
+import { paymentMethodLabel, downloadCsv, formatDate, peso, validCollections } from "./utils";
 
 type Props = {
   records: ReceivableViewModel[];
@@ -139,7 +139,7 @@ function receivableExportRows(rows: ReceivableViewModel[]) {
     TotalReceivable: r.totalReceivableAmount.toFixed(2),
     AmountPaid: r.amountPaid.toFixed(2),
     RemainingBalance: r.remainingBalance.toFixed(2),
-    PaymentMethod: r.displayPaymentMethod ?? "",
+    PaymentMethod: r.displayPaymentMethod ? paymentMethodLabel(r.displayPaymentMethod) : "",
     CollectionStatus: r.collectionStatus,
     DaysOverdue: r.daysOverdue,
     FollowUpDate: r.collectionFollowUpDate ?? "",
@@ -161,10 +161,10 @@ function collectionExportRows(
       CustomerName: receivable?.customerName ?? "",
       CollectionDate: c.collectionDate,
       AmountCollected: c.amountCollected.toFixed(2),
-      PaymentMethod: c.paymentMethod,
+      PaymentMethod: paymentMethodLabel(c.paymentMethod),
       PaymentReference: c.paymentReferenceNumber,
       BankName: c.bankName ?? "",
-      CheckNumber: c.checkNumber ?? "",
+      ChequeNumber: c.checkNumber ?? "",
       RecordedBy: c.recordedByName,
     };
   });
@@ -182,7 +182,7 @@ function groupCollectionsBy(
   for (const c of valid) {
     let groupKey = "";
     if (key === "customer") groupKey = byId.get(c.receivableId)?.customerName ?? "Unknown";
-    else if (key === "method") groupKey = c.paymentMethod;
+    else if (key === "method") groupKey = paymentMethodLabel(c.paymentMethod);
     else groupKey = c.bankName?.trim() || "Not specified";
 
     const cur = map.get(groupKey) ?? { count: 0, total: 0 };
@@ -454,7 +454,7 @@ export function ReceivableReports({ records, onBack, notify }: Props) {
                           {receivable?.customerName ?? "—"}
                         </td>
                         <td>{peso.format(c.amountCollected)}</td>
-                        <td className="hidden sm:table-cell">{c.paymentMethod}</td>
+                        <td className="hidden sm:table-cell">{paymentMethodLabel(c.paymentMethod)}</td>
                       </tr>
                     );
                   })}

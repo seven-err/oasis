@@ -115,6 +115,7 @@ test("monitoring deletion is authorized, recoverable, audited, and retains relat
     };
     const deletedPage = renderToStaticMarkup(createElement(ArchivedRecords, deletedPageProps));
     assert.match(deletedPage, /DELETED-CHECK-999/);
+    assert.match(deletedPage, /<td>Cheques<\/td>/);
     assert.match(deletedPage, /DELETED-EMP-998/);
     assert.match(deletedPage, /Restore<\/button>/);
     assert.doesNotMatch(deletedPage, /No deleted records/);

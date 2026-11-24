@@ -11,7 +11,7 @@ class Role extends Model
 {
     public const PERMISSIONS = [
         'dashboard' => 'Dashboard', 'hr' => 'HR Alphalist',
-        'checks' => 'Check Monitoring', 'payables' => 'Payable Monitoring',
+        'checks' => 'Cheque Monitoring', 'payables' => 'Payable Monitoring',
         'receivables' => 'Receivable Monitoring', 'users' => 'User Management',
         'activity' => 'Activity Logs', 'settings' => 'System Settings', 'account' => 'My Account',
     ];
