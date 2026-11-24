@@ -11,7 +11,7 @@ test("Finance records payments without approval while retaining payment safeguar
     getItem: (key) => values.get(key) ?? null,
     setItem: (key, value) => values.set(key, value),
   };
-  const server = await createServer({ server: { middlewareMode: true, hmr: false }, appType: "custom" });
+  const server = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: "custom" });
   try {
     const { setSession } = await server.ssrLoadModule("/src/auth.ts");
     setSession({ csrfToken: "test", user: {
@@ -84,6 +84,13 @@ test("Finance records payments without approval while retaining payment safeguar
     const editForm = renderToStaticMarkup(createElement(HeaderBackProvider, null,
       createElement(PayableForm, { mode: "edit", record: changed.data, onCancel() {}, onSaved() {} }),
     ));
+    assert.equal((editForm.match(/>Save changes<\/button>/g) ?? []).length, 1);
+    assert.ok(editForm.indexOf("Save changes") > editForm.indexOf("<form"), "save stays inside the form, below the heading");
+    for (const name of ["payeeName", "invoiceNumber", "invoiceDate", "dueDate", "paymentStatus", "paymentMethod", "referenceNumber", "items"]) {
+      const fields = editForm.match(new RegExp(`<(?:input|select)\\b[^>]*name="${name}"[^>]*>`, "g"));
+      assert.ok(fields?.length, `${name} is available for editing`);
+      for (const field of fields) assert.doesNotMatch(field, /readOnly=|disabled=/);
+    }
     const termsInput = editForm.match(/<input\b[^>]*name="paymentTerms"[^>]*>/)?.[0];
     assert.ok(termsInput);
     assert.match(termsInput, /readOnly=""/);
@@ -96,6 +103,14 @@ test("Finance records payments without approval while retaining payment safeguar
     assert.doesNotMatch(editForm, />Remove item</);
 
     assert.equal(service.get(created.data.id).items.length, 2);
+    const editedValues = {
+      ...recordToFormValues(changed.data),
+      payeeName: "Updated supplier", invoiceNumber: "UPDATED-INVOICE",
+      invoiceDate: "2026-11-21", dueDate: "2026-12-01",
+      paymentMethod: "Cash", referenceNumber: "UPDATED-REF",
+    };
+    assert.equal(service.update(created.data.id, editedValues).ok, true);
+    assert.deepEqual(recordToFormValues(service.get(created.data.id)), editedValues, "edited information persists");
     const itemDetails = renderToStaticMarkup(createElement(HeaderBackProvider, null,
       createElement(PayableDetails, { record: service.getViewModel(created.data.id), onBack() {}, onEdit() {}, onChanged() {}, notify() {} }),
     ));

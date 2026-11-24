@@ -8,6 +8,7 @@ import { emptyFormValues, payableItemAmount, payableItemsTotal, paymentMethodLab
 import { useUnsavedForm } from "@/hooks/useUnsavedForm";
 import { focusFirstError, updateVisibleErrors } from "@/components/formValidation";
 import { validatePayablePayload } from "./validation";
+import { waitForBusinessSave } from "@/businessStorage";
 
 type Props = {
   mode: "create" | "edit";
@@ -47,23 +48,31 @@ export function PayableForm({ mode, record, onCancel, onSaved }: Props) {
     }));
   };
 
-  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const form = e.currentTarget;
     setSaving(true);
-    const result =
-      mode === "edit" && record
-        ? payableService.update(record.id, values)
-        : payableService.create(values);
+    try {
+      const result =
+        mode === "edit" && record
+          ? payableService.update(record.id, values)
+          : payableService.create(values);
 
-    if (!result.ok) {
-      setErrors(result.errors);
-      focusFirstError(e.currentTarget, result.errors);
+      if (!result.ok) {
+        setErrors(result.errors);
+        focusFirstError(form, result.errors);
+        return;
+      }
+      await waitForBusinessSave();
+      markSaved();
+      onSaved(result.data);
+    } catch (failure) {
+      const errors = { form: failure instanceof Error ? failure.message : "The payable could not be saved. Please try again." };
+      setErrors(errors);
+      focusFirstError(form, errors);
+    } finally {
       setSaving(false);
-      return;
     }
-    setSaving(false);
-    markSaved();
-    onSaved(result.data);
   };
 
   return (
@@ -82,7 +91,7 @@ export function PayableForm({ mode, record, onCancel, onSaved }: Props) {
         )}
 
         <div className="space-y-6">
-          <fieldset>
+          <fieldset disabled={saving}>
             <legend className="mb-4 text-[10px] font-bold uppercase tracking-[.14em] text-[#1f6ea6]">
               Payable information
             </legend>
@@ -179,7 +188,7 @@ export function PayableForm({ mode, record, onCancel, onSaved }: Props) {
             </div>
           </fieldset>
 
-          <fieldset>
+          <fieldset disabled={saving}>
             <legend className="mb-4 text-[10px] font-bold uppercase tracking-[.14em] text-[#1f6ea6]">
               Payable items
             </legend>
@@ -299,7 +308,7 @@ export function PayableForm({ mode, record, onCancel, onSaved }: Props) {
         </div>
 
         <div className="mt-7 flex justify-end gap-2 border-t border-[#e1eef6] pt-5">
-          <button className="primary-btn" disabled={saving}>
+          <button type="submit" className="primary-btn" disabled={saving}>
             {saving ? "Saving…" : mode === "edit" ? "Save changes" : "Save payable"}
           </button>
         </div>

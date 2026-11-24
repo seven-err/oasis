@@ -43,7 +43,7 @@ async function browser(t, { remote = null, legacy, version = 0, extra = {}, draf
   };
   const vite = await createServer({
     optimizeDeps: { noDiscovery: true },
-    server: { middlewareMode: true, hmr: false },
+    server: { middlewareMode: true, hmr: false, ws: false },
     appType: "custom",
   });
   t.after(async () => {
@@ -147,6 +147,39 @@ test("failed saves remain recoverable and can be retried", async (t) => {
   await storage.retryBusinessSave();
   assert.equal(storage.businessSyncError(), "");
   assert.equal(backend.data["oasis.employees.v2"].employees[0].name, "Retry me");
+});
+
+test("a stalled save times out, keeps the draft, and can be retried", async (t) => {
+  const { storage, backend, values } = await browser(t, {
+    remote: { "oasis.employees.v2": { employees: [], deletedEmployees: [] } },
+    version: 1,
+  });
+  const controller = new AbortController();
+  t.mock.method(AbortSignal, "timeout", (milliseconds) => {
+    assert.equal(milliseconds, 15_000);
+    return controller.signal;
+  });
+  const fetchBackend = globalThis.fetch;
+  globalThis.fetch = (_url, options) => new Promise((_resolve, reject) => {
+    assert.equal(options.method, "PUT");
+    options.signal.addEventListener("abort", () => reject(options.signal.reason), { once: true });
+  });
+  const edited = { employees: [{ id: 3, name: "Keep my edit" }], deletedEmployees: [] };
+  storage.writeBusinessJson("oasis.employees.v2", edited);
+  const saving = storage.waitForBusinessSave();
+  assert.equal(storage.businessSyncStatus(), "Saving changes…");
+  controller.abort(new DOMException("Request timed out", "TimeoutError"));
+  await assert.rejects(saving, /Saving took too long/);
+  assert.doesNotMatch(storage.businessSyncStatus(), /^Saving changes/);
+  assert.deepEqual(JSON.parse(values.get("oasis.unsaved.55.hr")).data["oasis.employees.v2"], edited);
+  assert.equal(backend.writes.length, 0);
+
+  globalThis.fetch = fetchBackend;
+  await storage.retryBusinessSave();
+  await storage.waitForBusinessSave();
+  assert.deepEqual(backend.data["oasis.employees.v2"], edited);
+  assert.equal(storage.businessSyncStatus(), "All changes saved");
+  assert.equal(values.has("oasis.unsaved.55.hr"), false);
 });
 
 test("remote refresh never replaces an open edit form", async (t) => {

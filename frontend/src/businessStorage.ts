@@ -92,6 +92,7 @@ export async function flushBusinessChanges(): Promise<void> {
         const result = await apiRequest<{ version: number }>(`/business-state/${module}`, {
           method: "PUT",
           body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(15_000),
         });
         connectionIssue = false;
         state.version = result.version;
@@ -103,7 +104,9 @@ export async function flushBusinessChanges(): Promise<void> {
     }
   } catch (failure) {
     error =
-      failure instanceof Error
+      failure instanceof Error && failure.name === "TimeoutError"
+        ? "Saving took too long. Your changes are kept in this browser. Check the server connection and retry saving."
+        : failure instanceof Error
         ? failure.message
         : "Changes could not be saved. Keep this page open and retry.";
     conflict = /Someone else updated|unsaved copy/.test(error);
