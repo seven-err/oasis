@@ -32,7 +32,7 @@ import {
   SectionCard,
   StatusBadge,
 } from "./ui";
-import { formatDate, formatDateTime, payableItemAmount, payableItems, peso, todayIsoDate } from "./utils";
+import { formatDate, formatDateTime, payableItemAmount, payableItems, paymentMethodLabel, paymentTermsLabel, peso, todayIsoDate } from "./utils";
 
 type Props = {
   record: PayableViewModel;
@@ -193,13 +193,14 @@ export function PayableDetails({
       "Invoice number": record.invoiceNumber,
       "Invoice date": formatDate(record.invoiceDate),
       "Due date": formatDate(record.dueDate),
-      "Expected payment method": record.paymentMethod,
+      "Payment terms": paymentTermsLabel(record.invoiceDate, record.dueDate) || "—",
+      "Expected payment method": paymentMethodLabel(record.paymentMethod),
       "Reference number": record.referenceNumber,
       "Total amount": peso.format(record.totalAmount),
       "Amount paid": peso.format(record.amountPaid),
       "Remaining balance": peso.format(record.remainingBalance),
       "Payment status": record.paymentStatus,
-      "Latest payment method": record.displayPaymentMethod,
+      "Latest payment method": paymentMethodLabel(record.displayPaymentMethod),
       "Latest payment reference": record.displayReferenceNumber,
       "Created by": record.createdByName,
       Created: formatDateTime(record.createdAt),
@@ -213,7 +214,7 @@ export function PayableDetails({
     })));
     rows.push(...(payments.length ? payments.map((p) => ({
       Field: `Payment · ${formatDate(p.paymentDate)}`,
-      Value: `${peso.format(p.amountPaid)} · ${p.paymentMethod} · Reference: ${p.referenceNumber || "—"} · Check: ${p.checkNumber || "—"} · Recorded by: ${p.recordedByName} · ${p.isReversal ? "Reversal" : p.reversedAt ? "Reversed" : "Valid"}`,
+      Value: `${peso.format(p.amountPaid)} · ${paymentMethodLabel(p.paymentMethod)} · Reference: ${p.referenceNumber || "—"} · Cheque: ${p.checkNumber || "—"} · Recorded by: ${p.recordedByName} · ${p.isReversal ? "Reversal" : p.reversedAt ? "Reversed" : "Valid"}`,
     })) : [{ Field: "Payment history", Value: "No payments recorded yet." }]));
     rows.push(...(activity.length ? activity.map((item) => ({
       Field: `Activity · ${formatDateTime(item.performedAt)}`,
@@ -336,7 +337,7 @@ export function PayableDetails({
                 <option value="">Select method</option>
                 {PAYMENT_METHODS.map((m) => (
                   <option key={m} value={m}>
-                    {m}
+                    {paymentMethodLabel(m)}
                   </option>
                 ))}
               </FormSelect>
@@ -349,13 +350,13 @@ export function PayableDetails({
               />
               {paymentValues.paymentMethod === "Check" && (
                 <FormSelect
-                  label="Linked check (optional)"
+                  label="Linked cheque (optional)"
                   name="checkId"
                   value={paymentValues.checkId}
                   onChange={setPay("checkId")}
                   error={paymentErrors.checkId}
                 >
-                  <option value="">Select existing check</option>
+                  <option value="">Select existing cheque</option>
                   {linkableChecks.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.checkNumber} · {c.payeeName} · {peso.format(c.checkAmount)}
@@ -387,9 +388,10 @@ export function PayableDetails({
             { label: "Invoice number", value: record.invoiceNumber },
             { label: "Invoice date", value: formatDate(record.invoiceDate) },
             { label: "Due date", value: formatDate(record.dueDate) },
+            { label: "Payment terms", value: paymentTermsLabel(record.invoiceDate, record.dueDate) || "—" },
             {
               label: "Expected payment method",
-              value: record.paymentMethod ?? "—",
+              value: paymentMethodLabel(record.paymentMethod),
             },
             { label: "Reference number", value: record.referenceNumber || "—" },
           ]}
@@ -437,7 +439,7 @@ export function PayableDetails({
             },
             {
               label: "Latest payment method",
-              value: record.displayPaymentMethod ?? "—",
+              value: paymentMethodLabel(record.displayPaymentMethod),
             },
             {
               label: "Latest payment reference",
@@ -486,10 +488,10 @@ export function PayableDetails({
                       <td>{formatDate(p.paymentDate)}</td>
                       <td className="font-semibold">{peso.format(p.amountPaid)}</td>
                       <td>
-                        {p.paymentMethod}
+                        {paymentMethodLabel(p.paymentMethod)}
                         {p.checkNumber ? (
                           <span className="mt-1 block text-[10px] text-[#888]">
-                            Check {p.checkNumber}
+                            Cheque {p.checkNumber}
                           </span>
                         ) : null}
                       </td>

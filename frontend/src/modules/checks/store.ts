@@ -152,7 +152,7 @@ export const checkService = {
     logActivity(snapshot, {
       checkId: record.id,
       action: "created",
-      summary: "Check record created",
+      summary: "Cheque record created",
       newStatus: record.checkStatus,
       performedById: user.id,
       performedByName: user.name,
@@ -165,7 +165,7 @@ export const checkService = {
     const snapshot = load();
     const user = CURRENT_USER;
     const existing = snapshot.checks.find((c) => c.id === id && !c.deletedAt);
-    if (!existing) return { ok: false, errors: { form: "Check record not found." } };
+    if (!existing) return { ok: false, errors: { form: "Cheque record not found." } };
 
     const validation = validateCheckPayload(values, {
       existing: snapshot.checks,
@@ -191,7 +191,7 @@ export const checkService = {
       logActivity(snapshot, {
         checkId: id,
         action: "updated",
-        summary: "Check record updated",
+        summary: "Cheque record updated",
         performedById: user.id,
         performedByName: user.name,
         metadata: { checkNumber: record.checkNumber },
@@ -206,10 +206,10 @@ export const checkService = {
     const snapshot = load();
     const user = CURRENT_USER;
     if (!user.permissions.archiveChecks) {
-      return { ok: false, errors: { form: "You are not authorized to archive checks." } };
+      return { ok: false, errors: { form: "You are not authorized to archive cheques." } };
     }
     const existing = snapshot.checks.find((c) => c.id === id && !c.deletedAt);
-    if (!existing) return { ok: false, errors: { form: "Check record not found." } };
+    if (!existing) return { ok: false, errors: { form: "Cheque record not found." } };
 
     const record: CheckRecord = {
       ...existing,
@@ -221,7 +221,7 @@ export const checkService = {
     logActivity(snapshot, {
       checkId: id,
       action: "archived",
-      summary: "Check record archived",
+      summary: "Cheque record archived",
       previousStatus: existing.checkStatus,
       newStatus: existing.checkStatus,
       performedById: user.id,
@@ -234,18 +234,18 @@ export const checkService = {
   deleteRecord(id: number): CheckServiceResult<CheckRecord> {
     const user = CURRENT_USER;
     if (!user.permissions.archiveChecks) {
-      return { ok: false, errors: { form: "You are not authorized to delete checks." } };
+      return { ok: false, errors: { form: "You are not authorized to delete cheques." } };
     }
     const snapshot = load();
     const existing = snapshot.checks.find((record) => record.id === id && !record.deletedAt);
-    if (!existing) return { ok: false, errors: { form: "Check record not found." } };
+    if (!existing) return { ok: false, errors: { form: "Cheque record not found." } };
     const stamp = nowIso();
     const record = { ...existing, deletedAt: stamp, updatedAt: stamp, updatedById: user.id };
     snapshot.checks = snapshot.checks.map((item) => item.id === id ? record : item);
     logActivity(snapshot, {
       checkId: id,
       action: "deleted",
-      summary: "Check moved to Deleted Records",
+      summary: "Cheque moved to Deleted Records",
       performedById: user.id,
       performedByName: user.name,
     });
@@ -307,10 +307,10 @@ export const checkService = {
     const snapshot = load();
     const user = CURRENT_USER;
     if (!user.permissions.archiveChecks) {
-      return { ok: false, errors: { form: "You are not authorized to restore checks." } };
+      return { ok: false, errors: { form: "You are not authorized to restore cheques." } };
     }
     const existing = snapshot.checks.find((c) => c.id === id && !c.deletedAt);
-    if (!existing) return { ok: false, errors: { form: "Check record not found." } };
+    if (!existing) return { ok: false, errors: { form: "Cheque record not found." } };
 
     const record: CheckRecord = {
       ...existing,
@@ -322,7 +322,7 @@ export const checkService = {
     logActivity(snapshot, {
       checkId: id,
       action: "restored",
-      summary: "Check record restored",
+      summary: "Cheque record restored",
       performedById: user.id,
       performedByName: user.name,
     });
@@ -341,7 +341,7 @@ export const checkService = {
       return { ok: false, errors: { attachments: "You are not authorized to manage attachments." } };
     }
     if (!snapshot.checks.some((c) => c.id === checkId)) {
-      return { ok: false, errors: { attachments: "Check record not found." } };
+      return { ok: false, errors: { attachments: "Cheque record not found." } };
     }
     const fileError = validateAttachmentFile(file);
     if (fileError) return { ok: false, errors: { attachments: fileError } };

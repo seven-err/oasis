@@ -137,9 +137,9 @@ export function validatePaymentPayload(
   if (values.paymentMethod === "Check" && values.checkId) {
     const checkId = Number(values.checkId);
     if (!Number.isInteger(checkId) || checkId <= 0) {
-      errors.checkId = "Select a valid check record.";
+      errors.checkId = "Select a valid cheque record.";
     } else if (options.checkExists && !options.checkExists(checkId)) {
-      errors.checkId = "Selected check record was not found.";
+      errors.checkId = "Selected cheque record was not found.";
     }
   }
 

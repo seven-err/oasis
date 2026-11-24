@@ -1,4 +1,4 @@
-import { checkStatusLabel } from "./utils";
+import { checkStatusLabel, checkTypeLabel } from "./utils";
 import { ReportDateRange, reportDateRangeLabel, useReportDateRanges, inReportDateRange } from "@/components/ReportDateRange";
 import { Download, FileCheck2, Printer } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -21,62 +21,62 @@ const REPORTS: {
 }[] = [
   {
     kind: "complete_register",
-    title: "Complete Check Records",
-    detail: "Full authorized check listing with masked account numbers",
+    title: "Complete Cheque Records",
+    detail: "Full authorized cheque listing with masked account numbers",
   },
   {
     kind: "received",
-    title: "Received Checks Report",
-    detail: "Checks received by OASIS Company",
+    title: "Received Cheques Report",
+    detail: "Cheques received by OASIS Company",
   },
   {
     kind: "issued",
-    title: "Issued Checks Report",
-    detail: "Checks issued by OASIS Company",
+    title: "Issued Cheques Report",
+    detail: "Cheques issued by OASIS Company",
   },
   {
     kind: "pending",
-    title: "Pending Checks Report",
-    detail: "Checks awaiting next workflow action",
+    title: "Pending Cheques Report",
+    detail: "Cheques awaiting next workflow action",
   },
   {
     kind: "deposited",
-    title: "Deposited Checks Report",
-    detail: "Checks marked deposited",
+    title: "Deposited Cheques Report",
+    detail: "Cheques marked deposited",
   },
   {
     kind: "cleared",
-    title: "Cleared Checks Report",
-    detail: "Checks confirmed cleared",
+    title: "Cleared Cheques Report",
+    detail: "Cheques confirmed cleared",
   },
   {
     kind: "bounced",
-    title: "Returned Checks Report",
-    detail: "Returned checks retained for history",
+    title: "Returned Cheques Report",
+    detail: "Returned cheques retained for history",
   },
   {
     kind: "by_bank",
-    title: "Checks by Bank",
+    title: "Cheques by Bank",
     detail: "Grouped summary by bank name",
   },
   {
     kind: "by_date_range",
-    title: "Checks by Date Range",
-    detail: "Filter by check date range before export",
+    title: "Cheques by Date Range",
+    detail: "Filter by cheque date range before export",
   },
   {
     kind: "by_payee",
-    title: "Checks by Payee",
+    title: "Cheques by Payee",
     detail: "Grouped summary by payee",
   },
   {
     kind: "by_drawer",
-    title: "Checks by Drawer",
+    title: "Cheques by Drawer",
     detail: "Grouped summary by drawer",
   },
   {
     kind: "by_prepared_by",
-    title: "Checks by Prepared By",
+    title: "Cheques by Prepared By",
     detail: "Grouped summary by preparing user",
   },
 ];
@@ -142,27 +142,27 @@ function exportRows(
     }
     return [...map.entries()].map(([name, stats]) => ({
       Group: name,
-      Checks: stats.count,
+      Cheques: stats.count,
       TotalAmount: stats.amount.toFixed(2),
     }));
   }
 
   return records.map((r) => ({
-    CheckType: r.checkType,
-    CheckDate: r.checkDate,
+    ChequeType: checkTypeLabel(r.checkType),
+    ChequeDate: r.checkDate,
     DateReceivedIssued: r.dateReceivedIssued,
     PayeeName: r.payeeName,
     DrawerName: r.drawerName,
     BankName: r.bankName,
     Branch: r.branch,
     AccountNumber: canViewAccount ? r.accountNumber : maskAccountNumber(r.accountNumber),
-    CheckAmount: r.checkAmount.toFixed(2),
+    ChequeAmount: r.checkAmount.toFixed(2),
     Purpose: r.purpose,
     ReferenceNumber: r.referenceNumber,
     DueDate: r.dueDate ?? "",
     DepositDate: r.depositDate ?? "",
     ClearingDate: r.clearingDate ?? "",
-    CheckStatus: checkStatusLabel(r.checkStatus),
+    ChequeStatus: checkStatusLabel(r.checkStatus),
     PreparedBy: r.preparedByName,
   }));
 }
@@ -202,7 +202,7 @@ export function CheckReports({ records, onBack, notify }: Props) {
       notify("No records match this report.");
       return;
     }
-    downloadCsv(`oasis-check-${kind}.csv`, exported);
+    downloadCsv(`oasis-cheque-${kind}.csv`, exported);
     notify("Authorized export generated. Account numbers masked unless permitted.");
   };
 
@@ -211,7 +211,7 @@ export function CheckReports({ records, onBack, notify }: Props) {
       <section className="panel overflow-hidden">
         <PanelTitle
           onBack={onBack}
-          title="Check reports"
+          title="Cheque reports"
           subtitle="Filters, printing, and authorized exports · attachments excluded from CSV"
         />
 
@@ -243,7 +243,7 @@ export function CheckReports({ records, onBack, notify }: Props) {
               {hasDateColumn(report.kind) && (
                 <ReportDateRange
                   compact
-                  dateLabel={"Check date"}
+                  dateLabel={"Cheque date"}
                   dateFrom={rangeFor(report.kind).from}
                   dateTo={rangeFor(report.kind).to}
                   onChange={(from, to) => {
@@ -274,7 +274,7 @@ export function CheckReports({ records, onBack, notify }: Props) {
                     const printedRows = report.kind === "by_bank" || report.kind === "by_payee" || report.kind === "by_drawer" || report.kind === "by_prepared_by"
                       ? exportRows(report.kind, rows, user.permissions.viewAccountNumber)
                       : rows.map((row) => ({
-                          Type: row.checkType,
+                          Type: checkTypeLabel(row.checkType),
                           Date: row.checkDate,
                           Payee: row.payeeName,
                           Bank: row.bankName,

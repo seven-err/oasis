@@ -37,7 +37,7 @@ export function canTransitionStatus(
   if (TERMINAL_STATUSES.includes(from) && !TERMINAL_STATUSES.includes(to)) {
     return {
       ok: false,
-      message: `Cannot move a ${from.toLowerCase()} check back to an active workflow status.`,
+      message: `Cannot move a ${from.toLowerCase()} cheque back to an active workflow status.`,
     };
   }
 
@@ -50,7 +50,7 @@ export function canTransitionStatus(
   const toIdx = flow.indexOf(to);
 
   if (fromIdx === -1 || toIdx === -1) {
-    return { ok: false, message: "Invalid status for this check type." };
+    return { ok: false, message: "Invalid status for this cheque type." };
   }
 
   // Allow forward movement and one-step rollback for corrections

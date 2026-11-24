@@ -1,4 +1,4 @@
-import { checkStatusLabel } from "./utils";
+import { checkStatusLabel, checkTypeLabel } from "./utils";
 import { ATTACHMENT_ACCEPT, ATTACHMENT_FORMATS } from "@/components/attachmentFileTypes";
 import { useEffect, useMemo, useState } from "react";
 import { CHECK_TYPES } from "./constants";
@@ -118,7 +118,7 @@ export function CheckForm({ mode, record, onCancel, onSaved }: Props) {
       <PanelTitle
         onBack={onCancel}
         backDisabled={saving}
-        title={mode === "create" ? "Add check" : "Edit check"}
+        title={mode === "create" ? "Add cheque" : "Edit cheque"}
         subtitle="All required fields must be completed. Prepared By is set to the authenticated user."
       />
       <form onSubmit={onSubmit} onChangeCapture={markDirty} className="p-5 md:p-6" noValidate>
@@ -131,11 +131,11 @@ export function CheckForm({ mode, record, onCancel, onSaved }: Props) {
         <div className="space-y-6">
           <fieldset>
             <legend className="mb-4 text-[10px] font-bold uppercase tracking-[.14em] text-[#1f6ea6]">
-              Check information
+              Cheque information
             </legend>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <FormInput
-                label="Check number"
+                label="Cheque number"
                 name="checkNumber"
                 required
                 value={values.checkNumber}
@@ -143,7 +143,7 @@ export function CheckForm({ mode, record, onCancel, onSaved }: Props) {
                 error={errors.checkNumber}
               />
               <FormSelect
-                label="Check type"
+                label="Cheque type"
                 name="checkType"
                 required
                 value={values.checkType}
@@ -153,12 +153,12 @@ export function CheckForm({ mode, record, onCancel, onSaved }: Props) {
                 <option value="">Select type</option>
                 {CHECK_TYPES.map((t) => (
                   <option key={t} value={t}>
-                    {t}
+                    {checkTypeLabel(t)}
                   </option>
                 ))}
               </FormSelect>
               <FormSelect
-                label="Check status"
+                label="Cheque status"
                 name="checkStatus"
                 required
                 value={values.checkStatus}
@@ -173,7 +173,7 @@ export function CheckForm({ mode, record, onCancel, onSaved }: Props) {
                 ))}
               </FormSelect>
               <FormInput
-                label="Check date"
+                label="Cheque date"
                 name="checkDate"
                 type="date"
                 required
@@ -256,7 +256,7 @@ export function CheckForm({ mode, record, onCancel, onSaved }: Props) {
             </legend>
             <div className="grid gap-4 sm:grid-cols-2">
               <FormInput
-                label="Check amount (PHP)"
+                label="Cheque amount (PHP)"
                 name="checkAmount"
                 type="number"
                 required
@@ -280,7 +280,7 @@ export function CheckForm({ mode, record, onCancel, onSaved }: Props) {
               Attachments
             </legend>
             <label className="block">
-              <FieldLabel>Upload scanned checks or supporting documents</FieldLabel>
+              <FieldLabel>Upload scanned cheques or supporting documents</FieldLabel>
               <input
                 type="file"
                 name="attachments"
@@ -338,7 +338,7 @@ export function CheckForm({ mode, record, onCancel, onSaved }: Props) {
 
         <div className="mt-8 flex flex-wrap justify-end gap-2 border-t border-[#e1eef6] pt-5">
           <button type="submit" className="primary-btn" disabled={saving}>
-            {saving ? "Saving…" : mode === "edit" ? "Save changes" : "Save check"}
+            {saving ? "Saving…" : mode === "edit" ? "Save changes" : "Save cheque"}
           </button>
         </div>
       </form>

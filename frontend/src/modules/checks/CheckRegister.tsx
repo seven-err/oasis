@@ -1,5 +1,5 @@
 import { DateInput } from "@/components/FormPopovers";
-import { checkStatusLabel } from "./utils";
+import { checkStatusLabel, checkTypeLabel } from "./utils";
 import { ArchiveConfirmationDialog } from "@/components/ArchiveConfirmationDialog";
 import {
   AlertCircle,
@@ -146,23 +146,23 @@ export function CheckRegister({
     const result = checkService.deleteRecord(record.id);
     if (!result.ok) {
       setDeleting(null);
-      notify(result.errors.form ?? "Unable to delete check.");
+      notify(result.errors.form ?? "Unable to delete cheque.");
       return;
     }
     setDeleting(null);
-    notify("Check moved to Deleted Records.");
+    notify("Cheque moved to Deleted Records.");
     onChanged();
   };
 
   const archiveOrRestore = (record: CheckRecord) => {
     if (!user.permissions.archiveChecks) {
-      notify("You are not authorized to archive checks.");
+      notify("You are not authorized to archive cheques.");
       return;
     }
     if (record.archivedAt) {
       const result = checkService.restore(record.id);
       if (result.ok) {
-        notify("Check restored.");
+        notify("Cheque restored.");
         onChanged();
       }
       return;
@@ -179,7 +179,7 @@ export function CheckRegister({
         return;
       }
       setArchiving(null);
-      notify("Check archived.");
+      notify("Cheque archived.");
       onChanged();
     } catch {
       notify("Unable to save the archive. Please try again.");
@@ -257,14 +257,14 @@ export function CheckRegister({
     <div className="w-full max-w-full space-y-5 overflow-x-clip">
       {archiving && (
         <ArchiveConfirmationDialog
-          recordLabel={`Check ${archiving.checkNumber} - ${archiving.payeeName}`}
+          recordLabel={`Cheque ${archiving.checkNumber} - ${archiving.payeeName}`}
           onCancel={() => setArchiving(null)}
           onConfirm={confirmArchive}
         />
       )}
       {deleting && (
         <DeleteConfirmationDialog
-          recordLabel={`Check ${deleting.checkNumber}`}
+          recordLabel={`Cheque ${deleting.checkNumber}`}
           onCancel={() => setDeleting(null)}
           onConfirm={() => deleteRecord(deleting)}
         />
@@ -272,7 +272,7 @@ export function CheckRegister({
       <SummaryStatCards
         items={[
           {
-            label: "Total Checks",
+            label: "Total Cheques",
             value: summary.total,
             icon: Wallet,
             onClick: () => {
@@ -308,8 +308,8 @@ export function CheckRegister({
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#888]" />
               <input
                 className="input pl-10 pr-10"
-                aria-label="Search checks"
-                placeholder="Search checks…"
+                aria-label="Search cheques"
+                placeholder="Search cheques…"
                 value={filters.search}
                 onChange={(e) => setFilter("search", e.target.value)}
               />
@@ -345,7 +345,7 @@ export function CheckRegister({
                   toggleSort("payeeName");
                   setPage(1);
                 }}
-                aria-label="Sort checks by payee alphabetically"
+                aria-label="Sort cheques by payee alphabetically"
               >
                 <ArrowUpDown size={15} />
                 {sort.key === "payeeName" && sort.direction === "desc" ? "Z-A" : "A-Z"}
@@ -359,7 +359,7 @@ export function CheckRegister({
           <ActiveFilters
             filters={filters}
             defaults={EMPTY_FILTERS}
-            valueLabels={{ checkStatus: { Bounced: "Returned" } }}
+            valueLabels={{ checkStatus: { Bounced: "Returned" }, checkType: { "Received Check": "Received Cheque", "Issued Check": "Issued Cheque" } }}
             matched={filtered.length}
             total={records.filter((record) => filters.includeArchived || !record.archivedAt).length}
             onRemove={(key) => setFilter(key, EMPTY_FILTERS[key])}
@@ -368,7 +368,7 @@ export function CheckRegister({
           {showFilters && (
             <div id="check-filter-panel" className="grid gap-3 rounded-lg border border-[#d0e3ef] bg-[#f4f9fd] p-4 md:grid-cols-2 xl:grid-cols-4">
               <label className="block">
-                <span className="field-label">Check type</span>
+                <span className="field-label">Cheque type</span>
                 <select
                   className="input mt-2"
                   value={filters.checkType}
@@ -377,7 +377,7 @@ export function CheckRegister({
                   <option value="All">All types</option>
                   {CHECK_TYPES.map((t) => (
                     <option key={t} value={t}>
-                      {t}
+                      {checkTypeLabel(t)}
                     </option>
                   ))}
                 </select>
@@ -398,7 +398,7 @@ export function CheckRegister({
                 </select>
               </label>
               <label className="block">
-                <span className="field-label">Check status</span>
+                <span className="field-label">Cheque status</span>
                 <select
                   className="input mt-2"
                   value={filters.checkStatus}
@@ -424,7 +424,7 @@ export function CheckRegister({
               </label>
               {(
                 [
-                  ["checkDateFrom", "checkDateTo", "Check date"],
+                  ["checkDateFrom", "checkDateTo", "Cheque date"],
                   ["dueDateFrom", "dueDateTo", "Due date"],
                   ["receivedIssuedFrom", "receivedIssuedTo", "Date received/issued"],
                   ["depositDateFrom", "depositDateTo", "Deposit date"],
@@ -476,7 +476,7 @@ export function CheckRegister({
                           setMenu(null);
                           onView(row.id);
                         }}
-                        aria-label={`Open check for ${row.payeeName}`}
+                        aria-label={`Open cheque for ${row.payeeName}`}
                       >
                         {row.payeeName}
                       </button>
@@ -501,7 +501,7 @@ export function CheckRegister({
                     <strong className="text-sm">{peso.format(row.checkAmount)}</strong>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-[10px] text-[#777]">
-                    <span>Check date · {formatDate(row.checkDate)}</span>
+                    <span>Cheque date · {formatDate(row.checkDate)}</span>
                     <span>Due · {formatDate(row.dueDate)}</span>
                   </div>
                 </div>
@@ -552,7 +552,7 @@ export function CheckRegister({
                         {row.checkType.replace(" Check", "")}
                       </td>
                       <td className="overflow-hidden text-ellipsis">
-                        <button type="button" className="block max-w-full truncate text-left text-xs font-bold hover:underline" onClick={() => { setMenu(null); onView(row.id); }} aria-label={`Open check for ${row.payeeName}`}>
+                        <button type="button" className="block max-w-full truncate text-left text-xs font-bold hover:underline" onClick={() => { setMenu(null); onView(row.id); }} aria-label={`Open cheque for ${row.payeeName}`}>
                           {row.payeeName}
                         </button>
                         <span className="mt-1 block truncate text-[10px] text-[#888]">
@@ -591,7 +591,7 @@ export function CheckRegister({
             </div>
           </>
         ) : (
-          <EmptyState title="No checks found" onAdd={onAdd} />
+          <EmptyState title="No cheques found" onAdd={onAdd} />
         )}
 
         <PaginationBar

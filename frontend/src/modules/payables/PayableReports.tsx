@@ -6,7 +6,7 @@ import { usePrintReport } from "@/components/usePrintReport";
 import { payableService } from "./store";
 import type { PayablePayment, PayableReportKind, PayableViewModel } from "./types";
 import { PanelTitle } from "./ui";
-import { downloadCsv } from "./utils";
+import { downloadCsv, paymentMethodLabel } from "./utils";
 
 type Props = {
   records: PayableViewModel[];
@@ -114,7 +114,7 @@ function payableExportRows(rows: PayableViewModel[]) {
     AmountPaid: r.amountPaid.toFixed(2),
     RemainingBalance: r.remainingBalance.toFixed(2),
     PaymentStatus: r.paymentStatus,
-    PaymentMethod: r.displayPaymentMethod ?? "",
+    PaymentMethod: r.displayPaymentMethod ? paymentMethodLabel(r.displayPaymentMethod) : "",
     ReferenceNumber: r.displayReferenceNumber,
   }));
 }
@@ -149,9 +149,9 @@ function paymentExportRows(payments: PayablePayment[], records: PayableViewModel
       Payee: payable?.payeeName ?? "",
       PaymentDate: p.paymentDate,
       AmountPaid: p.amountPaid.toFixed(2),
-      PaymentMethod: p.paymentMethod,
+      PaymentMethod: paymentMethodLabel(p.paymentMethod),
       ReferenceNumber: p.referenceNumber,
-      CheckNumber: p.checkNumber ?? "",
+      ChequeNumber: p.checkNumber ?? "",
       RecordedBy: p.recordedByName,
       IsReversal: p.isReversal ? "Yes" : "No",
       Reversed: p.reversedAt ? "Yes" : "No",
@@ -163,10 +163,11 @@ function methodExportRows(payments: PayablePayment[]) {
   const valid = payments.filter((p) => !p.isReversal && !p.reversedAt);
   const map = new Map<string, { count: number; total: number }>();
   for (const p of valid) {
-    const cur = map.get(p.paymentMethod) ?? { count: 0, total: 0 };
+    const method = paymentMethodLabel(p.paymentMethod);
+    const cur = map.get(method) ?? { count: 0, total: 0 };
     cur.count += 1;
     cur.total += p.amountPaid;
-    map.set(p.paymentMethod, cur);
+    map.set(method, cur);
   }
   return [...map.entries()].map(([method, stats]) => ({
     PaymentMethod: method,

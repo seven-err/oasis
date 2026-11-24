@@ -42,6 +42,12 @@ export function isValidIsoDate(value: string): boolean {
   return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
 }
 
+export function paymentTermsLabel(invoiceDate: string, dueDate: string): string {
+  if (!isValidIsoDate(invoiceDate) || !isValidIsoDate(dueDate) || dueDate < invoiceDate) return "";
+  const days = (Date.parse(dueDate) - Date.parse(invoiceDate)) / 86_400_000;
+  return `${days} ${days === 1 ? "day" : "days"}`;
+}
+
 export function todayIsoDate(asOf?: Date): string {
   const d = asOf ?? new Date();
   const y = d.getFullYear();
@@ -293,5 +299,5 @@ export function downloadCsv(
 }
 
 export function paymentMethodLabel(method: PaymentMethod | null | undefined): string {
-  return method ?? "—";
+  return method === "Check" ? "Cheque" : method ?? "—";
 }

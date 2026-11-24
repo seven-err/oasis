@@ -12,6 +12,10 @@ export const peso = new Intl.NumberFormat("en-PH", {
   minimumFractionDigits: 2,
 });
 
+export function checkTypeLabel(value: string): string {
+  return value.replace("Check", "Cheque");
+}
+
 export function formatDate(value: string | null | undefined): string {
   if (!value) return "\u2014";
   return new Intl.DateTimeFormat("en-US", {

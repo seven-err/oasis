@@ -1,4 +1,4 @@
-import { checkStatusLabel } from "./utils";
+import { checkStatusLabel, checkTypeLabel } from "./utils";
 import { ATTACHMENT_ACCEPT, ATTACHMENT_FORMATS } from "@/components/attachmentFileTypes";
 import { ArchiveConfirmationDialog } from "@/components/ArchiveConfirmationDialog";
 import {
@@ -52,7 +52,7 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
 
   const onArchive = () => {
     if (!user.permissions.archiveChecks) {
-      notify("You are not authorized to archive checks.");
+      notify("You are not authorized to archive cheques.");
       return;
     }
     try {
@@ -62,7 +62,7 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
         return;
       }
       setArchiving(false);
-      notify("Check archived.");
+      notify("Cheque archived.");
       onChanged();
     } catch {
       notify("Unable to save the archive. Please try again.");
@@ -75,7 +75,7 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
       notify(result.errors.form ?? "Unable to restore.");
       return;
     }
-    notify("Check restored.");
+    notify("Cheque restored.");
     onChanged();
   };
 
@@ -122,9 +122,9 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
 
   const printRecord = () => {
     const details = {
-      "Check number": record.checkNumber,
-      "Check type": record.checkType,
-      "Check date": formatDate(record.checkDate),
+      "Cheque number": record.checkNumber,
+      "Cheque type": checkTypeLabel(record.checkType),
+      "Cheque date": formatDate(record.checkDate),
       "Date received / issued": formatDate(record.dateReceivedIssued),
       Purpose: record.purpose,
       "Reference number": record.referenceNumber,
@@ -134,11 +134,11 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
       Branch: record.branch,
       "Account number": user.permissions.viewAccountNumber && revealed
         ? record.accountNumber : maskAccountNumber(record.accountNumber),
-      "Check amount": peso.format(record.checkAmount),
+      "Cheque amount": peso.format(record.checkAmount),
       "Due date": formatDate(record.dueDate),
       "Deposit date": formatDate(record.depositDate),
       "Clearing date": formatDate(record.clearingDate),
-      "Check status": checkStatusLabel(record.checkStatus),
+      "Cheque status": checkStatusLabel(record.checkStatus),
       "Prepared by": record.preparedByName,
       Created: formatDateTime(record.createdAt),
       "Last updated": formatDateTime(record.updatedAt),
@@ -152,15 +152,15 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
     rows.push(...(activity.length ? activity.map((item) => ({
       Field: `Activity · ${formatDateTime(item.performedAt)}`,
       Value: `${item.summary} · ${item.performedByName}${item.previousStatus && item.newStatus ? ` · ${item.previousStatus} → ${item.newStatus}` : ""}`,
-    })) : [{ Field: "Check history", Value: "No history recorded yet." }]));
-    void printReport("Check record", rows, 1, record.payeeName);
+    })) : [{ Field: "Cheque history", Value: "No history recorded yet." }]));
+    void printReport("Cheque record", rows, 1, record.payeeName);
   };
 
   return (
     <div className="space-y-5">
       {archiving && (
         <ArchiveConfirmationDialog
-          recordLabel={`Check ${record.checkNumber} - ${record.payeeName}`}
+          recordLabel={`Cheque ${record.checkNumber} - ${record.payeeName}`}
           onCancel={() => setArchiving(false)}
           onConfirm={onArchive}
         />
@@ -211,12 +211,12 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
         </div>
       </section>
 
-      <SectionCard title="1. Check information">
+      <SectionCard title="1. Cheque information">
         <DetailGrid
           items={[
-            { label: "Check number", value: record.checkNumber },
-            { label: "Check type", value: record.checkType },
-            { label: "Check date", value: formatDate(record.checkDate) },
+            { label: "Cheque number", value: record.checkNumber },
+            { label: "Cheque type", value: checkTypeLabel(record.checkType) },
+            { label: "Cheque date", value: formatDate(record.checkDate) },
             {
               label: "Date received / issued",
               value: formatDate(record.dateReceivedIssued),
@@ -252,7 +252,7 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
       <SectionCard title="3. Financial information">
         <DetailGrid
           items={[
-            { label: "Check amount", value: peso.format(record.checkAmount) },
+            { label: "Cheque amount", value: peso.format(record.checkAmount) },
             { label: "Purpose", value: record.purpose },
             { label: "Reference number", value: record.referenceNumber },
           ]}
@@ -262,7 +262,7 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
       <SectionCard title="4. Status">
         <DetailGrid
           items={[
-            { label: "Check status", value: <StatusBadge value={record.checkStatus} /> },
+            { label: "Cheque status", value: <StatusBadge value={record.checkStatus} /> },
           ]}
         />
       </SectionCard>
@@ -347,7 +347,7 @@ export function CheckDetails({ record, onBack, onEdit, onChanged, notify }: Prop
 
       <section className="panel">
         <PanelTitle
-          title="Check history"
+          title="Cheque history"
           subtitle="Status changes, updates, and attachment activity (account numbers excluded)"
           action={<History size={16} className="text-[#1f6ea6]" />}
         />

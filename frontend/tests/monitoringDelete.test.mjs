@@ -51,8 +51,28 @@ test("monitoring deletion is authorized, recoverable, audited, and retains relat
     const checkMarkup = renderToStaticMarkup(
       createElement(HeaderBackProvider, null, createElement(CheckMonitoring, { notify: () => {} })),
     );
-    assert.match(checkMarkup, /Total Checks/);
+    assert.match(checkMarkup, /Total Cheques/);
     assert.match(checkMarkup, /CHK-240118/);
+    const { CheckForm } = await server.ssrLoadModule("/src/modules/checks/CheckForm.tsx");
+    const formMarkup = renderToStaticMarkup(createElement(HeaderBackProvider, null,
+      createElement(CheckForm, { mode: "edit", record: seedChecks[0], onCancel() {}, onSaved() {} }),
+    ));
+    assert.match(formMarkup, /Edit cheque/);
+    assert.match(formMarkup, /Cheque number/);
+    assert.match(formMarkup, /<option value="Received Check"[^>]*>Received Cheque<\/option>/);
+    assert.match(formMarkup, /<option value="Issued Check"[^>]*>Issued Cheque<\/option>/);
+    const { CheckDetails } = await server.ssrLoadModule("/src/modules/checks/CheckDetails.tsx");
+    const detailsMarkup = renderToStaticMarkup(createElement(HeaderBackProvider, null,
+      createElement(CheckDetails, { record: seedChecks[0], onBack() {}, onEdit() {}, onChanged() {}, notify() {} }),
+    ));
+    assert.match(detailsMarkup, /Cheque type/);
+    assert.match(detailsMarkup, /Issued Cheque/);
+    const { CheckReports } = await server.ssrLoadModule("/src/modules/checks/CheckReports.tsx");
+    const reportsMarkup = renderToStaticMarkup(createElement(HeaderBackProvider, null,
+      createElement(CheckReports, { records: seedChecks, onBack() {}, notify() {} }),
+    ));
+    assert.match(reportsMarkup, /Received Cheques Report/);
+    assert.match(reportsMarkup, /Cheque reports/);
     const twelveEmployees = Array.from({ length: 12 }, (_, index) => ({
       ...loadEmployeeRecords().employees[0],
       id: index + 1,

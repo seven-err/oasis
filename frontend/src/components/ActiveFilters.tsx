@@ -1,6 +1,7 @@
 import { X } from "lucide-react";
 
 const labels: Record<string, string> = {
+  checkType: "Cheque type", checkDateFrom: "Cheque date from", checkDateTo: "Cheque date to",
   checkStatus: "Status", collectionStatus: "Status", customerId: "Customer",
   categoryId: "Category", preparedById: "Prepared by", clientId: "Client ID",
   receivedIssuedFrom: "Received/issued from", receivedIssuedTo: "Received/issued to",

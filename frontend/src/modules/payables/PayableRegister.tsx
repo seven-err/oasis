@@ -40,6 +40,7 @@ import { EmptyState, PaginationBar, StatusBadge } from "./ui";
 import {
   filterPayables,
   formatDate,
+  paymentMethodLabel,
   peso,
   sortPayables,
   summarizePayables,
@@ -436,6 +437,7 @@ export function PayableRegister({
           </div>
 
           <ActiveFilters
+            valueLabels={{ paymentMethod: { Check: "Cheque" } }}
             filters={filters}
             defaults={EMPTY_FILTERS}
             matched={filtered.length}
@@ -512,7 +514,7 @@ export function PayableRegister({
                   <option value="All">All methods</option>
                   {PAYMENT_METHODS.map((m) => (
                     <option key={m} value={m}>
-                      {m}
+                      {paymentMethodLabel(m)}
                     </option>
                   ))}
                 </select>

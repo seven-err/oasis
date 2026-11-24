@@ -121,10 +121,10 @@ test("existing dashboard hides restricted module totals and record details", asy
     setSsrSession({ ...sessionFor("hr"), user: { ...sessionFor("hr").user, permissions: ["dashboard", "hr", "account"] } });
     const hr = render();
     assert.match(hr, /Active Employees/);
-    assert.doesNotMatch(hr, /Total Checks|Outstanding Payables|Outstanding Receivables|Private Finance Payee|Private Bank|Payment recorded/);
+    assert.doesNotMatch(hr, /Total Cheques|Outstanding Payables|Outstanding Receivables|Private Finance Payee|Private Bank|Payment recorded/);
     setSsrSession(sessionFor("finance"));
     const finance = render();
-    assert.match(finance, /Total Checks|Private Finance Payee/);
+    assert.match(finance, /Total Cheques|Private Finance Payee/);
     assert.doesNotMatch(finance, /Active Employees|Employee updated/);
   } finally {
     await server.close();

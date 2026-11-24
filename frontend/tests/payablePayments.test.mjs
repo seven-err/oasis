@@ -30,11 +30,25 @@ test("Finance records payments without approval while retaining payment safeguar
     const { PayableDetails } = await server.ssrLoadModule("/src/modules/payables/PayableDetails.tsx");
     const { HeaderBackProvider } = await server.ssrLoadModule("/src/components/HeaderBack.tsx");
     const { PayableForm } = await server.ssrLoadModule("/src/modules/payables/PayableForm.tsx");
-    const { emptyFormValues, recordToFormValues } = await server.ssrLoadModule("/src/modules/payables/utils.ts");
+    const { emptyFormValues, recordToFormValues, paymentTermsLabel } = await server.ssrLoadModule("/src/modules/payables/utils.ts");
+    for (const [invoice, due, expected] of [
+      ["2026-11-20", "2026-11-30", "10 days"],
+      ["2026-11-20", "2026-11-20", "0 days"],
+      ["2026-11-20", "2026-11-21", "1 day"],
+      ["2026-12-20", "2027-01-19", "30 days"],
+      ["2024-02-28", "2024-03-01", "2 days"],
+      ["2026-03-07", "2026-03-09", "2 days"],
+      ["", "2026-11-30", ""],
+      ["2026-11-20", "", ""],
+      ["2026-02-30", "2026-03-10", ""],
+      ["2026-11-20", "2026-11-19", ""],
+    ]) assert.equal(paymentTermsLabel(invoice, due), expected);
     const form = renderToStaticMarkup(createElement(HeaderBackProvider, null,
       createElement(PayableForm, { mode: "create", onCancel() {}, onSaved() {} }),
     ));
     assert.doesNotMatch(form, /Category|name="categoryId"/);
+    assert.match(form, /<option value="Check">Cheque<\/option>/);
+    assert.doesNotMatch(form, />Check<\/option>/);
     const created = service.create(emptyFormValues({
       payeeName: "Test supplier", invoiceNumber: "NO-CATEGORY", items: [{ description: "Office expense", quantity: "2", price: "50" }],
       invoiceDate: "2026-11-20", dueDate: "2026-11-30",
@@ -70,6 +84,10 @@ test("Finance records payments without approval while retaining payment safeguar
     const editForm = renderToStaticMarkup(createElement(HeaderBackProvider, null,
       createElement(PayableForm, { mode: "edit", record: changed.data, onCancel() {}, onSaved() {} }),
     ));
+    const termsInput = editForm.match(/<input\b[^>]*name="paymentTerms"[^>]*>/)?.[0];
+    assert.ok(termsInput);
+    assert.match(termsInput, /readOnly=""/);
+    assert.match(termsInput, /value="10 days"/);
     for (const field of ["description", "quantity", "price"]) {
       assert.match(editForm, new RegExp(`aria-label="Clear item 1 ${field}"`));
     }
@@ -84,6 +102,8 @@ test("Finance records payments without approval while retaining payment safeguar
     assert.match(itemDetails, /Item Description/);
     assert.match(itemDetails, /Paper/);
     assert.match(itemDetails, /Ink/);
+    assert.match(itemDetails, /Payment terms/);
+    assert.match(itemDetails, /10 days/);
     assert.equal(created.data.categoryId, 0);
     assert.equal(created.data.totalAmount, 100);
     assert.deepEqual(created.data.items, [{ description: "Office expense", quantity: 2, price: 50 }]);

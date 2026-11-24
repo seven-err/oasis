@@ -29,16 +29,16 @@ export function validateCheckPayload(
   const errors: ValidationResult["errors"] = {};
 
   const checkNumber = values.checkNumber.trim();
-  if (!checkNumber) errors.checkNumber = "Check number is required.";
+  if (!checkNumber) errors.checkNumber = "Cheque number is required.";
   else if (checkNumber.length > 64)
-    errors.checkNumber = "Check number must be 64 characters or fewer.";
+    errors.checkNumber = "Cheque number must be 64 characters or fewer.";
 
   if (!values.checkType || !CHECK_TYPES.includes(values.checkType as CheckType)) {
-    errors.checkType = "Select a valid check type.";
+    errors.checkType = "Select a valid cheque type.";
   }
 
   if (!values.checkDate || !isValidIsoDate(values.checkDate)) {
-    errors.checkDate = "Enter a valid check date.";
+    errors.checkDate = "Enter a valid cheque date.";
   }
 
   if (!values.dateReceivedIssued || !isValidIsoDate(values.dateReceivedIssued)) {
@@ -58,11 +58,11 @@ export function validateCheckPayload(
 
   const amount = Number(values.checkAmount);
   if (!values.checkAmount || Number.isNaN(amount)) {
-    errors.checkAmount = "Check amount is required.";
+    errors.checkAmount = "Cheque amount is required.";
   } else if (amount <= 0) {
-    errors.checkAmount = "Check amount must be greater than zero.";
+    errors.checkAmount = "Cheque amount must be greater than zero.";
   } else if (amount > 999_999_999.99) {
-    errors.checkAmount = "Check amount exceeds the allowed maximum.";
+    errors.checkAmount = "Cheque amount exceeds the allowed maximum.";
   }
 
   if (!values.purpose.trim()) errors.purpose = "Purpose is required.";
@@ -77,7 +77,7 @@ export function validateCheckPayload(
   }
 
   if (!values.checkStatus || !CHECK_STATUSES.includes(values.checkStatus as CheckStatus)) {
-    errors.checkStatus = "Select a valid check status.";
+    errors.checkStatus = "Select a valid cheque status.";
   }
 
   const type = values.checkType as CheckType;
@@ -85,10 +85,10 @@ export function validateCheckPayload(
 
   if (type && status) {
     if (type === "Received Check" && status === "Issued") {
-      errors.checkStatus = "Issued status applies only to issued checks.";
+      errors.checkStatus = "Issued status applies only to issued cheques.";
     }
     if (type === "Issued Check" && (status === "Received" || status === "For Deposit")) {
-      errors.checkStatus = `"${status}" applies only to received checks.`;
+      errors.checkStatus = `"${status}" applies only to received cheques.`;
     }
 
     if (options.previousStatus) {
@@ -125,7 +125,7 @@ export function validateCheckPayload(
 
   // Date workflow consistency — do not auto-clear based on dates
   if (values.depositDate && values.checkDate && values.depositDate < values.checkDate) {
-    errors.depositDate = "Deposit date cannot be earlier than the check date.";
+    errors.depositDate = "Deposit date cannot be earlier than the cheque date.";
   }
   if (values.clearingDate && values.depositDate && values.clearingDate < values.depositDate) {
     errors.clearingDate = "Clearing date cannot be earlier than the deposit date.";
@@ -142,7 +142,7 @@ export function validateCheckPayload(
     );
     if (duplicate) {
       errors.checkNumber =
-        "A check with this number already exists for the same bank and check type.";
+        "A cheque with this number already exists for the same bank and cheque type.";
     }
   }
 

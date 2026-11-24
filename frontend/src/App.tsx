@@ -50,6 +50,7 @@ import {
   type OfficeNotification,
 } from "@/components/NotificationInbox";
 import { todayIsoDate } from "@/modules/payables/utils";
+import { checkTypeLabel } from "@/modules/checks/utils";
 import { CURRENT_USER } from "@/modules/checks/constants";
 import { SummaryStatCards } from "@/components/SummaryStatCards";
 import { ActiveFilters } from "@/components/ActiveFilters";
@@ -322,9 +323,9 @@ const pageMeta: Record<Page, { eyebrow: string; title: string; description: stri
   },
   checks: {
     eyebrow: "Financial Operations",
-    title: "Check Monitoring",
+    title: "Cheque Monitoring",
     description:
-      "Record, organize, track, and monitor checks received and issued by OASIS Company.",
+      "Record, organize, track, and monitor cheques received and issued by OASIS Company.",
   },
   payables: {
     eyebrow: "Financial Operations",
@@ -356,7 +357,7 @@ const pageMeta: Record<Page, { eyebrow: string; title: string; description: stri
   archives: {
     eyebrow: "Management",
     title: "Archive Records",
-    description: "Review archived checks, payables, receivables, and employees.",
+    description: "Review archived cheques, payables, receivables, and employees.",
   },
   deleted: {
     eyebrow: "Management",
@@ -391,7 +392,7 @@ const nav = [
     items: [
       { page: "dashboard" as Page, label: "Home", icon: House },
       { page: "employees" as Page, label: "Employee Alphalist", icon: Users },
-      { page: "checks" as Page, label: "Check Monitoring", icon: FileCheck2 },
+      { page: "checks" as Page, label: "Cheque Monitoring", icon: FileCheck2 },
       { page: "payables" as Page, label: "Payable Monitoring", icon: WalletCards },
       { page: "receivables" as Page, label: "Receivable Monitoring", icon: CircleDollarSign },
     ],
@@ -1292,7 +1293,7 @@ function DashboardGreeting() {
 function PageHeading({ page, onAdd }: { page: Page; onAdd: () => void }) {
   const meta = pageMeta[page];
   const addLabels: Partial<Record<Page, string>> = {
-    checks: "Add check",
+    checks: "Add cheque",
     payables: "Add payable",
     receivables: "Add receivable",
     employees: "Add employee",
@@ -1338,7 +1339,7 @@ export function Dashboard({
         items={[
           {
             permission: "checks",
-            label: "Total Checks",
+            label: "Total Cheques",
             value: checks.filter((x) => !x.archivedAt).length,
             icon: Wallet,
             onClick: () => go("checks"),
@@ -1405,7 +1406,7 @@ export function Dashboard({
           <div className="divide-y divide-[#e1eef6] px-5">
             {[
               ["Payment recorded", "AP-2025-0318 · Miguel Alvarina", "12 min"],
-              ["Check status updated", "CHK-240117 marked Cleared", "1 hr"],
+              ["Cheque status updated", "CHK-240117 marked Cleared", "1 hr"],
               ["Employee updated", "EMP-00167 · Angela Cruz", "3 hrs"],
               ["Collection recorded", "AR-2025-0186 · PHP 65,000", "Yesterday"],
             ].map(([title, detail, time], i) => (
@@ -1426,8 +1427,8 @@ export function Dashboard({
 
       {canAccessPage("checks") && <section className="panel mt-7">
         <PanelTitle
-          title="Recent check records"
-          subtitle="Latest official check activity"
+          title="Recent cheque records"
+          subtitle="Latest official cheque activity"
         />
         <div className="overflow-x-auto">
           <table>
@@ -1435,7 +1436,7 @@ export function Dashboard({
               <tr>
                 <th>Payee</th>
                 <th>Bank</th>
-                <th>Check date</th>
+                <th>Cheque date</th>
                 <th>Amount</th>
                 <th>Status</th>
               </tr>
@@ -1448,7 +1449,7 @@ export function Dashboard({
                   <tr key={x.id}>
                     <td>
                       <strong className="block text-xs">{x.payeeName}</strong>
-                      <span className="mt-1 block text-[10px] text-[#888]">{x.checkType}</span>
+                      <span className="mt-1 block text-[10px] text-[#888]">{checkTypeLabel(x.checkType)}</span>
                     </td>
                     <td className="text-[#777]">{x.bankName}</td>
                     <td>{formatDate(x.checkDate)}</td>
@@ -2282,12 +2283,12 @@ function Reports({ checks, payables, receivables, employees, notify }: any) {
   );
   const reports = [
     {
-      title: "Check records",
-      detail: "Open Check Monitoring for full reports, filters, and masked exports",
+      title: "Cheque records",
+      detail: "Open Cheque Monitoring for full reports, filters, and masked exports",
       Icon: FileCheck2,
       data: activeChecks,
       exportRows: activeChecks.map((x) => ({
-        CheckType: x.checkType,
+        ChequeType: checkTypeLabel(x.checkType),
         Payee: x.payeeName,
         Drawer: x.drawerName,
         Bank: x.bankName,

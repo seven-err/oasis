@@ -68,7 +68,7 @@ export function CheckMonitoring({ notify, createSignal = 0, initialRecordId, onR
         onCancel={back}
         onSaved={(record) => {
           refresh();
-          notify("Check record created.");
+          notify("Cheque record created.");
           replace({ mode: "details", id: record.id });
         }}
       />
@@ -83,7 +83,7 @@ export function CheckMonitoring({ notify, createSignal = 0, initialRecordId, onR
         onCancel={back}
         onSaved={(record) => {
           refresh();
-          notify("Check record updated.");
+          notify("Cheque record updated.");
           replace({ mode: "details", id: record.id });
         }}
       />

@@ -62,7 +62,7 @@ export function getOfficeNotifications(
       id: `bounced-check:${check.id}:${check.createdAt}`,
       page: "checks",
       recordId: check.id,
-      title: "Bounced check",
+      title: "Bounced cheque",
       detail: `${check.checkNumber} · ${check.payeeName}`,
       updatedAt: check.updatedAt,
     });

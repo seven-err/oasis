@@ -227,7 +227,7 @@ export function EmptyState({ title, onAdd }: { title: string; onAdd: () => void 
       <h3 className="mt-2 text-sm font-bold">{title}</h3>
       <p className="mt-1 text-xs text-[#888]">Adjust the filters or create a new record.</p>
       <button onClick={onAdd} className="primary-btn mt-5">
-        <Plus size={15} /> Add check
+        <Plus size={15} /> Add cheque
       </button>
     </div>
   );

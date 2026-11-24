@@ -3,8 +3,8 @@ import { Trash2, X } from "lucide-react";
 import { PAYMENT_METHODS } from "./constants";
 import { payableService } from "./store";
 import type { PayableFormValues, PayableItemValues, PayableRecord, ValidationResult } from "./types";
-import { FormInput, FormSelect, PanelTitle } from "./ui";
-import { emptyFormValues, payableItemAmount, payableItemsTotal, peso, recordToFormValues } from "./utils";
+import { FieldLabel, FormInput, FormSelect, PanelTitle } from "./ui";
+import { emptyFormValues, payableItemAmount, payableItemsTotal, paymentMethodLabel, paymentTermsLabel, peso, recordToFormValues } from "./utils";
 import { useUnsavedForm } from "@/hooks/useUnsavedForm";
 import { focusFirstError, updateVisibleErrors } from "@/components/formValidation";
 import { validatePayablePayload } from "./validation";
@@ -115,15 +115,27 @@ export function PayableForm({ mode, record, onCancel, onSaved }: Props) {
                 error={errors.invoiceDate}
               />
               {values.paymentStatus === "Unpaid" && (
-              <FormInput
-                label="Due date"
-                name="dueDate"
-                type="date"
-                required
-                value={values.dueDate}
-                onChange={set("dueDate")}
-                error={errors.dueDate}
-              />
+                <>
+                  <FormInput
+                    label="Due date"
+                    name="dueDate"
+                    type="date"
+                    required
+                    value={values.dueDate}
+                    onChange={set("dueDate")}
+                    error={errors.dueDate}
+                  />
+                  <label className="block">
+                    <FieldLabel>Payment terms</FieldLabel>
+                    <input
+                      name="paymentTerms"
+                      className="input mt-2"
+                      readOnly
+                      value={paymentTermsLabel(values.invoiceDate, values.dueDate)}
+                      placeholder="Calculated from invoice date to due date"
+                    />
+                  </label>
+                </>
               )}
               <FormSelect
                 label="Payment status"
@@ -147,7 +159,7 @@ export function PayableForm({ mode, record, onCancel, onSaved }: Props) {
                 <option value="">Not specified</option>
                 {PAYMENT_METHODS.map((m) => (
                   <option key={m} value={m}>
-                    {m}
+                    {paymentMethodLabel(m)}
                   </option>
                 ))}
               </FormSelect>
