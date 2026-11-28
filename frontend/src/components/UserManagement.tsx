@@ -2,7 +2,7 @@ import { PasswordInput } from "./PasswordInput";
 import { useEffect, useState, type FormEvent } from "react";
 import { ArrowUpDown, Download, FileText, Plus, Printer, Search, SlidersHorizontal, X } from "lucide-react";
 import { apiRequest, getSession } from "../auth";
-import { PaginationBar } from "../modules/checks/ui";
+import { PaginationBar } from "./ModuleUi";
 import { ActiveFilters } from "./ActiveFilters";
 import { recordRowClick } from "./recordRowClick";
 import { useHeaderBack } from "./HeaderBack";

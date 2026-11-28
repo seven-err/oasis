@@ -1,6 +1,7 @@
 import { normalizeAttachmentFile } from "@/components/attachmentFileTypes";
 import { businessStorageReady, readBusinessJson, writeBusinessJson, uploadBusinessFile } from "@/businessStorage";
-import { isDeletionExpired } from "@/components/deletedRecordRetention";
+import { deletedRecordMethods } from "@/components/deletedRecordRetention";
+import { readFileAsDataUrl } from "@/components/moduleUtils";
 import {
   CHECK_ACTIVITY_STORAGE_KEY,
   CHECK_ATTACHMENTS_STORAGE_KEY,
@@ -26,20 +27,12 @@ type StoreSnapshot = {
   activity: CheckActivity[];
 };
 
-function readJson<T>(key: string, fallback: T): T {
-  return readBusinessJson(key, fallback);
-}
-
-function writeJson(key: string, value: unknown): void {
-  writeBusinessJson(key, value);
-}
-
 function load(): StoreSnapshot {
-  const checks = readJson<CheckRecord[] | null>(CHECKS_STORAGE_KEY, null);
+  const checks = readBusinessJson<CheckRecord[] | null>(CHECKS_STORAGE_KEY, null);
   if (!checks) {
-    writeJson(CHECKS_STORAGE_KEY, []);
-    writeJson(CHECK_ATTACHMENTS_STORAGE_KEY, []);
-    writeJson(CHECK_ACTIVITY_STORAGE_KEY, []);
+    writeBusinessJson(CHECKS_STORAGE_KEY, []);
+    writeBusinessJson(CHECK_ATTACHMENTS_STORAGE_KEY, []);
+    writeBusinessJson(CHECK_ACTIVITY_STORAGE_KEY, []);
     return {
       checks: [],
       attachments: [],
@@ -48,17 +41,17 @@ function load(): StoreSnapshot {
   }
   return {
     checks,
-    attachments: readJson(CHECK_ATTACHMENTS_STORAGE_KEY, []),
-    activity: readJson(CHECK_ACTIVITY_STORAGE_KEY, []),
+    attachments: readBusinessJson(CHECK_ATTACHMENTS_STORAGE_KEY, []),
+    activity: readBusinessJson(CHECK_ACTIVITY_STORAGE_KEY, []),
   };
 }
 
 function persist(snapshot: StoreSnapshot): void {
   // Strip large preview data URLs from durable storage
   const attachments = snapshot.attachments.map(({ previewDataUrl, ...rest }) => ({ ...rest, ...(previewDataUrl?.startsWith('/business-files/') ? { previewDataUrl } : {}) }));
-  writeJson(CHECKS_STORAGE_KEY, snapshot.checks);
-  writeJson(CHECK_ATTACHMENTS_STORAGE_KEY, attachments);
-  writeJson(CHECK_ACTIVITY_STORAGE_KEY, snapshot.activity);
+  writeBusinessJson(CHECKS_STORAGE_KEY, snapshot.checks);
+  writeBusinessJson(CHECK_ATTACHMENTS_STORAGE_KEY, attachments);
+  writeBusinessJson(CHECK_ACTIVITY_STORAGE_KEY, snapshot.activity);
 }
 
 function logActivity(
@@ -253,55 +246,11 @@ export const checkService = {
     return { ok: true, data: record };
   },
 
-  purgeExpiredDeleted(now = Date.now()): number {
-    if (!CURRENT_USER.permissions.archiveChecks) return 0;
-    const snapshot = load();
-    const retained = snapshot.checks.filter((record) => !isDeletionExpired(record.deletedAt, now));
-    const removed = snapshot.checks.length - retained.length;
-    if (removed) writeJson(CHECKS_STORAGE_KEY, retained);
-    return removed;
-  },
-
-  listDeleted(): CheckRecord[] {
-    return load().checks.filter((record) => !!record.deletedAt);
-  },
-
-  restoreDeleted(id: number): CheckServiceResult<CheckRecord> {
-    if (!CURRENT_USER.permissions.archiveChecks) {
-      return { ok: false, errors: { form: "You are not authorized to restore deleted records." } };
-    }
-    const snapshot = load();
-    const existing = snapshot.checks.find((record) => record.id === id && record.deletedAt);
-    if (!existing) return { ok: false, errors: { form: "Deleted record not found." } };
-    const record = { ...existing, deletedAt: null, updatedAt: nowIso() };
-    writeJson(CHECKS_STORAGE_KEY, snapshot.checks.map((item) => item.id === id ? record : item));
-    return { ok: true, data: record };
-  },
-
-  deletePermanently(id: number): CheckServiceResult<CheckRecord> {
-    if (!CURRENT_USER.permissions.archiveChecks) {
-      return { ok: false, errors: { form: "You are not authorized to permanently delete records." } };
-    }
-    const snapshot = load();
-    const record = snapshot.checks.find((item) => item.id === id && item.deletedAt);
-    if (!record) return { ok: false, errors: { form: "Deleted record not found." } };
-    writeJson(CHECKS_STORAGE_KEY, snapshot.checks.filter((item) => item.id !== id));
-    return { ok: true, data: record };
-  },
-
-  deleteArchived(id: number): CheckServiceResult<CheckRecord> {
-    if (!CURRENT_USER.permissions.archiveChecks) {
-      return { ok: false, errors: { form: "You are not authorized to delete archived records." } };
-    }
-    const snapshot = load();
-    const existing = snapshot.checks.find((record) => record.id === id);
-    if (!existing?.archivedAt || existing.deletedAt) {
-      return { ok: false, errors: { form: "Archived record not found." } };
-    }
-    const record = { ...existing, deletedAt: nowIso(), updatedAt: nowIso() };
-    writeJson(CHECKS_STORAGE_KEY, snapshot.checks.map((item) => item.id === id ? record : item));
-    return { ok: true, data: record };
-  },
+  ...deletedRecordMethods<CheckRecord>({
+    loadRecords: () => load().checks,
+    writeRecords: (records) => writeBusinessJson(CHECKS_STORAGE_KEY, records),
+    canManage: () => CURRENT_USER.permissions.archiveChecks,
+  }),
 
   restore(id: number): CheckServiceResult<CheckRecord> {
     const snapshot = load();
@@ -415,12 +364,3 @@ export const checkService = {
     persist(snapshot);
   },
 };
-
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error("Failed to read file"));
-    reader.readAsDataURL(file);
-  });
-}

@@ -1,6 +1,6 @@
 import { checkService } from "@/modules/checks/store";
 import { readBusinessJson, writeBusinessJson } from "@/businessStorage";
-import { isDeletionExpired } from "@/components/deletedRecordRetention";
+import { deletedRecordMethods } from "@/components/deletedRecordRetention";
 import {
   CURRENT_USER,
   PAYABLES_STORAGE_KEY,
@@ -40,21 +40,13 @@ export type PayableServiceResult<T> =
   | { ok: true; data: T }
   | { ok: false; errors: ValidationResult["errors"] };
 
-function readJson<T>(key: string, fallback: T): T {
-  return readBusinessJson(key, fallback);
-}
-
-function writeJson(key: string, value: unknown): void {
-  writeBusinessJson(key, value);
-}
-
 function load(): StoreSnapshot {
-  const payables = readJson<PayableRecord[] | null>(PAYABLES_STORAGE_KEY, null);
+  const payables = readBusinessJson<PayableRecord[] | null>(PAYABLES_STORAGE_KEY, null);
   if (!payables) {
-    writeJson(PAYABLES_STORAGE_KEY, []);
-    writeJson(PAYABLE_PAYMENTS_STORAGE_KEY, []);
-    writeJson(PAYABLE_CATEGORIES_STORAGE_KEY, seedCategories);
-    writeJson(PAYABLE_ACTIVITY_STORAGE_KEY, []);
+    writeBusinessJson(PAYABLES_STORAGE_KEY, []);
+    writeBusinessJson(PAYABLE_PAYMENTS_STORAGE_KEY, []);
+    writeBusinessJson(PAYABLE_CATEGORIES_STORAGE_KEY, seedCategories);
+    writeBusinessJson(PAYABLE_ACTIVITY_STORAGE_KEY, []);
     return {
       payables: [],
       payments: [],
@@ -64,17 +56,17 @@ function load(): StoreSnapshot {
   }
   return {
     payables,
-    payments: readJson(PAYABLE_PAYMENTS_STORAGE_KEY, []),
-    categories: readJson(PAYABLE_CATEGORIES_STORAGE_KEY, seedCategories),
-    activity: readJson(PAYABLE_ACTIVITY_STORAGE_KEY, []),
+    payments: readBusinessJson(PAYABLE_PAYMENTS_STORAGE_KEY, []),
+    categories: readBusinessJson(PAYABLE_CATEGORIES_STORAGE_KEY, seedCategories),
+    activity: readBusinessJson(PAYABLE_ACTIVITY_STORAGE_KEY, []),
   };
 }
 
 function persist(snapshot: StoreSnapshot): void {
-  writeJson(PAYABLES_STORAGE_KEY, snapshot.payables);
-  writeJson(PAYABLE_PAYMENTS_STORAGE_KEY, snapshot.payments);
-  writeJson(PAYABLE_CATEGORIES_STORAGE_KEY, snapshot.categories);
-  writeJson(PAYABLE_ACTIVITY_STORAGE_KEY, snapshot.activity);
+  writeBusinessJson(PAYABLES_STORAGE_KEY, snapshot.payables);
+  writeBusinessJson(PAYABLE_PAYMENTS_STORAGE_KEY, snapshot.payments);
+  writeBusinessJson(PAYABLE_CATEGORIES_STORAGE_KEY, snapshot.categories);
+  writeBusinessJson(PAYABLE_ACTIVITY_STORAGE_KEY, snapshot.activity);
 }
 
 function logActivity(
@@ -485,55 +477,11 @@ export const payableService = {
     return { ok: true, data: record };
   },
 
-  purgeExpiredDeleted(now = Date.now()): number {
-    if (!CURRENT_USER.permissions.archivePayables) return 0;
-    const snapshot = load();
-    const retained = snapshot.payables.filter((record) => !isDeletionExpired(record.deletedAt, now));
-    const removed = snapshot.payables.length - retained.length;
-    if (removed) writeJson(PAYABLES_STORAGE_KEY, retained);
-    return removed;
-  },
-
-  listDeleted(): PayableRecord[] {
-    return load().payables.filter((record) => !!record.deletedAt);
-  },
-
-  restoreDeleted(id: number): PayableServiceResult<PayableRecord> {
-    if (!CURRENT_USER.permissions.archivePayables) {
-      return { ok: false, errors: { form: "You are not authorized to restore deleted records." } };
-    }
-    const snapshot = load();
-    const existing = snapshot.payables.find((record) => record.id === id && record.deletedAt);
-    if (!existing) return { ok: false, errors: { form: "Deleted record not found." } };
-    const record = { ...existing, deletedAt: null, updatedAt: nowIso() };
-    writeJson(PAYABLES_STORAGE_KEY, snapshot.payables.map((item) => item.id === id ? record : item));
-    return { ok: true, data: record };
-  },
-
-  deletePermanently(id: number): PayableServiceResult<PayableRecord> {
-    if (!CURRENT_USER.permissions.archivePayables) {
-      return { ok: false, errors: { form: "You are not authorized to permanently delete records." } };
-    }
-    const snapshot = load();
-    const record = snapshot.payables.find((item) => item.id === id && item.deletedAt);
-    if (!record) return { ok: false, errors: { form: "Deleted record not found." } };
-    writeJson(PAYABLES_STORAGE_KEY, snapshot.payables.filter((item) => item.id !== id));
-    return { ok: true, data: record };
-  },
-
-  deleteArchived(id: number): PayableServiceResult<PayableRecord> {
-    if (!CURRENT_USER.permissions.archivePayables) {
-      return { ok: false, errors: { form: "You are not authorized to delete archived records." } };
-    }
-    const snapshot = load();
-    const existing = snapshot.payables.find((record) => record.id === id);
-    if (!existing?.archivedAt || existing.deletedAt) {
-      return { ok: false, errors: { form: "Archived record not found." } };
-    }
-    const record = { ...existing, deletedAt: nowIso(), updatedAt: nowIso() };
-    writeJson(PAYABLES_STORAGE_KEY, snapshot.payables.map((item) => item.id === id ? record : item));
-    return { ok: true, data: record };
-  },
+  ...deletedRecordMethods<PayableRecord>({
+    loadRecords: () => load().payables,
+    writeRecords: (records) => writeBusinessJson(PAYABLES_STORAGE_KEY, records),
+    canManage: () => CURRENT_USER.permissions.archivePayables,
+  }),
 
   restore(id: number): PayableServiceResult<PayableRecord> {
     const snapshot = load();

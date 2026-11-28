@@ -1,7 +1,8 @@
 import { normalizeAttachmentFile } from "@/components/attachmentFileTypes";
 import { businessStorageReady, readBusinessJson, writeBusinessJson, uploadBusinessFile } from "@/businessStorage";
 import { checkService } from "@/modules/checks/store";
-import { isDeletionExpired } from "@/components/deletedRecordRetention";
+import { deletedRecordMethods } from "@/components/deletedRecordRetention";
+import { readFileAsDataUrl } from "@/components/moduleUtils";
 import {
   CURRENT_USER,
   RECEIVABLES_STORAGE_KEY,
@@ -52,23 +53,15 @@ export type ReceivableServiceResult<T> =
   | { ok: true; data: T }
   | { ok: false; errors: ValidationResult["errors"] };
 
-function readJson<T>(key: string, fallback: T): T {
-  return readBusinessJson(key, fallback);
-}
-
-function writeJson(key: string, value: unknown): void {
-  writeBusinessJson(key, value);
-}
-
 function load(): StoreSnapshot {
-  const receivables = readJson<ReceivableRecord[] | null>(RECEIVABLES_STORAGE_KEY, null);
+  const receivables = readBusinessJson<ReceivableRecord[] | null>(RECEIVABLES_STORAGE_KEY, null);
   if (!receivables) {
-    writeJson(RECEIVABLES_STORAGE_KEY, []);
-    writeJson(RECEIVABLE_COLLECTIONS_STORAGE_KEY, []);
-    writeJson(RECEIVABLE_CUSTOMERS_STORAGE_KEY, []);
-    writeJson(RECEIVABLE_FOLLOWUPS_STORAGE_KEY, []);
-    writeJson(RECEIVABLE_ATTACHMENTS_STORAGE_KEY, []);
-    writeJson(RECEIVABLE_ACTIVITY_STORAGE_KEY, []);
+    writeBusinessJson(RECEIVABLES_STORAGE_KEY, []);
+    writeBusinessJson(RECEIVABLE_COLLECTIONS_STORAGE_KEY, []);
+    writeBusinessJson(RECEIVABLE_CUSTOMERS_STORAGE_KEY, []);
+    writeBusinessJson(RECEIVABLE_FOLLOWUPS_STORAGE_KEY, []);
+    writeBusinessJson(RECEIVABLE_ATTACHMENTS_STORAGE_KEY, []);
+    writeBusinessJson(RECEIVABLE_ACTIVITY_STORAGE_KEY, []);
     return {
       receivables: [],
       collections: [],
@@ -80,21 +73,21 @@ function load(): StoreSnapshot {
   }
   return {
     receivables,
-    collections: readJson(RECEIVABLE_COLLECTIONS_STORAGE_KEY, []),
-    customers: readJson(RECEIVABLE_CUSTOMERS_STORAGE_KEY, []),
-    followUps: readJson(RECEIVABLE_FOLLOWUPS_STORAGE_KEY, []),
-    attachments: readJson(RECEIVABLE_ATTACHMENTS_STORAGE_KEY, []),
-    activity: readJson(RECEIVABLE_ACTIVITY_STORAGE_KEY, []),
+    collections: readBusinessJson(RECEIVABLE_COLLECTIONS_STORAGE_KEY, []),
+    customers: readBusinessJson(RECEIVABLE_CUSTOMERS_STORAGE_KEY, []),
+    followUps: readBusinessJson(RECEIVABLE_FOLLOWUPS_STORAGE_KEY, []),
+    attachments: readBusinessJson(RECEIVABLE_ATTACHMENTS_STORAGE_KEY, []),
+    activity: readBusinessJson(RECEIVABLE_ACTIVITY_STORAGE_KEY, []),
   };
 }
 
 function persist(snapshot: StoreSnapshot): void {
-  writeJson(RECEIVABLES_STORAGE_KEY, snapshot.receivables);
-  writeJson(RECEIVABLE_COLLECTIONS_STORAGE_KEY, snapshot.collections);
-  writeJson(RECEIVABLE_CUSTOMERS_STORAGE_KEY, snapshot.customers);
-  writeJson(RECEIVABLE_FOLLOWUPS_STORAGE_KEY, snapshot.followUps);
-  writeJson(RECEIVABLE_ATTACHMENTS_STORAGE_KEY, snapshot.attachments);
-  writeJson(RECEIVABLE_ACTIVITY_STORAGE_KEY, snapshot.activity);
+  writeBusinessJson(RECEIVABLES_STORAGE_KEY, snapshot.receivables);
+  writeBusinessJson(RECEIVABLE_COLLECTIONS_STORAGE_KEY, snapshot.collections);
+  writeBusinessJson(RECEIVABLE_CUSTOMERS_STORAGE_KEY, snapshot.customers);
+  writeBusinessJson(RECEIVABLE_FOLLOWUPS_STORAGE_KEY, snapshot.followUps);
+  writeBusinessJson(RECEIVABLE_ATTACHMENTS_STORAGE_KEY, snapshot.attachments);
+  writeBusinessJson(RECEIVABLE_ACTIVITY_STORAGE_KEY, snapshot.activity);
 }
 
 function logActivity(
@@ -143,15 +136,6 @@ function toRecord(
     updatedAt: stamp,
     archivedAt: existing?.archivedAt ?? null,
   };
-}
-
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error("Unable to read file."));
-    reader.readAsDataURL(file);
-  });
 }
 
 export const receivableService = {
@@ -411,7 +395,7 @@ export const receivableService = {
       updatedById: CURRENT_USER.id,
     };
     try {
-      writeJson(
+      writeBusinessJson(
         RECEIVABLES_STORAGE_KEY,
         snapshot.receivables.map((row) => (row.id === id ? record : row)),
       );
@@ -826,55 +810,11 @@ export const receivableService = {
     return { ok: true, data: record };
   },
 
-  purgeExpiredDeleted(now = Date.now()): number {
-    if (!CURRENT_USER.permissions.archiveReceivables) return 0;
-    const snapshot = load();
-    const retained = snapshot.receivables.filter((record) => !isDeletionExpired(record.deletedAt, now));
-    const removed = snapshot.receivables.length - retained.length;
-    if (removed) writeJson(RECEIVABLES_STORAGE_KEY, retained);
-    return removed;
-  },
-
-  listDeleted(): ReceivableRecord[] {
-    return load().receivables.filter((record) => !!record.deletedAt);
-  },
-
-  restoreDeleted(id: number): ReceivableServiceResult<ReceivableRecord> {
-    if (!CURRENT_USER.permissions.archiveReceivables) {
-      return { ok: false, errors: { form: "You are not authorized to restore deleted records." } };
-    }
-    const snapshot = load();
-    const existing = snapshot.receivables.find((record) => record.id === id && record.deletedAt);
-    if (!existing) return { ok: false, errors: { form: "Deleted record not found." } };
-    const record = { ...existing, deletedAt: null, updatedAt: nowIso() };
-    writeJson(RECEIVABLES_STORAGE_KEY, snapshot.receivables.map((item) => item.id === id ? record : item));
-    return { ok: true, data: record };
-  },
-
-  deletePermanently(id: number): ReceivableServiceResult<ReceivableRecord> {
-    if (!CURRENT_USER.permissions.archiveReceivables) {
-      return { ok: false, errors: { form: "You are not authorized to permanently delete records." } };
-    }
-    const snapshot = load();
-    const record = snapshot.receivables.find((item) => item.id === id && item.deletedAt);
-    if (!record) return { ok: false, errors: { form: "Deleted record not found." } };
-    writeJson(RECEIVABLES_STORAGE_KEY, snapshot.receivables.filter((item) => item.id !== id));
-    return { ok: true, data: record };
-  },
-
-  deleteArchived(id: number): ReceivableServiceResult<ReceivableRecord> {
-    if (!CURRENT_USER.permissions.archiveReceivables) {
-      return { ok: false, errors: { form: "You are not authorized to delete archived records." } };
-    }
-    const snapshot = load();
-    const existing = snapshot.receivables.find((record) => record.id === id);
-    if (!existing?.archivedAt || existing.deletedAt) {
-      return { ok: false, errors: { form: "Archived record not found." } };
-    }
-    const record = { ...existing, deletedAt: nowIso(), updatedAt: nowIso() };
-    writeJson(RECEIVABLES_STORAGE_KEY, snapshot.receivables.map((item) => item.id === id ? record : item));
-    return { ok: true, data: record };
-  },
+  ...deletedRecordMethods<ReceivableRecord>({
+    loadRecords: () => load().receivables,
+    writeRecords: (records) => writeBusinessJson(RECEIVABLES_STORAGE_KEY, records),
+    canManage: () => CURRENT_USER.permissions.archiveReceivables,
+  }),
 
   restore(id: number): ReceivableServiceResult<ReceivableRecord> {
     const snapshot = load();

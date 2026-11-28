@@ -49,7 +49,7 @@ import {
   NotificationInbox,
   type OfficeNotification,
 } from "@/components/NotificationInbox";
-import { todayIsoDate } from "@/modules/payables/utils";
+import { formatDate, peso, todayIsoDate } from "@/components/moduleUtils";
 import { checkTypeLabel } from "@/modules/checks/utils";
 import { CURRENT_USER } from "@/modules/checks/constants";
 import { SummaryStatCards } from "@/components/SummaryStatCards";
@@ -304,16 +304,6 @@ export function loadEmployeeRecords(): { employees: Employee[]; deletedEmployees
   }
   return { employees: initialEmployees, deletedEmployees: [] };
 }
-
-const peso = new Intl.NumberFormat("en-PH", {
-  style: "currency",
-  currency: "PHP",
-  minimumFractionDigits: 2,
-});
-const formatDate = (value: string) =>
-  !value ? "—" : new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(
-    new Date(`${value}T00:00:00`),
-  );
 
 const pageMeta: Record<Page, { eyebrow: string; title: string; description: string }> = {
   dashboard: {
