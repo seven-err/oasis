@@ -10,6 +10,8 @@ $env:CI = 'previous-value'
 $runtimeRoot = Join-Path $testRoot 'OASIS/office-server'
 $calls = [Collections.Generic.List[string]]::new()
 $scenario = 'success'
+$mockBranch = 'main'
+$mockRevision = 'aaaaaaa1111111'
 
 function Assert($Condition, [string] $Message) {
     if (-not $Condition) { throw $Message }
@@ -22,12 +24,17 @@ function git {
     if ($args[0] -eq 'worktree' -and $args[1] -eq 'add') {
         New-Item -ItemType Directory -Path (Join-Path $args[3] 'frontend') -Force | Out-Null
     }
-    switch ($command) {
-        'branch --show-current' { if ($scenario -eq 'branch') { 'feature/ui' } else { 'main' } }
-        'status --porcelain' { if ($scenario -eq 'dirty') { ' M frontend/src/App.tsx' } }
-        'fetch origin main' { if ($scenario -eq 'network') { $global:LASTEXITCODE = 1 } }
-        'rev-parse origin/main' { 'test-revision' }
-        'merge-base --is-ancestor HEAD test-revision' { if ($scenario -eq 'diverged') { $global:LASTEXITCODE = 1 } }
+    if ($args[0] -eq 'rev-parse' -and $args[1] -eq '--verify') {
+        $ref = $args[2] -replace '\^\{commit\}$', ''
+        if ($ref -eq 'bad0000') { $global:LASTEXITCODE = 1; return }
+        return $ref
+    }
+    switch -Regex ($command) {
+        '^branch --show-current$' { if ($scenario -eq 'branch') { 'feature/ui' } else { $mockBranch } }
+        '^status --porcelain$' { if ($scenario -eq 'dirty') { ' M frontend/src/App.tsx' } }
+        '^fetch origin (main|staging)$' { if ($scenario -eq 'network') { $global:LASTEXITCODE = 1 } }
+        '^rev-parse origin/(main|staging)$' { $mockRevision }
+        '^merge-base --is-ancestor HEAD ' { if ($scenario -eq 'diverged') { $global:LASTEXITCODE = 1 } }
     }
 }
 
@@ -111,6 +118,58 @@ Write-Output 'Test launcher returned with its service running.'
         $serviceId = Get-Content -LiteralPath (Join-Path $testRoot 'service.pid') -ErrorAction SilentlyContinue
         if ($serviceId) { Stop-Process -Id ([int] $serviceId) -ErrorAction SilentlyContinue }
     }
+
+    # Deploying a newer revision must save the prior one for rollback.
+    $scenario = 'success'
+    $mockBranch = 'main'
+    $mockRevision = 'bbbbbbb2222222'
+    $calls.Clear()
+    & $updater -PublicUrl 'https://oasis-test.ngrok-free.dev'
+    Assert ((Get-Content -LiteralPath (Join-Path $runtimeRoot 'previous-revision.txt') -Raw).Trim().EndsWith('|aaaaaaa1111111')) 'Previous revision must be recorded before overwriting deployed-revision.txt.'
+    Assert ((Get-Content -LiteralPath (Join-Path $runtimeRoot 'deployed-revision.txt') -Raw).Trim().EndsWith('|bbbbbbb2222222')) 'New revision must be recorded in deployed-revision.txt.'
+
+    # Rollback without -Revision restores the previously recorded revision without fetching.
+    $calls.Clear()
+    & $updater -PublicUrl 'https://oasis-test.ngrok-free.dev' -Rollback
+    Assert ($calls -contains 'git reset --hard aaaaaaa1111111') 'Rollback must reset to the previous revision.'
+    Assert (-not ($calls -match '^git (fetch|merge)')) 'Rollback must not fetch or fast-forward.'
+    Assert ((Get-Content -LiteralPath (Join-Path $runtimeRoot 'deployed-revision.txt') -Raw).Trim().EndsWith('|aaaaaaa1111111')) 'Rollback must update deployed-revision.txt.'
+
+    # Rollback with explicit -Revision targets that commit.
+    $calls.Clear()
+    & $updater -PublicUrl 'https://oasis-test.ngrok-free.dev' -Rollback -Revision 'deadbeef'
+    Assert ($calls -contains 'git reset --hard deadbeef') 'Explicit -Revision rollback must reset to the requested commit.'
+    Assert ((Get-Content -LiteralPath (Join-Path $runtimeRoot 'deployed-revision.txt') -Raw).Trim().EndsWith('|deadbeef')) 'Explicit rollback must update deployed-revision.txt.'
+
+    # Rollback refuses -Watch and missing previous-revision.txt.
+    $calls.Clear()
+    $failed = $false
+    try { & $updater -PublicUrl 'https://oasis-test.ngrok-free.dev' -Rollback -Watch } catch { $failed = $true }
+    Assert $failed 'Combining -Rollback with -Watch must fail.'
+    Assert (-not ($calls -match '^launcher ')) 'Invalid -Rollback -Watch must leave the server alone.'
+
+    Remove-Item -LiteralPath (Join-Path $runtimeRoot 'previous-revision.txt')
+    $calls.Clear()
+    $failed = $false
+    try { & $updater -PublicUrl 'https://oasis-test.ngrok-free.dev' -Rollback } catch { $failed = $true }
+    Assert $failed 'Rollback without previous-revision.txt or -Revision must fail.'
+    Assert (-not ($calls -match '^launcher ')) 'Missing rollback target must leave the server alone.'
+
+    # Staging branch support.
+    $mockBranch = 'staging'
+    $mockRevision = 'ccccccc3333333'
+    $calls.Clear()
+    & $updater -PublicUrl 'https://oasis-test.ngrok-free.dev' -Branch staging
+    Assert ($calls -contains 'git fetch origin staging') 'Staging mode must fetch origin/staging.'
+    Assert ($calls -contains 'git merge --ff-only ccccccc3333333') 'Staging mode must fast-forward the staging revision.'
+
+    $mockBranch = 'main'
+    $calls.Clear()
+    $failed = $false
+    try { & $updater -PublicUrl 'https://oasis-test.ngrok-free.dev' -Branch staging } catch { $failed = $true }
+    Assert $failed 'Staging mode must refuse a checkout on main.'
+    Assert (-not ($calls -match '^launcher ')) 'Branch mismatch must leave the server alone.'
+
     Write-Output 'Office updater tests passed.'
 }
 finally {

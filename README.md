@@ -417,6 +417,46 @@ offline, stop the watcher first and then run from the host checkout's root:
 .\backend\start-office-server.ps1 -Stop
 ```
 
+### Staging and rollback
+
+Use a `staging` branch to test updates before publishing `main` to the office
+server. Create it once from `main`:
+
+```powershell
+git switch main
+git pull --ff-only origin main
+git switch -c staging
+git push -u origin staging
+```
+
+Once `origin/staging` exists, feature-branch PRs target `staging` and auto-merge
+when checks pass. Run a separate staging checkout (with its own MySQL database
+and `OASIS_BUSINESS_FILES_PATH` in `backend/.env` so testing never touches live
+office data) using `-Branch staging`:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\backend\update-office-server.ps1 -PublicUrl https://YOUR-STAGING-DOMAIN.ngrok-free.dev -Branch staging
+```
+
+After verifying the update on staging, open a PR from `staging` into `main`.
+PRs targeting `main` run all checks and wait for a manual merge click.
+
+If a release on `main` breaks production, roll back in two steps:
+
+1. **Immediate host rollback:** stop any running `-Watch` terminal, then run
+   from the office checkout's root to restore the previous deployed commit
+   recorded in `previous-revision.txt` (or pass `-Revision <commit>`):
+
+   ```powershell
+   powershell -NoProfile -ExecutionPolicy Bypass -File .\backend\update-office-server.ps1 -PublicUrl https://YOUR-DOMAIN.ngrok-free.dev -Rollback
+   ```
+
+2. **Permanent Git rollback:** push a `git revert <bad-commit>` PR into `main`
+   and merge it before restarting `-Watch` (otherwise the watcher will redeploy
+   the broken commit on `origin/main`). If the bad release changed the database
+   schema or corrupted records, restore your pre-deploy SQL backup (see
+   [Backup and transfer](#backup-and-transfer)).
+
 ## Backup and transfer
 
 A complete backup has three parts: **the MySQL database, the private attachment

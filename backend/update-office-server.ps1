@@ -3,14 +3,27 @@ param(
     [Parameter(Mandatory = $true)]
     [ValidatePattern('^https://[a-z0-9-]+\.ngrok-free\.(dev|app)$')]
     [string] $PublicUrl,
+    [ValidateSet('main', 'staging')]
+    [string] $Branch = 'main',
     [string] $PhpCgiPath,
-    [switch] $Watch
+    [switch] $Watch,
+    [switch] $Rollback,
+    [ValidatePattern('^[0-9a-fA-F]{7,40}$')]
+    [string] $Revision
 )
 
 $ErrorActionPreference = 'Stop'
+if ($Rollback -and $Watch) {
+    throw 'Cannot combine -Rollback with -Watch. Stop the watcher, roll back, then revert the bad commit on GitHub before resuming -Watch.'
+}
+if ($Revision -and -not $Rollback) {
+    throw '-Revision can only be used with -Rollback.'
+}
+
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $runtimeRoot = Join-Path $env:LOCALAPPDATA 'OASIS\office-server'
 $revisionFile = Join-Path $runtimeRoot 'deployed-revision.txt'
+$previousRevisionFile = Join-Path $runtimeRoot 'previous-revision.txt'
 $launcher = Join-Path $PSScriptRoot 'start-office-server.ps1'
 
 function Invoke-Checked([string] $Command, [string[]] $Arguments) {
@@ -31,36 +44,55 @@ $lock = [IO.File]::Open((Join-Path $runtimeRoot 'update.lock'), 'OpenOrCreate', 
 Push-Location $repoRoot
 try {
     $rejectedRevision = ''
-    Write-Output 'Updating the office server from origin/main. Keep this checkout for hosting only.'
+    if ($Rollback) {
+        Write-Output "Rolling back the office server on branch '$Branch'."
+    } else {
+        Write-Output "Updating the office server from origin/$Branch. Keep this checkout for hosting only."
+    }
     do {
-        $branch = & git branch --show-current
-        if ($LASTEXITCODE -ne 0 -or $branch -ne 'main') { throw 'The office checkout must be on main. Use a separate clone for UI development.' }
+        $currentBranch = & git branch --show-current
+        if ($LASTEXITCODE -ne 0 -or $currentBranch -ne $Branch) { throw "The office checkout must be on $Branch. Use a separate clone for UI development." }
         $changes = & git status --porcelain
         if ($LASTEXITCODE -ne 0 -or $changes) { throw 'The office checkout has local changes. Commit or move them before updating; nothing was overwritten.' }
 
-        & git fetch origin main
-        if ($LASTEXITCODE -ne 0) {
-            if (-not $Watch) { throw 'Could not fetch origin/main. The running server was left alone.' }
-            Write-Warning 'Could not reach origin/main; retrying in 30 seconds. The running server was left alone.'
-            Start-Sleep -Seconds 30
-            continue
-        }
-        $revision = & git rev-parse origin/main
-        if ($LASTEXITCODE -ne 0) { throw 'Could not resolve origin/main.' }
-        & git merge-base --is-ancestor HEAD $revision
-        if ($LASTEXITCODE -ne 0) { throw 'The office checkout has diverged from origin/main. Resolve it manually; nothing was overwritten.' }
-
         $deployed = if (Test-Path -LiteralPath $revisionFile) { (Get-Content -LiteralPath $revisionFile -Raw).Trim() } else { '' }
-        if ($revision -eq $rejectedRevision) {
+        if ($Rollback) {
+            $targetRef = $Revision
+            if (-not $targetRef) {
+                $previous = if (Test-Path -LiteralPath $previousRevisionFile) { (Get-Content -LiteralPath $previousRevisionFile -Raw).Trim() } else { '' }
+                $parts = $previous -split '\|'
+                if ($parts.Count -lt 3 -or $parts[0] -ne $repoRoot -or -not $parts[2]) {
+                    throw 'No previous deployed revision recorded for this checkout. Pass -Revision <commit> explicitly.'
+                }
+                $targetRef = $parts[2]
+            }
+            $targetRevision = & git rev-parse --verify "$targetRef^{commit}"
+            if ($LASTEXITCODE -ne 0 -or -not $targetRevision) { throw "Could not resolve rollback revision '$targetRef'. The running server was left alone." }
+        }
+        else {
+            & git fetch origin $Branch
+            if ($LASTEXITCODE -ne 0) {
+                if (-not $Watch) { throw "Could not fetch origin/$Branch. The running server was left alone." }
+                Write-Warning "Could not reach origin/$Branch; retrying in 30 seconds. The running server was left alone."
+                Start-Sleep -Seconds 30
+                continue
+            }
+            $targetRevision = & git rev-parse "origin/$Branch"
+            if ($LASTEXITCODE -ne 0) { throw "Could not resolve origin/$Branch." }
+            & git merge-base --is-ancestor HEAD $targetRevision
+            if ($LASTEXITCODE -ne 0) { throw "The office checkout has diverged from origin/$Branch. Resolve it manually; nothing was overwritten." }
+        }
+
+        if ($targetRevision -eq $rejectedRevision) {
             Start-Sleep -Seconds 30
             continue
         }
-        if ($deployed -ne "$repoRoot|$PublicUrl|$revision" -or -not (Test-Path -LiteralPath (Join-Path $runtimeRoot 'state.json'))) {
+        if ($Rollback -or $deployed -ne "$repoRoot|$PublicUrl|$targetRevision" -or -not (Test-Path -LiteralPath (Join-Path $runtimeRoot 'state.json'))) {
             $candidate = Join-Path $runtimeRoot ('build-check-' + [guid]::NewGuid())
             $previousCi = $env:CI
             $previousTeamUrl = $env:VITE_TEAM_URL
             try {
-                Invoke-Checked 'git' @('worktree', 'add', '--detach', $candidate, $revision)
+                Invoke-Checked 'git' @('worktree', 'add', '--detach', $candidate, $targetRevision)
                 $env:CI = 'true'
                 $env:VITE_TEAM_URL = ''
                 Push-Location (Join-Path $candidate 'frontend')
@@ -73,8 +105,8 @@ try {
             }
             catch {
                 if (-not $Watch) { throw }
-                $rejectedRevision = $revision
-                Write-Warning "Preflight failed for $revision. The live site was left alone. $($_.Exception.Message)"
+                $rejectedRevision = $targetRevision
+                Write-Warning "Preflight failed for $targetRevision. The live site was left alone. $($_.Exception.Message)"
                 Start-Sleep -Seconds 30
                 continue
             }
@@ -92,7 +124,11 @@ try {
                 }
             }
             Invoke-Checked 'powershell.exe' @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $launcher, '-Stop')
-            Invoke-Checked 'git' @('merge', '--ff-only', $revision)
+            if ($Rollback) {
+                Invoke-Checked 'git' @('reset', '--hard', $targetRevision)
+            } else {
+                Invoke-Checked 'git' @('merge', '--ff-only', $targetRevision)
+            }
 
             $previousEnvironment = @{}
             foreach ($name in @('APP_ENV', 'APP_DEBUG', 'APP_URL', 'VITE_TEAM_URL', 'CI')) {
@@ -127,8 +163,16 @@ try {
                 $startArguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $launcher, '-PublicUrl', $PublicUrl)
                 if ($PhpCgiPath) { $startArguments += @('-PhpCgiPath', $PhpCgiPath) }
                 Invoke-Checked 'powershell.exe' $startArguments
-                "$repoRoot|$PublicUrl|$revision" | Set-Content -LiteralPath $revisionFile -Encoding UTF8
-                Write-Output "Deployed $revision to $PublicUrl/login. Refresh the browser to see UI changes."
+                $newEntry = "$repoRoot|$PublicUrl|$targetRevision"
+                if ($deployed -and $deployed -ne $newEntry) {
+                    $deployed | Set-Content -LiteralPath $previousRevisionFile -Encoding UTF8
+                }
+                $newEntry | Set-Content -LiteralPath $revisionFile -Encoding UTF8
+                if ($Rollback) {
+                    Write-Output "Rolled back to $targetRevision at $PublicUrl/login. Do not restart -Watch until you push a 'git revert' to origin/$Branch. Restore a pre-deploy SQL backup if the bad release changed the database."
+                } else {
+                    Write-Output "Deployed $targetRevision to $PublicUrl/login. Refresh the browser to see UI changes."
+                }
             }
             finally {
                 foreach ($name in $previousEnvironment.Keys) {

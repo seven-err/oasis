@@ -6,6 +6,7 @@ on:
   push:
     branches-ignore:
       - main
+      - staging
       - gh-pages
 
 permissions:
@@ -57,9 +58,14 @@ jobs:
             exit 0
           fi
 
-          AHEAD=$(git rev-list --count origin/main..HEAD || echo "0")
+          TARGET_BASE="main"
+          if git show-ref --verify --quiet refs/remotes/origin/staging; then
+            TARGET_BASE="staging"
+          fi
+
+          AHEAD=$(git rev-list --count "origin/$TARGET_BASE..HEAD" || echo "0")
           if [ "$AHEAD" -eq 0 ]; then
-            echo "Branch $BRANCH has no commits ahead of origin/main; skipping."
+            echo "Branch $BRANCH has no commits ahead of origin/$TARGET_BASE; skipping."
             echo "should_run=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -71,11 +77,11 @@ jobs:
             exit 0
           fi
 
-          PR_URL=$(gh pr create --base main --head "$BRANCH" --fill)
+          PR_URL=$(gh pr create --base "$TARGET_BASE" --head "$BRANCH" --fill)
           NEW_PR=$(gh pr view "$PR_URL" --json number --jq '.number')
-          echo "Created PR #$NEW_PR for branch $BRANCH"
+          echo "Created PR #$NEW_PR for branch $BRANCH -> $TARGET_BASE"
           echo "pr_number=$NEW_PR" >> "$GITHUB_OUTPUT"
-          echo "base_ref=main" >> "$GITHUB_OUTPUT"
+          echo "base_ref=$TARGET_BASE" >> "$GITHUB_OUTPUT"
           echo "should_run=true" >> "$GITHUB_OUTPUT"
 
       - uses: pnpm/action-setup@v4
@@ -144,7 +150,8 @@ jobs:
           exit 1
 
       - name: Auto-merge Pull Request
-        if: steps.pr.outputs.should_run == 'true' && steps.review.outputs.exit_code == '0' && steps.build.outcome == 'success' && steps.backend.outcome == 'success'
+        # Production promotions/rollbacks into main require a manual merge click.
+        if: steps.pr.outputs.should_run == 'true' && steps.pr.outputs.base_ref != 'main' && steps.review.outputs.exit_code == '0' && steps.build.outcome == 'success' && steps.backend.outcome == 'success'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ steps.pr.outputs.pr_number }}
