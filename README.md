@@ -5,6 +5,14 @@ Office Management System. This repository contains the React interface in
 built React screens, handles authentication and permissions, and saves business
 records in MySQL.
 
+## After pulling (latest updates)
+
+Start here when pulling the latest `main` or `staging`:
+
+- **Shared frontend modules (`a364e6f`):** Duplicated UI components, helpers, and soft-delete store methods from `checks/`, `payables/`, and `receivables/` were consolidated into `frontend/src/components/ModuleUi.tsx`, `frontend/src/components/moduleUtils.ts`, and `frontend/src/components/deletedRecordRetention.ts`. Add shared UI/helpers there instead of duplicating per module.
+- **Staging & rollback workflow (`9489dc6`):** Feature PRs now target `staging` (auto-merges when checks pass), then promote `staging` -> `main` via PR. See [Staging and rollback](#staging-and-rollback).
+- **What to run first:** No new packages or database migrations are required. If you run the app through Laravel, rebuild the frontend bundle (`cd frontend && pnpm build`). To verify your checkout: `cd frontend && pnpm exec tsc --noEmit && node --test tests/*.test.mjs` and `cd backend && php artisan test`.
+
 ## What GitHub stores
 
 Repository: [seven-err/oasis](https://github.com/seven-err/oasis).

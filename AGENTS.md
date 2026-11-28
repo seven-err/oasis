@@ -7,6 +7,14 @@ OASIS Office Management System. One repo, two apps:
 
 Setup for a fresh clone is in `README.md`.
 
+## Latest Updates & After Pulling
+
+Read this first after pulling `main` or `staging`:
+
+- **Shared frontend modules (`a364e6f`):** Common module UI (`PanelTitle`, `FormInput`, `PaginationBar`, `SectionCard`, `DetailGrid`, `MoneySummaryStrip`, etc.) now lives in `frontend/src/components/ModuleUi.tsx`; shared utilities (`peso`, `formatDate`, `sortRecords`, `downloadCsv`, `readFileAsDataUrl`, etc.) live in `frontend/src/components/moduleUtils.ts`; shared soft-delete/retention store methods live in `frontend/src/components/deletedRecordRetention.ts`. Edit or reuse these shared files instead of duplicating code across `checks/`, `payables/`, and `receivables/`.
+- **Staging & rollback workflow (`9489dc6`):** Target feature-branch PRs to `staging` (auto-merges when checks pass), then promote `staging` -> `main` via PR. Host deploys and rollbacks use `backend/update-office-server.ps1` (see `README.md`).
+- **What to do first after pulling:** No new dependencies or database migrations are needed for these updates. If serving via Laravel, rebuild the frontend bundle (`cd frontend && pnpm build`), then verify with `cd frontend && pnpm exec tsc --noEmit && node --test tests/*.test.mjs` and `cd backend && php artisan test`.
+
 ## Development Servers
 
 ```bash
@@ -20,7 +28,8 @@ Start with task-relevant files below. Only follow imports or inspect other files
 
 - `src/main.tsx` - React entrypoint; imports `src/index.css` and mounts `src/App.tsx` into the `#root` element
 - `src/App.tsx` - Primary application component and the usual starting point for UI work
-- `src/modules/{checks,payables,receivables}/` - Module screens, `store.ts` (uses shared business storage), `validation.ts`, `seed.ts`
+- `src/modules/{checks,payables,receivables}/` - Module screens, `store.ts` (uses shared business storage), `validation.ts`, `seed.ts`; `ui.tsx` and `utils.ts` re-export shared code from `src/components/ModuleUi.tsx` and `src/components/moduleUtils.ts`
+- `src/components/{ModuleUi.tsx,moduleUtils.ts,deletedRecordRetention.ts}` - Shared module UI components, formatting/CSV/sorting helpers, and soft-delete retention lifecycle methods
 - `src/businessStorage.ts` - MySQL-backed module synchronization through Laravel, browser draft recovery and legacy localStorage import; keys are in `src/businessKeys.json`
 - `src/index.css` - Global CSS entrypoint and Tailwind CSS v4 import
 - `index.html` - Vite HTML shell containing the `#root` element and loading `src/main.tsx`
